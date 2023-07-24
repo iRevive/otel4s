@@ -17,7 +17,7 @@
 package org.typelevel.otel4s
 package trace
 
-import cats.Applicative
+import cats.{Applicative, ~>}
 import org.typelevel.otel4s.meta.InstrumentMeta
 
 @annotation.implicitNotFound("""
@@ -170,6 +170,8 @@ trait Tracer[F[_]] extends TracerMacro[F] {
     */
   def noopScope[A](fa: F[A]): F[A]
 
+  def mapK[G[_]: Applicative](fk: F ~> G): Tracer[G]
+
 }
 
 object Tracer {
@@ -207,6 +209,7 @@ object Tracer {
       def childScope[A](parent: SpanContext)(fa: F[A]): F[A] = fa
       def spanBuilder(name: String): SpanBuilder[F] = builder
       def joinOrRoot[A, C: TextMapGetter](carrier: C)(fa: F[A]): F[A] = fa
+      def mapK[G[_]: Applicative](fk: F ~> G): Tracer[G] = Tracer.noop[G]
     }
 
   object Implicits {

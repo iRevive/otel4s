@@ -16,7 +16,8 @@
 
 package org.typelevel.otel4s.meta
 
-import cats.Applicative
+import cats.data.OptionT
+import cats.{Applicative, ~>}
 
 trait InstrumentMeta[F[_]] {
 
@@ -38,8 +39,16 @@ object InstrumentMeta {
   def disabled[F[_]: Applicative]: InstrumentMeta[F] =
     make(enabled = false)
 
+  def liftOptionT[F[_]: Applicative](
+      meta: InstrumentMeta[F]
+  ): InstrumentMeta[OptionT[F, *]] =
+    new InstrumentMeta[OptionT[F, *]] {
+      def isEnabled: Boolean = meta.isEnabled
+      def unit: OptionT[F, Unit] = OptionT.liftF(meta.unit)
+    }
+
   private def make[F[_]: Applicative](enabled: Boolean): InstrumentMeta[F] =
-    new InstrumentMeta[F] {
+    new InstrumentMeta[F] { self =>
       val isEnabled: Boolean = enabled
       val unit: F[Unit] = Applicative[F].unit
     }

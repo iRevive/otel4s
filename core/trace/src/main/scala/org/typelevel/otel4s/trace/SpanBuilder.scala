@@ -19,7 +19,8 @@ package trace
 
 import cats.Applicative
 import cats.arrow.FunctionK
-import cats.effect.Resource
+import cats.data.OptionT
+import cats.effect.{MonadCancelThrow, Resource}
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -150,6 +151,67 @@ object SpanBuilder {
 
         override def use_ : F[Unit] = Applicative[F].unit
       }
+    }
+
+  def liftOptionT[F[_] : MonadCancelThrow](builder: SpanBuilder[F]): SpanBuilder[OptionT[F, *]] =
+    new SpanBuilder[OptionT[F, *]] {outer =>
+      type Builder = SpanBuilder[OptionT[F, *]]
+
+      def addAttribute[A](attribute: Attribute[A]): Builder =
+        liftOptionT(builder.addAttribute(attribute))
+
+      def addAttributes(attributes: Attribute[_]*): Builder =
+        liftOptionT(builder.addAttributes(attributes: _*))
+
+      def addLink(
+                   spanContext: SpanContext,
+                   attributes: Attribute[_]*
+                 ): Builder =
+        liftOptionT(builder.addLink(spanContext, attributes: _*))
+
+      def withFinalizationStrategy(strategy: SpanFinalizer.Strategy): Builder =
+        liftOptionT(builder.withFinalizationStrategy(strategy))
+
+      def withSpanKind(spanKind: SpanKind): Builder =
+        liftOptionT(builder.withSpanKind(spanKind))
+
+      def withStartTimestamp(timestamp: FiniteDuration): Builder =
+        liftOptionT(builder.withStartTimestamp(timestamp))
+
+      def root: Builder =
+        liftOptionT(builder.root)
+
+      def withParent(parent: SpanContext): Builder =
+        liftOptionT(builder.withParent(parent))
+
+      def build: SpanOps[OptionT[F, *]] =
+        new SpanOps[OptionT[F, *]] {
+
+          def startUnmanaged: OptionT[F, Span[OptionT[F, *]]] =
+            OptionT
+              .liftF(builder.build.startUnmanaged)
+              .map(Span.liftOptionT(_))
+
+          def use[A](f: Span[OptionT[F, *]] => OptionT[F, A]): OptionT[F, A] =
+            OptionT(
+              builder.build.use(spanF => f(Span.liftOptionT(spanF)).value)
+            )
+
+          def resource: Resource[OptionT[F, *], SpanOps.Res[OptionT[F, *]]] =
+            builder.build.resource.mapK(OptionT.liftK).map(res => new SpanOps[OptionT[F, *]] {
+              def startUnmanaged: OptionT[F, Span[OptionT[F, *]]] = ???
+
+              def resource: Resource[OptionT[F, *], SpanOps.Res[OptionT[F, *]]] = ???
+
+
+              def use[A](f: Span[OptionT[F, *]] => OptionT[F, A]): OptionT[F, A] = ???
+
+              def use_ : OptionT[F, Unit] = ???
+            })
+
+          def use_ : OptionT[F, Unit] =
+            OptionT.liftF(builder.build.use_)
+        }
     }
 
 }
