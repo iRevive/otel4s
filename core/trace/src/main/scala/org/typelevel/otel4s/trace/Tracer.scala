@@ -17,7 +17,10 @@
 package org.typelevel.otel4s
 package trace
 
-import cats.{Applicative, ~>}
+import cats.Applicative
+import cats.data.OptionT
+import cats.effect.kernel.MonadCancel
+import cats.~>
 import org.typelevel.otel4s.meta.InstrumentMeta
 
 @annotation.implicitNotFound("""
@@ -170,8 +173,6 @@ trait Tracer[F[_]] extends TracerMacro[F] {
     */
   def noopScope[A](fa: F[A]): F[A]
 
-  def mapK[G[_]: Applicative](fk: F ~> G): Tracer[G]
-
 }
 
 object Tracer {
@@ -187,7 +188,7 @@ object Tracer {
     def enabled[F[_]: Applicative]: Meta[F] = make(true)
     def disabled[F[_]: Applicative]: Meta[F] = make(false)
 
-    private def make[F[_]: Applicative](enabled: Boolean): Meta[F] =
+    private[Tracer] def make[F[_]: Applicative](enabled: Boolean): Meta[F] =
       new Meta[F] {
         private val noopBackend = Span.Backend.noop[F]
 
@@ -209,10 +210,70 @@ object Tracer {
       def childScope[A](parent: SpanContext)(fa: F[A]): F[A] = fa
       def spanBuilder(name: String): SpanBuilder[F] = builder
       def joinOrRoot[A, C: TextMapGetter](carrier: C)(fa: F[A]): F[A] = fa
-      def mapK[G[_]: Applicative](fk: F ~> G): Tracer[G] = Tracer.noop[G]
+    }
+
+  def liftOptionT[F[_]](tracer: Tracer[F])(implicit
+      F: MonadCancel[F, _]
+  ): Tracer[OptionT[F, *]] =
+    new Tracer[OptionT[F, *]] {
+      def meta: Meta[OptionT[F, *]] =
+        Meta.make(tracer.meta.isEnabled)
+
+      def currentSpanContext: OptionT[F, Option[SpanContext]] =
+        OptionT.liftF(tracer.currentSpanContext)
+
+      def spanBuilder(name: String): SpanBuilder[OptionT[F, *]] =
+        SpanBuilder.liftOptionT(tracer.spanBuilder(name))
+
+      def childScope[A](parent: SpanContext)(fa: OptionT[F, A]): OptionT[F, A] =
+        OptionT(tracer.childScope(parent)(fa.value))
+
+      def joinOrRoot[A, C: TextMapGetter](carrier: C)(
+          fa: OptionT[F, A]
+      ): OptionT[F, A] =
+        OptionT(tracer.joinOrRoot(carrier)(fa.value))
+
+      def rootScope[A](fa: OptionT[F, A]): OptionT[F, A] =
+        OptionT(tracer.rootScope(fa.value))
+
+      def noopScope[A](fa: OptionT[F, A]): OptionT[F, A] =
+        OptionT(tracer.noopScope(fa.value))
     }
 
   object Implicits {
     implicit def noop[F[_]: Applicative]: Tracer[F] = Tracer.noop
+  }
+
+  implicit final class TracerSyntax[F[_]](
+      private val tracer: Tracer[F]
+  ) extends AnyVal {
+
+    def translate[G[_]](fk: F ~> G, gk: G ~> F)(implicit
+        F: MonadCancel[F, _],
+        G: MonadCancel[G, _]
+    ): Tracer[G] =
+      new Tracer[G] {
+        def meta: Meta[G] =
+          Meta.make(tracer.meta.isEnabled)
+
+        def currentSpanContext: G[Option[SpanContext]] =
+          fk(tracer.currentSpanContext)
+
+        def spanBuilder(name: String): SpanBuilder[G] =
+          tracer.spanBuilder(name).translate(fk, gk)
+
+        def childScope[A](parent: SpanContext)(fa: G[A]): G[A] =
+          fk(tracer.childScope(parent)(gk(fa)))
+
+        def joinOrRoot[A, C: TextMapGetter](carrier: C)(fa: G[A]): G[A] =
+          fk(tracer.joinOrRoot(carrier)(gk(fa)))
+
+        def rootScope[A](fa: G[A]): G[A] =
+          fk(tracer.rootScope(gk(fa)))
+
+        def noopScope[A](fa: G[A]): G[A] =
+          fk(tracer.noopScope(gk(fa)))
+      }
+
   }
 }

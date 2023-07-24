@@ -16,7 +16,6 @@
 
 package org.typelevel.otel4s.java.trace
 
-import cats.{Applicative, ~>}
 import cats.effect.Sync
 import cats.syntax.flatMap._
 import cats.syntax.functor._
@@ -24,7 +23,9 @@ import io.opentelemetry.api.trace.{Span => JSpan}
 import io.opentelemetry.api.trace.{Tracer => JTracer}
 import org.typelevel.otel4s.ContextPropagators
 import org.typelevel.otel4s.TextMapGetter
-import org.typelevel.otel4s.trace.{Span, SpanBuilder, SpanContext, Tracer}
+import org.typelevel.otel4s.trace.SpanBuilder
+import org.typelevel.otel4s.trace.SpanContext
+import org.typelevel.otel4s.trace.Tracer
 import org.typelevel.vault.Vault
 
 private[java] class TracerImpl[F[_]: Sync](

@@ -18,7 +18,9 @@ package org.typelevel.otel4s
 package trace
 
 import cats.Applicative
+import cats.Functor
 import cats.data.OptionT
+import cats.~>
 import org.typelevel.otel4s.meta.InstrumentMeta
 
 import scala.concurrent.duration.FiniteDuration
@@ -153,60 +155,68 @@ object Span {
         private[otel4s] def end(timestamp: FiniteDuration): F[Unit] = unit
       }
 
-    def liftOptionT[F[_] : Applicative](
-                                         backend: Backend[F]
-                                       ): Backend[OptionT[F, *]] =
-      new Backend[OptionT[F, *]] {
-        def meta: InstrumentMeta[OptionT[F, *]] =
-          InstrumentMeta.liftOptionT(backend.meta)
+    implicit final class BackendSyntax[F[_]](
+        private val backend: Backend[F]
+    ) extends AnyVal {
 
-        def context: SpanContext =
-          backend.context
+      def mapK[G[_]](fk: F ~> G): Backend[G] =
+        new Backend[G] {
+          def meta: InstrumentMeta[G] =
+            backend.meta.mapK(fk)
 
-        def addAttributes(attributes: Attribute[_]*): OptionT[F, Unit] =
-          OptionT.liftF(backend.addAttributes(attributes: _*))
+          def context: SpanContext =
+            backend.context
 
-        def addEvent(
-                      name: String,
-                      attributes: Attribute[_]*
-                    ): OptionT[F, Unit] =
-          OptionT.liftF(backend.addEvent(name, attributes: _*))
+          def addAttributes(attributes: Attribute[_]*): G[Unit] =
+            fk(backend.addAttributes(attributes: _*))
 
-        def addEvent(
-                      name: String,
-                      timestamp: FiniteDuration,
-                      attributes: Attribute[_]*
-                    ): OptionT[F, Unit] =
-          OptionT.liftF(backend.addEvent(name, timestamp, attributes: _*))
+          def addEvent(name: String, attributes: Attribute[_]*): G[Unit] =
+            fk(backend.addEvent(name, attributes: _*))
 
-        def recordException(
-                             exception: Throwable,
-                             attributes: Attribute[_]*
-                           ): OptionT[F, Unit] =
-          OptionT.liftF(backend.recordException(exception, attributes: _*))
+          def addEvent(
+              name: String,
+              timestamp: FiniteDuration,
+              attributes: Attribute[_]*
+          ): G[Unit] =
+            fk(backend.addEvent(name, timestamp, attributes: _*))
 
-        def setStatus(status: Status): OptionT[F, Unit] =
-          OptionT.liftF(backend.setStatus(status))
+          def recordException(
+              exception: Throwable,
+              attributes: Attribute[_]*
+          ): G[Unit] =
+            fk(backend.recordException(exception, attributes: _*))
 
-        def setStatus(status: Status, description: String): OptionT[F, Unit] =
-          OptionT.liftF(backend.setStatus(status, description))
+          def setStatus(status: Status): G[Unit] =
+            fk(backend.setStatus(status))
 
-        private[otel4s] def end: OptionT[F, Unit] =
-          OptionT.liftF(backend.end)
+          def setStatus(status: Status, description: String): G[Unit] =
+            fk(backend.setStatus(status, description))
 
-        private[otel4s] def end(timestamp: FiniteDuration): OptionT[F, Unit] =
-          OptionT.liftF(backend.end(timestamp))
-      }
+          private[otel4s] def end: G[Unit] =
+            fk(backend.end)
+
+          private[otel4s] def end(timestamp: FiniteDuration): G[Unit] =
+            fk(backend.end(timestamp))
+        }
+
+    }
   }
+
+  implicit final class SpanSyntax[F[_]](
+      private val span: Span[F]
+  ) extends AnyVal {
+
+    def mapK[G[_]](fk: F ~> G): Span[G] =
+      Span.fromBackend(span.backend.mapK(fk))
+
+  }
+
+  def liftOptionT[F[_]: Functor](span: Span[F]): Span[OptionT[F, *]] =
+    span.mapK(OptionT.liftK)
 
   private[otel4s] def fromBackend[F[_]](back: Backend[F]): Span[F] =
     new Span[F] {
       def backend: Backend[F] = back
     }
 
-  def liftOptionT[F[_] : Applicative](span: Span[F]): Span[OptionT[F, *]] =
-    new Span[OptionT[F, *]] {
-      def backend: Backend[OptionT[F, *]] =
-        Backend.liftOptionT(span.backend)
-    }
 }
