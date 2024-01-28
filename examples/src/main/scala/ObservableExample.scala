@@ -18,6 +18,7 @@ import cats.effect.IO
 import cats.effect.IOApp
 import cats.effect.Resource
 import org.typelevel.otel4s.metrics.ObservableCounter
+import org.typelevel.otel4s.metrics.ObservableMeasurement
 import org.typelevel.otel4s.oteljava.OtelJava
 
 import java.lang.management.ManagementFactory
@@ -36,12 +37,14 @@ object ObservableExample extends IOApp.Simple {
       .flatMap(
         _.observableCounter[Long]("cats-effect-runtime-cpu-starvation-count")
           .withDescription("CE runtime starvation count")
-          .createWithCallback(obs =>
-            IO(
-              mbeanServer
-                .getAttribute(mbeanName, "CpuStarvationCount")
-                .asInstanceOf[Long]
-            ).flatMap(c => obs.record(c))
+          .create(
+            ObservableMeasurement.Source.callback { obs =>
+              IO(
+                mbeanServer
+                  .getAttribute(mbeanName, "CpuStarvationCount")
+                  .asInstanceOf[Long]
+              ).flatMap(c => obs.record(c))
+            }
           )
       )
 

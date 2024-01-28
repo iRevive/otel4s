@@ -16,9 +16,21 @@
 
 package org.typelevel.otel4s.metrics
 
+import cats.Foldable
+import cats.Functor
+import cats.syntax.foldable._
+import cats.syntax.functor._
 import org.typelevel.otel4s.Attribute
 import org.typelevel.otel4s.Attributes
 
+/** A callback that allows to record measurements.
+  *
+  * @tparam F
+  *   the higher-kinded type of a polymorphic effect
+  *
+  * @tparam A
+  *   the type of the measurement
+  */
 trait ObservableMeasurement[F[_], A] {
 
   /** Records a value with a set of attributes.
@@ -41,4 +53,83 @@ trait ObservableMeasurement[F[_], A] {
     *   the set of attributes to associate with the value
     */
   def record(value: A, attributes: Attributes): F[Unit]
+}
+
+object ObservableMeasurement {
+
+  /** The source of the [[Measurement]].
+    *
+    * @tparam F
+    *   the higher-kinded type of a polymorphic effect
+    *
+    * @tparam A
+    *   the type of the measurement
+    */
+  sealed trait Source[F[_], A]
+
+  object Source {
+
+    /** Creates a [[Source]] from the given callback.
+      *
+      * The source is expected to abide by the following restrictions:
+      *   - Short-living and (ideally) non-blocking
+      *   - Run in a finite amount of time
+      *   - Safe to call repeatedly, across multiple threads
+      *
+      * @example
+      *   {{{
+      * val completed: Ref[F, Long] = ???
+      * val source: ObservableMeasurement.Source[F, Long] =
+      *   ObservableMeasurement.Source.callback { cb =>
+      *     completed.get.flatMap(total => cb.record(total))
+      *   }
+      *   }}}
+      *
+      * @param cb
+      *   the callback which observes measurements when invoked
+      *
+      * @tparam A
+      *   the type of the measurement
+      */
+    def callback[F[_], A](
+        cb: ObservableMeasurement[F, A] => F[Unit]
+    ): Source[F, A] =
+      Callback(cb)
+
+    /** Creates a [[Source]] from the given effect.
+      *
+      * The source is expected to abide by the following restrictions:
+      *   - Short-living and (ideally) non-blocking
+      *   - Run in a finite amount of time
+      *   - Safe to call repeatedly, across multiple threads
+      *
+      * @example
+      *   {{{
+      * val completed: Ref[F, Long] = ???
+      * val source: ObservableMeasurement.Source[F, Long] =
+      *   ObservableMeasurement.Source.effect(
+      *     completed.get.map(total => List(Measurement(total)))
+      *   )
+      *   }}}
+      *
+      * @param measurements
+      *   the effect that produces measurements
+      *
+      * @tparam A
+      *   the type of the measurement
+      */
+    def effect[F[_]: Functor, G[_]: Foldable, A](
+        measurements: F[G[Measurement[A]]]
+    ): Source[F, A] =
+      Effect(measurements.map(_.toIterable))
+
+    private[otel4s] final case class Callback[F[_], A](
+        cb: ObservableMeasurement[F, A] => F[Unit]
+    ) extends Source[F, A]
+
+    private[otel4s] final case class Effect[F[_], A](
+        measurements: F[Iterable[Measurement[A]]]
+    ) extends Source[F, A]
+  }
+
 }

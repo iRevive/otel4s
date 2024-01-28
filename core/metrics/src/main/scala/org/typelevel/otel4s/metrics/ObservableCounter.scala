@@ -57,38 +57,21 @@ object ObservableCounter {
     /** Creates an instrument with the given callback, using `unit` and
       * `description` (if any).
       *
-      * The callback will be called when the instrument is being observed.
+      * The measurements will be collected from the `source` when the instrument
+      * is being observed.
       *
-      * The callback is expected to abide by the following restrictions:
+      * The source is expected to abide by the following restrictions:
       *   - Short-living and (ideally) non-blocking
       *   - Run in a finite amount of time
       *   - Safe to call repeatedly, across multiple threads
       *
-      * @param cb
-      *   the callback which observes measurements when invoked
-      */
-    def createWithCallback(
-        cb: ObservableMeasurement[F, A] => F[Unit]
-    ): Resource[F, ObservableCounter]
-
-    /** Creates an asynchronous instrument based on an effect that produces a
-      * number of measurements.
-      *
-      * The measurement effect will be evaluated when the instrument is being
-      * observed.
-      *
-      * The measurement effect is expected to abide by the following
-      * restrictions:
-      *   - Short-living and (ideally) non-blocking
-      *   - Run in a finite amount of time
-      *   - Safe to call repeatedly, across multiple threads
-      *
-      * @param measurements
-      *   effect that produces a number of measurements
+      * @param source
+      *   the source that emits measurements
       */
     def create(
-        measurements: F[Iterable[Measurement[A]]]
+        source: ObservableMeasurement.Source[F, A]
     ): Resource[F, ObservableCounter]
+
   }
 
 }

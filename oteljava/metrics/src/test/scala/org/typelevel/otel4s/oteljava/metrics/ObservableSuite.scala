@@ -21,6 +21,7 @@ package metrics
 import cats.effect.IO
 import munit.CatsEffectSuite
 import org.typelevel.otel4s.metrics.Measurement
+import org.typelevel.otel4s.metrics.ObservableMeasurement
 import org.typelevel.otel4s.testkit.metrics.MetricsSdk
 
 class ObservableSuite extends CatsEffectSuite {
@@ -40,7 +41,11 @@ class ObservableSuite extends CatsEffectSuite {
         .observableGauge[Double]("gauge")
         .withUnit("unit")
         .withDescription("description")
-        .createWithCallback(_.record(42.0, Attribute("foo", "bar")))
+        .create(
+          ObservableMeasurement.Source.callback(
+            _.record(42.0, Attribute("foo", "bar"))
+          )
+        )
         .use(_ =>
           sdk.metrics
             .map(_.flatMap(_.data.points.map(x => (x.value, x.attributes))))
@@ -52,10 +57,12 @@ class ObservableSuite extends CatsEffectSuite {
         .withUnit("unit")
         .withDescription("description")
         .create(
-          IO.pure(
-            List(
-              Measurement(1336.0, Attribute("1", "2")),
-              Measurement(1337.0, Attribute("a", "b"))
+          ObservableMeasurement.Source.effect(
+            IO.pure(
+              List(
+                Measurement(1336.0, Attribute("1", "2")),
+                Measurement(1337.0, Attribute("a", "b"))
+              )
             )
           )
         )
@@ -92,7 +99,11 @@ class ObservableSuite extends CatsEffectSuite {
         .observableCounter[Long]("counter")
         .withUnit("unit")
         .withDescription("description")
-        .createWithCallback(_.record(1234, Attribute("number", 42L)))
+        .create(
+          ObservableMeasurement.Source.callback(
+            _.record(1234, Attribute("number", 42L))
+          )
+        )
         .use(_ =>
           sdk.metrics
             .map(_.flatMap(_.data.points.map(x => (x.value, x.attributes))))
@@ -104,10 +115,12 @@ class ObservableSuite extends CatsEffectSuite {
         .withUnit("unit")
         .withDescription("description")
         .create(
-          IO.pure(
-            List(
-              Measurement(1336, Attribute("1", "2")),
-              Measurement(1337, Attribute("a", "b"))
+          ObservableMeasurement.Source.effect(
+            IO.pure(
+              List(
+                Measurement(1336L, Attribute("1", "2")),
+                Measurement(1337L, Attribute("a", "b"))
+              )
             )
           )
         )
@@ -142,8 +155,10 @@ class ObservableSuite extends CatsEffectSuite {
         .observableUpDownCounter[Long]("updowncounter")
         .withUnit("unit")
         .withDescription("description")
-        .createWithCallback(
-          _.record(1234, Attribute[Boolean]("is_false", true))
+        .create(
+          ObservableMeasurement.Source.callback(
+            _.record(1234, Attribute[Boolean]("is_false", true))
+          )
         )
         .use(_ =>
           sdk.metrics
@@ -156,10 +171,12 @@ class ObservableSuite extends CatsEffectSuite {
         .withUnit("unit")
         .withDescription("description")
         .create(
-          IO.pure(
-            List(
-              Measurement(1336, Attribute("1", "2")),
-              Measurement(1336, Attribute("a", "b"))
+          ObservableMeasurement.Source.effect(
+            IO.pure(
+              List(
+                Measurement(1336L, Attribute("1", "2")),
+                Measurement(1336L, Attribute("a", "b"))
+              )
             )
           )
         )

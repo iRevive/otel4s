@@ -44,15 +44,10 @@ private[oteljava] case class ObservableGaugeBuilderImpl[F[_], A](
   def withDescription(description: String): ObservableGauge.Builder[F, A] =
     copy(description = Option(description))
 
-  def createWithCallback(
-      cb: ObservableMeasurement[F, A] => F[Unit]
-  ): Resource[F, ObservableGauge] =
-    factory.createWithCallback(name, unit, description, cb)
-
   def create(
-      measurements: F[Iterable[Measurement[A]]]
+      source: ObservableMeasurement.Source[F, A]
   ): Resource[F, ObservableGauge] =
-    factory.create(name, unit, description, measurements)
+    factory.create(name, unit, description, source)
 }
 
 private[oteljava] object ObservableGaugeBuilderImpl {
@@ -78,31 +73,27 @@ private[oteljava] object ObservableGaugeBuilderImpl {
         name: String,
         unit: Option[String],
         description: Option[String],
-        measurements: F[Iterable[Measurement[A]]]
+        source: ObservableMeasurement.Source[F, A]
     ): Resource[F, ObservableGauge] =
-      createInternal(name, unit, description) { om =>
-        measurements.flatMap { ms =>
-          Async[F].delay(
-            ms.foreach(m => doRecord(om, m.value, m.attributes))
-          )
-        }
-      }
-
-    final def createWithCallback(
-        name: String,
-        unit: Option[String],
-        description: Option[String],
-        cb: ObservableMeasurement[F, A] => F[Unit]
-    ): Resource[F, ObservableGauge] =
-      createInternal(name, unit, description) { om =>
-        cb(
-          new ObservableMeasurement[F, A] {
-            def record(value: A, attributes: Attributes): F[Unit] =
-              Async[F].delay(
-                doRecord(om, value, attributes)
-              )
+      source match {
+        case ObservableMeasurement.Source.Callback(cb) =>
+          createInternal(name, unit, description) { om =>
+            cb(
+              new ObservableMeasurement[F, A] {
+                def record(value: A, attributes: Attributes): F[Unit] =
+                  Async[F].delay(doRecord(om, value, attributes))
+              }
+            )
           }
-        )
+
+        case ObservableMeasurement.Source.Effect(measurements) =>
+          createInternal(name, unit, description) { om =>
+            measurements.flatMap { ms =>
+              Async[F].delay(
+                ms.foreach(m => doRecord(om, m.value, m.attributes))
+              )
+            }
+          }
       }
 
     protected def create(

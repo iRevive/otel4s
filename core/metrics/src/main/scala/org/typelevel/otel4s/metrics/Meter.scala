@@ -308,12 +308,8 @@ object Meter {
           def withDescription(
               description: String
           ): ObservableGauge.Builder[F, A] = this
-          def createWithCallback(
-              cb: ObservableMeasurement[F, A] => F[Unit]
-          ): Resource[F, ObservableGauge] =
-            Resource.pure(new ObservableGauge {})
           def create(
-              measurements: F[Iterable[Measurement[A]]]
+              source: ObservableMeasurement.Source[F, A]
           ): Resource[F, ObservableGauge] =
             Resource.pure(new ObservableGauge {})
         }
@@ -326,12 +322,8 @@ object Meter {
           def withDescription(
               description: String
           ): ObservableCounter.Builder[F, A] = this
-          def createWithCallback(
-              cb: ObservableMeasurement[F, A] => F[Unit]
-          ): Resource[F, ObservableCounter] =
-            Resource.pure(new ObservableCounter {})
           def create(
-              measurements: F[Iterable[Measurement[A]]]
+              source: ObservableMeasurement.Source[F, A]
           ): Resource[F, ObservableCounter] =
             Resource.pure(new ObservableCounter {})
         }
@@ -345,12 +337,8 @@ object Meter {
           def withDescription(
               description: String
           ): ObservableUpDownCounter.Builder[F, A] = this
-          def createWithCallback(
-              cb: ObservableMeasurement[F, A] => F[Unit]
-          ): Resource[F, ObservableUpDownCounter] =
-            Resource.pure(new ObservableUpDownCounter {})
           def create(
-              measurements: F[Iterable[Measurement[A]]]
+              source: ObservableMeasurement.Source[F, A]
           ): Resource[F, ObservableUpDownCounter] =
             Resource.pure(new ObservableUpDownCounter {})
         }
