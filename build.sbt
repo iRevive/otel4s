@@ -92,6 +92,7 @@ lazy val root = tlCrossRootProject
     `testkit-metrics`,
     testkit,
     `oteljava-common`,
+    `oteljava-common-testkit`,
     `oteljava-metrics`,
     `oteljava-trace`,
     `oteljava-trace-testkit`,
@@ -167,9 +168,13 @@ lazy val `core-trace-testkit` =
     .crossType(CrossType.Pure)
     .in(file("core/trace-testkit"))
     .dependsOn(`core-trace`)
+    .settings(munitDependencies)
     .settings(
       name := "otel4s-core-trace-testkit",
-      startYear := Some(2024)
+      startYear := Some(2024),
+      libraryDependencies ++= Seq(
+        "org.typelevel" %%% "cats-effect-testkit" % CatsEffectVersion % Test
+      )
     )
     .settings(scalafixSettings)
 
@@ -247,7 +252,11 @@ lazy val sdk = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
   .enablePlugins(NoPublishPlugin)
   .in(file("sdk/all"))
-  .dependsOn(`sdk-common`, `sdk-trace`)
+  .dependsOn(
+    `sdk-common`, `sdk-trace`,
+    `core-trace-testkit` % "test->test",
+    `sdk-trace-testkit` % Test
+  )
   .settings(
     name := "otel4s-sdk"
   )
@@ -404,6 +413,18 @@ lazy val `oteljava-common` = project
   )
   .settings(scalafixSettings)
 
+lazy val `oteljava-common-testkit` = project
+  .in(file("oteljava/common-testkit"))
+  .dependsOn(`oteljava-common`)
+  .settings(
+    name := "otel4s-oteljava-common-testkit",
+    libraryDependencies ++= Seq(
+      "io.opentelemetry" % "opentelemetry-sdk-testing" % OpenTelemetryVersion
+    ),
+    startYear := Some(2024)
+  )
+  .settings(scalafixSettings)
+
 lazy val `oteljava-metrics` = project
   .in(file("oteljava/metrics"))
   .dependsOn(
@@ -441,25 +462,31 @@ lazy val `oteljava-trace` = project
 
 lazy val `oteljava-trace-testkit` = project
   .in(file("oteljava/trace-testkit"))
-  .dependsOn(`oteljava-trace`, `core-trace-testkit`.jvm)
+  .dependsOn(
+    `oteljava-trace`,
+    `core-trace-testkit`.jvm,
+    `oteljava-common-testkit`
+  )
   .settings(
     name := "otel4s-oteljava-trace-testkit",
-    libraryDependencies ++= Seq(
-      "io.opentelemetry" % "opentelemetry-sdk-testing" % OpenTelemetryVersion
-    ),
     startYear := Some(2024)
   )
   .settings(scalafixSettings)
 
 lazy val oteljava = project
   .in(file("oteljava/all"))
-  .dependsOn(core.jvm, `oteljava-metrics`, `oteljava-trace`)
+  .dependsOn(
+    core.jvm,
+    `oteljava-metrics`,
+    `oteljava-trace`,
+    `core-trace-testkit`.jvm % "test->test",
+    `oteljava-trace-testkit` % Test
+  )
   .settings(
     name := "otel4s-oteljava",
     libraryDependencies ++= Seq(
       "io.opentelemetry" % "opentelemetry-sdk" % OpenTelemetryVersion,
-      "io.opentelemetry" % "opentelemetry-sdk-extension-autoconfigure" % OpenTelemetryVersion,
-      "io.opentelemetry" % "opentelemetry-sdk-testing" % OpenTelemetryVersion % Test
+      "io.opentelemetry" % "opentelemetry-sdk-extension-autoconfigure" % OpenTelemetryVersion
     )
   )
   .settings(munitDependencies)
@@ -591,6 +618,7 @@ lazy val unidocs = project
       `testkit-metrics`.jvm,
       testkit.jvm,
       `oteljava-common`,
+      `oteljava-common-testkit`,
       `oteljava-metrics`,
       `oteljava-trace`,
       `oteljava-trace-testkit`,
