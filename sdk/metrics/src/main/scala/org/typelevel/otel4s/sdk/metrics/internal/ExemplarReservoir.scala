@@ -24,9 +24,8 @@ import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 
-trait ExemplarReservoir[F[_], E <: ExemplarData] {
-  // todo: incorrect, should be constrainted on the level of the class
-  def offerMeasurement[A: MeasurementValue](
+trait ExemplarReservoir[F[_], A, E <: ExemplarData] {
+  def offerMeasurement(
       value: A,
       attributes: Attributes,
       context: Context
@@ -37,12 +36,12 @@ trait ExemplarReservoir[F[_], E <: ExemplarData] {
 
 object ExemplarReservoir {
 
-  def filtered[F[_]: Applicative, E <: ExemplarData](
+  def filtered[F[_]: Applicative, A: MeasurementValue, E <: ExemplarData](
       filter: ExemplarFilter,
-      original: ExemplarReservoir[F, E]
-  ): ExemplarReservoir[F, E] =
-    new ExemplarReservoir[F, E] {
-      def offerMeasurement[A: MeasurementValue](
+      original: ExemplarReservoir[F, A, E]
+  ): ExemplarReservoir[F, A, E] =
+    new ExemplarReservoir[F, A, E] {
+      def offerMeasurement(
           value: A,
           attributes: Attributes,
           context: Context
@@ -58,22 +57,23 @@ object ExemplarReservoir {
     }
 
   // size = availableProcessors
-  def fixedSize[F[_]: Applicative, E <: ExemplarData](
+  def fixedSize[F[_]: Applicative, A, E <: ExemplarData](
       size: Int
-  ): F[ExemplarReservoir[F, E]] =
+  ): F[ExemplarReservoir[F, A, E]] =
     Applicative[F].pure(noop)
 
-  def histogramBucket[F[_]: Applicative](
+  def histogramBucket[F[_]: Applicative, A](
       boundaries: BucketBoundaries
-  ): F[ExemplarReservoir[F, ExemplarData.DoubleExemplar]] =
+  ): F[ExemplarReservoir[F, A, ExemplarData.DoubleExemplar]] =
     Applicative[F].pure(noop)
 
   private def noop[
       F[_]: Applicative,
+      A,
       E <: ExemplarData
-  ]: ExemplarReservoir[F, E] =
-    new ExemplarReservoir[F, E] {
-      def offerMeasurement[A: MeasurementValue](
+  ]: ExemplarReservoir[F, A, E] =
+    new ExemplarReservoir[F, A, E] {
+      def offerMeasurement(
           value: A,
           attributes: Attributes,
           context: Context

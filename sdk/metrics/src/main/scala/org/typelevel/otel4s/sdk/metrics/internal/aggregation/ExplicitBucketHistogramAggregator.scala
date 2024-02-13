@@ -38,15 +38,15 @@ import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 
 import scala.concurrent.duration.FiniteDuration
 
-private final class ExplicitBucketHistogramAggregator[F[_]: Concurrent, I: MeasurementValue](
+private final class ExplicitBucketHistogramAggregator[F[_]: Concurrent, A: MeasurementValue](
     boundaries: BucketBoundaries,
-    makeReservoir: F[ExemplarReservoir[F, ExemplarData.DoubleExemplar]]
-) extends Aggregator[F, I] {
+    makeReservoir: F[ExemplarReservoir[F, A, ExemplarData.DoubleExemplar]]
+) extends Aggregator[F, A] {
   import ExplicitBucketHistogramAggregator._
 
   type Point = PointData.Histogram
 
-  def createHandle: F[Aggregator.Handle[F, I, PointData.Histogram]] =
+  def createHandle: F[Aggregator.Handle[F, A, PointData.Histogram]] =
     for {
       state <- Concurrent[F].ref(emptyState(boundaries.length))
       reservoir <- makeReservoir
@@ -73,15 +73,15 @@ private final class ExplicitBucketHistogramAggregator[F[_]: Concurrent, I: Measu
 
 private object ExplicitBucketHistogramAggregator {
 
-  def apply[F[_]: Concurrent, I: MeasurementValue](
+  def apply[F[_]: Concurrent, A: MeasurementValue](
       boundaries: BucketBoundaries,
       filter: ExemplarFilter
-  ): ExplicitBucketHistogramAggregator[F, I] = {
+  ): ExplicitBucketHistogramAggregator[F, A] = {
     val reservoir = ExemplarReservoir
-      .histogramBucket[F](boundaries)
+      .histogramBucket[F, A](boundaries)
       .map(r => ExemplarReservoir.filtered(filter, r))
 
-    new ExplicitBucketHistogramAggregator[F, I](boundaries, reservoir)
+    new ExplicitBucketHistogramAggregator[F, A](boundaries, reservoir)
   }
 
   private final case class State(
@@ -95,11 +95,11 @@ private object ExplicitBucketHistogramAggregator {
   private def emptyState(counts: Int): State =
     State(0, Double.MaxValue, -1, 0L, Vector.fill(counts)(0))
 
-  private class Handle[F[_]: FlatMap, I: MeasurementValue](
+  private class Handle[F[_]: FlatMap, A: MeasurementValue](
       stateRef: Ref[F, State],
       boundaries: BucketBoundaries,
-      reservoir: ExemplarReservoir[F, ExemplarData.DoubleExemplar]
-  ) extends Aggregator.Handle[F, I, PointData.Histogram] {
+      reservoir: ExemplarReservoir[F, A, ExemplarData.DoubleExemplar]
+  ) extends Aggregator.Handle[F, A, PointData.Histogram] {
 
     def aggregate(
         startTimestamp: FiniteDuration,
@@ -129,11 +129,11 @@ private object ExplicitBucketHistogramAggregator {
       }
 
     def record(
-        value: I,
-        attributes: Attributes,
-        context: Context
+                value: A,
+                attributes: Attributes,
+                context: Context
     ): F[Unit] = {
-      val doubleValue = MeasurementValue[I] match {
+      val doubleValue = MeasurementValue[A] match {
         case MeasurementValue.LongMeasurementValue(cast) => cast(value).toDouble
         case MeasurementValue.DoubleMeasurementValue(cast) => cast(value)
       }

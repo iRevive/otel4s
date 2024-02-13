@@ -42,9 +42,9 @@ private final class SumAggregator[
     F[_]: Concurrent,
     A: MeasurementValue: Numeric
 ](
-   reservoirSize: Int,
-   filter: ExemplarFilter,
-   val builder: PointDataBuilder[A]
+    reservoirSize: Int,
+    filter: ExemplarFilter,
+    val builder: PointDataBuilder[A]
 ) extends Aggregator[F, A] {
 
   import SumAggregator.Handle
@@ -82,7 +82,7 @@ private final class SumAggregator[
   // todo size = availableProcessors ???
   private def makeReservoir =
     ExemplarReservoir
-      .fixedSize[F, builder.Exemplar](size = reservoirSize)
+      .fixedSize[F, A, builder.Exemplar](size = reservoirSize)
       .map(r => ExemplarReservoir.filtered(filter, r))
 
 }
@@ -97,12 +97,12 @@ private object SumAggregator {
 
   private class Handle[
       F[_]: Monad,
-      A: MeasurementValue,
+      A,
       P <: PointData.NumberPoint,
       E <: ExemplarData
   ](
       adder: Adder[F, A],
-      reservoir: ExemplarReservoir[F, E],
+      reservoir: ExemplarReservoir[F, A, E],
       target: PointDataBuilder.Aux[A, P, E]
   ) extends Aggregator.Handle[F, A, P] {
 
