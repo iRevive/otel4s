@@ -29,7 +29,9 @@ import cats.syntax.foldable._
 import cats.syntax.functor._
 import cats.syntax.traverse._
 import org.typelevel.otel4s.Attributes
-import org.typelevel.otel4s.metrics.{MeasurementValue, MeterBuilder, MeterProvider}
+import org.typelevel.otel4s.metrics.MeasurementValue
+import org.typelevel.otel4s.metrics.MeterBuilder
+import org.typelevel.otel4s.metrics.MeterProvider
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.AskContext

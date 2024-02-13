@@ -19,7 +19,8 @@ package org.typelevel.otel4s.sdk.metrics.internal
 import cats.Applicative
 import cats.syntax.applicative._
 import org.typelevel.otel4s.Attributes
-import org.typelevel.otel4s.metrics.{BucketBoundaries, MeasurementValue}
+import org.typelevel.otel4s.metrics.BucketBoundaries
+import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData

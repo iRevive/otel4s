@@ -17,7 +17,6 @@
 package org.typelevel.otel4s.sdk.metrics.data
 
 import org.typelevel.otel4s.Attributes
-import org.typelevel.otel4s.metrics.MeasurementValue
 
 import scala.concurrent.duration.FiniteDuration
 

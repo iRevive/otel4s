@@ -20,18 +20,14 @@ package exporter.otlp.metrics
 
 import io.opentelemetry.proto.collector.metrics.v1.metrics_service.ExportMetricsServiceRequest
 import io.opentelemetry.proto.metrics.v1.{metrics => Proto}
-import io.opentelemetry.proto.metrics.v1.metrics.{
-  ResourceMetrics,
-  ScopeMetrics
-}
+import io.opentelemetry.proto.metrics.v1.metrics.ResourceMetrics
+import io.opentelemetry.proto.metrics.v1.metrics.ScopeMetrics
 import org.typelevel.otel4s.sdk.exporter.otlp.ProtoEncoder
-import org.typelevel.otel4s.sdk.metrics.data.{
-  AggregationTemporality,
-  Data,
-  ExemplarData,
-  MetricData,
-  PointData
-}
+import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
+import org.typelevel.otel4s.sdk.metrics.data.Data
+import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
+import org.typelevel.otel4s.sdk.metrics.data.MetricData
+import org.typelevel.otel4s.sdk.metrics.data.PointData
 import scalapb_circe.Printer
 
 /** @see

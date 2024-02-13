@@ -43,7 +43,7 @@ private object SdkHistogram {
   private final class Backend[
       F[_]: Monad: Clock: Console: AskContext,
       A,
-      Primitive: MeasurementValue: Numeric
+      Primitive: Numeric
   ](
       cast: A => Primitive,
       castDuration: Double => Primitive,

@@ -31,10 +31,8 @@ import org.typelevel.otel4s.sdk.metrics.data.Data
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
-import org.typelevel.otel4s.sdk.metrics.internal.{
-  ExemplarReservoir,
-  MetricDescriptor
-}
+import org.typelevel.otel4s.sdk.metrics.internal.ExemplarReservoir
+import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 
 import scala.concurrent.duration.FiniteDuration
 

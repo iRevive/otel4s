@@ -30,7 +30,6 @@ import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentType
-import org.typelevel.otel4s.sdk.metrics.internal.InstrumentValueType
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 
 import scala.concurrent.duration.FiniteDuration

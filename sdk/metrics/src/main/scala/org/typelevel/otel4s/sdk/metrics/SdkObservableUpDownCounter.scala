@@ -17,17 +17,17 @@
 package org.typelevel.otel4s.sdk.metrics
 
 import cats.data.NonEmptyList
+import cats.effect.Clock
+import cats.effect.MonadCancelThrow
+import cats.effect.Resource
 import cats.effect.std.Console
-import cats.effect.{Clock, MonadCancelThrow, Resource}
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.functor._
-import org.typelevel.otel4s.metrics.{
-  Measurement,
-  MeasurementValue,
-  ObservableMeasurement,
-  ObservableUpDownCounter
-}
+import org.typelevel.otel4s.metrics.Measurement
+import org.typelevel.otel4s.metrics.MeasurementValue
+import org.typelevel.otel4s.metrics.ObservableMeasurement
+import org.typelevel.otel4s.metrics.ObservableUpDownCounter
 import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.metrics.internal._
 
