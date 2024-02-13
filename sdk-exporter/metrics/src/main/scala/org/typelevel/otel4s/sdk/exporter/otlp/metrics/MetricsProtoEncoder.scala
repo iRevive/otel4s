@@ -82,7 +82,7 @@ private object MetricsProtoEncoder {
     Proto.NumberDataPoint(
       ProtoEncoder.encode(point.attributes),
       point.startTimestamp.toNanos,
-      point.timestamp.toNanos,
+      point.collectTimestamp.toNanos,
       value = value,
       exemplars = point.exemplars.map(ProtoEncoder.encode(_)),
     )
@@ -110,7 +110,7 @@ private object MetricsProtoEncoder {
             Proto.SummaryDataPoint(
               ProtoEncoder.encode(p.attributes),
               p.startTimestamp.toNanos,
-              p.timestamp.toNanos,
+              p.collectTimestamp.toNanos,
               p.count,
               p.sum,
               p.percentileValues.map { q =>
@@ -129,7 +129,7 @@ private object MetricsProtoEncoder {
             Proto.HistogramDataPoint(
               attributes = ProtoEncoder.encode(p.attributes),
               startTimeUnixNano = p.startTimestamp.toNanos,
-              timeUnixNano = p.timestamp.toNanos,
+              timeUnixNano = p.collectTimestamp.toNanos,
               count = p.count,
               sum = p.sum,
               bucketCounts = p.counts,
@@ -151,7 +151,7 @@ private object MetricsProtoEncoder {
               .ExponentialHistogramDataPoint(
                 attributes = ProtoEncoder.encode(p.attributes),
                 startTimeUnixNano = p.startTimestamp.toNanos,
-                timeUnixNano = p.timestamp.toNanos,
+                timeUnixNano = p.collectTimestamp.toNanos,
                 count = p.count,
                 sum = Some(p.sum),
                 scale = 0, // todo scale

@@ -35,10 +35,10 @@ import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 
 import scala.concurrent.duration.FiniteDuration
 
-private[metrics] trait Aggregator[F[_]] {
+private[metrics] trait Aggregator[F[_], A] {
   type Point <: PointData
 
-  def createHandle: F[Aggregator.Handle[F, Point]]
+  def createHandle: F[Aggregator.Handle[F, A, Point]]
 
   def toMetricData(
       resource: TelemetryResource,
@@ -51,11 +51,11 @@ private[metrics] trait Aggregator[F[_]] {
 
 private[metrics] object Aggregator {
 
-  type Aux[F[_], P <: PointData] = Aggregator[F] {
+  type Aux[F[_], A, P <: PointData] = Aggregator[F, A] {
     type Point = P
   }
 
-  trait Handle[F[_], P <: PointData] {
+  trait Handle[F[_], A, P <: PointData] {
     def aggregate(
         startTimestamp: FiniteDuration,
         collectTimestamp: FiniteDuration,
@@ -63,33 +63,25 @@ private[metrics] object Aggregator {
         reset: Boolean
     ): F[Option[P]]
 
-    def record[A: MeasurementValue](
+    def record(
         value: A,
         attributes: Attributes,
         context: Context
     ): F[Unit]
   }
 
-  def create[F[_]: Concurrent](
+  def create[F[_]: Concurrent, A: MeasurementValue: Numeric](
       aggregation: Aggregation.HasAggregator,
       descriptor: InstrumentDescriptor,
       filter: ExemplarFilter
-  ): Aggregator[F] = {
-    def sum: Aggregator[F] =
-      descriptor.valueType match {
-        case InstrumentValueType.LongValue =>
-          SumAggregator.ofLong(1, filter)
-        case InstrumentValueType.DoubleValue =>
-          SumAggregator.ofDouble(1, filter)
-      }
+  ): Aggregator[F, A] = {
+    def sum: Aggregator[F, A] =
+      SumAggregator.apply(1, filter)
 
-    def lastValue: Aggregator[F] =
-      descriptor.valueType match {
-        case InstrumentValueType.LongValue   => LastValueAggregator.ofLong
-        case InstrumentValueType.DoubleValue => LastValueAggregator.ofDouble
-      }
+    def lastValue: Aggregator[F, A] =
+      LastValueAggregator[F, A]
 
-    def histogram: Aggregator[F] = {
+    def histogram: Aggregator[F, A] = {
       val boundaries =
         descriptor.advice.explicitBoundaries.getOrElse(BucketBoundaries.default)
       ExplicitBucketHistogramAggregator(boundaries, filter)

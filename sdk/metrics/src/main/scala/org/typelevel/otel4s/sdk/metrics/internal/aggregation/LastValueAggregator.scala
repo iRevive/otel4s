@@ -24,32 +24,29 @@ import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.Context
-import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
-import org.typelevel.otel4s.sdk.metrics.data.Data
-import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
-import org.typelevel.otel4s.sdk.metrics.data.MetricData
-import org.typelevel.otel4s.sdk.metrics.data.PointData
+import org.typelevel.otel4s.sdk.metrics.data.{
+  AggregationTemporality,
+  Data,
+  ExemplarData,
+  MetricData,
+  PointData
+}
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 
 import scala.concurrent.duration.FiniteDuration
 
-private final class LastValueAggregator[
-    F[_]: Concurrent,
-    Input,
-    P <: PointData.NumberPoint,
-    E <: ExemplarData
-](
-    makeCurrent: F[Current[F, Input]],
-    pointDataBuilder: PointDataBuilder[Input, P, E]
-) extends Aggregator[F] {
+private final class LastValueAggregator[F[_]: Concurrent, A](
+    val builder: PointDataBuilder[A]
+) extends Aggregator[F, A] {
+
   import LastValueAggregator.Handle
 
-  type Point = P
+  type Point = builder.Point
 
-  def createHandle: F[Aggregator.Handle[F, Point]] =
+  def createHandle: F[Aggregator.Handle[F, A, Point]] =
     for {
-      current <- makeCurrent
-    } yield new Handle[F, Input, Point, E](current, pointDataBuilder)
+      current <- Current.make[F, A]
+    } yield new Handle[F, A, Point, builder.Exemplar](current, builder)
 
   def toMetricData(
       resource: TelemetryResource,
@@ -73,32 +70,18 @@ private final class LastValueAggregator[
 
 private object LastValueAggregator {
 
-  type OfLong[F[_]] =
-    LastValueAggregator[
-      F,
-      Long,
-      PointData.LongNumber,
-      ExemplarData.LongExemplar
-    ]
+  def apply[F[_]: Concurrent, A: MeasurementValue]: Aggregator[F, A] =
+    new LastValueAggregator(PointDataBuilder[A])
 
-  type OfDouble[F[_]] =
-    LastValueAggregator[
-      F,
-      Double,
-      PointData.DoubleNumber,
-      ExemplarData.DoubleExemplar
-    ]
-
-  def ofLong[F[_]: Concurrent]: OfLong[F] =
-    new LastValueAggregator(Current.makeLong, PointDataBuilder.longPoint)
-
-  def ofDouble[F[_]: Concurrent]: OfDouble[F] =
-    new LastValueAggregator(Current.makeDouble, PointDataBuilder.doublePoint)
-
-  private class Handle[F[_]: Monad, I, P <: PointData, E <: ExemplarData](
-      current: Current[F, I],
-      pointDataBuilder: PointDataBuilder[I, P, E]
-  ) extends Aggregator.Handle[F, P] {
+  private class Handle[
+      F[_]: Monad,
+      A,
+      P <: PointData.NumberPoint,
+      E <: ExemplarData
+  ](
+      current: Current[F, A],
+      builder: PointDataBuilder.Aux[A, P, E]
+  ) extends Aggregator.Handle[F, A, P] {
 
     def aggregate(
         startTimestamp: FiniteDuration,
@@ -108,7 +91,7 @@ private object LastValueAggregator {
     ): F[Option[P]] =
       current.get(reset).map { value =>
         value.map { v =>
-          pointDataBuilder.create(
+          builder.create(
             startTimestamp,
             collectTimestamp,
             attributes,
@@ -118,17 +101,8 @@ private object LastValueAggregator {
         }
       }
 
-    def record[A: MeasurementValue](
-        value: A,
-        attributes: Attributes,
-        context: Context
-    ): F[Unit] =
-      MeasurementValue[A] match {
-        case MeasurementValue.LongMeasurementValue(cast) =>
-          current.setLong(cast(value))
-        case MeasurementValue.DoubleMeasurementValue(cast) =>
-          current.setDouble(cast(value))
-      }
+    def record(value: A, attributes: Attributes, context: Context): F[Unit] =
+      current.set(value)
 
   }
 

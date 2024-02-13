@@ -16,47 +16,25 @@
 
 package org.typelevel.otel4s.sdk.metrics.internal.aggregation
 
-import cats.Monad
-
-import java.util.concurrent.atomic.DoubleAdder
-import java.util.concurrent.atomic.LongAdder
+import cats.effect.Concurrent
+import cats.syntax.functor._
 
 private trait Adder[F[_], A] {
-  def addLong(a: Long): F[Unit]
-  def addDouble(a: Double): F[Unit]
+  def add(a: A): F[Unit]
   def sum(reset: Boolean): F[A]
 }
 
 private object Adder {
-  def makeLong[F[_]: Monad]: F[Adder[F, Long]] =
-    Monad[F].pure(
-      new Adder[F, Long] {
-        private val adder = new LongAdder
 
-        def addLong(a: Long): F[Unit] =
-          Monad[F].pure(adder.add(a))
+  def make[F[_]: Concurrent, A: Numeric]: F[Adder[F, A]] =
+    Concurrent[F].ref(Numeric[A].zero).map { ref =>
+      new Adder[F, A] {
+        def add(a: A): F[Unit] =
+          ref.update(v => Numeric[A].plus(v, a))
 
-        def addDouble(a: Double): F[Unit] =
-          Monad[F].unit
-
-        def sum(reset: Boolean): F[Long] =
-          Monad[F].pure(if (reset) adder.sumThenReset() else adder.sum())
+        def sum(reset: Boolean): F[A] =
+          if (reset) ref.getAndSet(Numeric[A].zero) else ref.get
       }
-    )
+    }
 
-  def makeDouble[F[_]: Monad]: F[Adder[F, Double]] =
-    Monad[F].pure(
-      new Adder[F, Double] {
-        private val adder = new DoubleAdder
-
-        def addLong(a: Long): F[Unit] =
-          Monad[F].pure(adder.add(a))
-
-        def addDouble(a: Double): F[Unit] =
-          Monad[F].unit
-
-        def sum(reset: Boolean): F[Double] =
-          Monad[F].pure(if (reset) adder.sumThenReset() else adder.sum())
-      }
-    )
 }

@@ -38,15 +38,15 @@ import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 
 import scala.concurrent.duration.FiniteDuration
 
-private final class ExplicitBucketHistogramAggregator[F[_]: Concurrent](
+private final class ExplicitBucketHistogramAggregator[F[_]: Concurrent, I: MeasurementValue](
     boundaries: BucketBoundaries,
     makeReservoir: F[ExemplarReservoir[F, ExemplarData.DoubleExemplar]]
-) extends Aggregator[F] {
+) extends Aggregator[F, I] {
   import ExplicitBucketHistogramAggregator._
 
   type Point = PointData.Histogram
 
-  def createHandle: F[Aggregator.Handle[F, PointData.Histogram]] =
+  def createHandle: F[Aggregator.Handle[F, I, PointData.Histogram]] =
     for {
       state <- Concurrent[F].ref(emptyState(boundaries.length))
       reservoir <- makeReservoir
@@ -73,15 +73,15 @@ private final class ExplicitBucketHistogramAggregator[F[_]: Concurrent](
 
 private object ExplicitBucketHistogramAggregator {
 
-  def apply[F[_]: Concurrent](
+  def apply[F[_]: Concurrent, I: MeasurementValue](
       boundaries: BucketBoundaries,
       filter: ExemplarFilter
-  ): ExplicitBucketHistogramAggregator[F] = {
+  ): ExplicitBucketHistogramAggregator[F, I] = {
     val reservoir = ExemplarReservoir
       .histogramBucket[F](boundaries)
       .map(r => ExemplarReservoir.filtered(filter, r))
 
-    new ExplicitBucketHistogramAggregator[F](boundaries, reservoir)
+    new ExplicitBucketHistogramAggregator[F, I](boundaries, reservoir)
   }
 
   private final case class State(
@@ -95,11 +95,11 @@ private object ExplicitBucketHistogramAggregator {
   private def emptyState(counts: Int): State =
     State(0, Double.MaxValue, -1, 0L, Vector.fill(counts)(0))
 
-  private class Handle[F[_]: FlatMap, I](
+  private class Handle[F[_]: FlatMap, I: MeasurementValue](
       stateRef: Ref[F, State],
       boundaries: BucketBoundaries,
       reservoir: ExemplarReservoir[F, ExemplarData.DoubleExemplar]
-  ) extends Aggregator.Handle[F, PointData.Histogram] {
+  ) extends Aggregator.Handle[F, I, PointData.Histogram] {
 
     def aggregate(
         startTimestamp: FiniteDuration,
@@ -112,7 +112,7 @@ private object ExplicitBucketHistogramAggregator {
           val nonEmpty = state.count > 0
           val histogram = PointData.Histogram(
             startTimestamp = startTimestamp,
-            timestamp = collectTimestamp,
+            collectTimestamp = collectTimestamp,
             attributes = attributes,
             exemplars = exemplars,
             sum = Option.when(nonEmpty)(state.sum),
@@ -128,41 +128,29 @@ private object ExplicitBucketHistogramAggregator {
         }
       }
 
-    def record[A: MeasurementValue](
-        value: A,
+    def record(
+        value: I,
         attributes: Attributes,
         context: Context
-    ): F[Unit] =
-      MeasurementValue[A] match {
-        case MeasurementValue.LongMeasurementValue(cast) =>
-          recordLong(cast(value), attributes, context)
-        case MeasurementValue.DoubleMeasurementValue(cast) =>
-          recordDouble(cast(value), attributes, context)
+    ): F[Unit] = {
+      val doubleValue = MeasurementValue[I] match {
+        case MeasurementValue.LongMeasurementValue(cast) => cast(value).toDouble
+        case MeasurementValue.DoubleMeasurementValue(cast) => cast(value)
       }
 
-    def recordDouble(
-        value: Double,
-        attributes: Attributes,
-        context: Context
-    ): F[Unit] =
-      reservoir.offerDoubleMeasurement(value, attributes, context) >>
-        stateRef.update { state =>
-          val idx = boundaries.bucketIndex(value)
+      reservoir.offerMeasurement(value, attributes, context) >> stateRef
+        .update { state =>
+          val idx = boundaries.bucketIndex(doubleValue)
           state.copy(
-            sum = state.sum + value,
-            min = math.min(state.min, value),
-            max = math.max(state.max, value),
+            sum = state.sum + doubleValue,
+            min = math.min(state.min, doubleValue),
+            max = math.max(state.max, doubleValue),
             count = state.count + 1,
             counts = state.counts.updated(idx, state.counts(idx) + 1)
           )
         }
+    }
 
-    def recordLong(
-        value: Long,
-        attributes: Attributes,
-        context: Context
-    ): F[Unit] =
-      recordDouble(value.toDouble, attributes, context)
   }
 
 }

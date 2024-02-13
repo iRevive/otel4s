@@ -29,8 +29,7 @@ import cats.syntax.foldable._
 import cats.syntax.functor._
 import cats.syntax.traverse._
 import org.typelevel.otel4s.Attributes
-import org.typelevel.otel4s.metrics.MeterBuilder
-import org.typelevel.otel4s.metrics.MeterProvider
+import org.typelevel.otel4s.metrics.{MeasurementValue, MeterBuilder, MeterProvider}
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.AskContext
@@ -176,30 +175,17 @@ object ViewRegistry {
 }
 
 trait ExemplarFilter {
-  def shouldSample(
-      value: Long,
+  def shouldSample[A: MeasurementValue](
+      value: A,
       attributes: Attributes,
       context: Context
   ): Boolean
-  def shouldSample(
-      value: Double,
-      attributes: Attributes,
-      context: Context
-  ): Boolean
-
 }
 
 object ExemplarFilter {
   def traceBased: ExemplarFilter = new ExemplarFilter {
-    def shouldSample(
-        value: Long,
-        attributes: Attributes,
-        context: Context
-    ): Boolean =
-      true
-
-    def shouldSample(
-        value: Double,
+    def shouldSample[A: MeasurementValue](
+        value: A,
         attributes: Attributes,
         context: Context
     ): Boolean =

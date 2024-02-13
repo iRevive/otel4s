@@ -39,11 +39,11 @@ private object SdkUpDownCounter {
   private final class Backend[
       F[_]: Monad: Console: AskContext,
       A,
-      Primitive: MeasurementValue: Numeric
+      Primitive: Numeric
   ](
       cast: A => Primitive,
       name: String,
-      storage: MetricStorage.Writeable[F]
+      storage: MetricStorage.Writeable[F, Primitive]
   ) extends UpDownCounter.Backend[F, A] {
     def meta: InstrumentMeta[F] = InstrumentMeta.enabled
 
@@ -99,18 +99,24 @@ private object SdkUpDownCounter {
         Advice.empty
       )
 
-      for {
-        storage <- sharedState.registerMetricStorage(descriptor)
-      } yield {
-        val backend: UpDownCounter.Backend[F, A] =
-          MeasurementValue[A] match {
-            case MeasurementValue.LongMeasurementValue(cast) =>
-              new Backend[F, A, Long](cast, descriptor.name, storage)
-            case MeasurementValue.DoubleMeasurementValue(cast) =>
-              new Backend[F, A, Double](cast, descriptor.name, storage)
-          }
+      MeasurementValue[A] match {
+        case MeasurementValue.LongMeasurementValue(cast) =>
+          sharedState
+            .registerMetricStorage[Long](descriptor)
+            .map { storage =>
+              UpDownCounter.fromBackend(
+                new Backend[F, A, Long](cast, descriptor.name, storage)
+              )
+            }
 
-        UpDownCounter.fromBackend(backend)
+        case MeasurementValue.DoubleMeasurementValue(cast) =>
+          sharedState
+            .registerMetricStorage[Double](descriptor)
+            .map { storage =>
+              UpDownCounter.fromBackend(
+                new Backend[F, A, Double](cast, descriptor.name, storage)
+              )
+            }
       }
     }
   }

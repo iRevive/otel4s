@@ -17,6 +17,7 @@
 package org.typelevel.otel4s.sdk.metrics.data
 
 import org.typelevel.otel4s.Attributes
+import org.typelevel.otel4s.metrics.MeasurementValue
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -30,7 +31,18 @@ sealed trait ExemplarData {
 
 object ExemplarData {
 
+  def apply[A: MeasurementValue](
+      filteredAttributes: Attributes,
+      timestamp: FiniteDuration,
+      value: A
+  ): ExemplarData =
+    MeasurementValue[A] match {
+      case MeasurementValue.LongMeasurementValue(cast) =>
+        LongExemplar(filteredAttributes, timestamp, cast(value))
 
+      case MeasurementValue.DoubleMeasurementValue(cast) =>
+        DoubleExemplar(filteredAttributes, timestamp, cast(value))
+    }
 
   final case class LongExemplar(
       filteredAttributes: Attributes,

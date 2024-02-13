@@ -17,43 +17,79 @@
 package org.typelevel.otel4s.sdk.metrics.internal.aggregation
 
 import org.typelevel.otel4s.Attributes
+import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
 
 import scala.concurrent.duration.FiniteDuration
 
-private trait PointDataBuilder[I, P <: PointData, E <: ExemplarData] {
+private trait PointDataBuilder[A] {
+  type Point <: PointData.NumberPoint
+  type Exemplar <: ExemplarData
+
   def create(
       startTimestamp: FiniteDuration,
       collectTimestamp: FiniteDuration,
       attributes: Attributes,
-      exemplars: Vector[E],
-      value: I
-  ): P
+      exemplars: Vector[Exemplar],
+      value: A
+  ): Point
 }
 
 private object PointDataBuilder {
-  import PointData._
-  import ExemplarData._
 
-  def longPoint: PointDataBuilder[Long, LongNumber, LongExemplar] =
-    (startTimestamp, collectTimestamp, attributes, exemplars, value) =>
-      PointData.LongNumber(
-        startTimestamp,
-        collectTimestamp,
-        attributes,
-        exemplars,
-        value
-      )
+  type Aux[A, P <: PointData.NumberPoint, E <: ExemplarData] =
+    PointDataBuilder[A] {
+      type Point = P
+      type Exemplar = E
+    }
 
-  def doublePoint: PointDataBuilder[Double, DoubleNumber, DoubleExemplar] =
-    (startTimestamp, collectTimestamp, attributes, exemplars, value) =>
-      PointData.DoubleNumber(
-        startTimestamp,
-        collectTimestamp,
-        attributes,
-        exemplars,
-        value
-      )
+  def apply[A: MeasurementValue]: PointDataBuilder[A] =
+    MeasurementValue[A] match {
+      case MeasurementValue.LongMeasurementValue(cast)   => ofLong(cast)
+      case MeasurementValue.DoubleMeasurementValue(cast) => ofDouble(cast)
+    }
+
+  private def ofLong[A](cast: A => Long): PointDataBuilder[A] =
+    new PointDataBuilder[A] {
+      type Point = PointData.LongNumber
+      type Exemplar = ExemplarData.LongExemplar
+
+      def create(
+          startTimestamp: FiniteDuration,
+          collectTimestamp: FiniteDuration,
+          attributes: Attributes,
+          exemplars: Vector[ExemplarData.LongExemplar],
+          value: A
+      ): PointData.LongNumber =
+        PointData.LongNumber(
+          startTimestamp,
+          collectTimestamp,
+          attributes,
+          exemplars,
+          cast(value)
+        )
+    }
+
+  private def ofDouble[A](cast: A => Double): PointDataBuilder[A] =
+    new PointDataBuilder[A] {
+      type Point = PointData.DoubleNumber
+      type Exemplar = ExemplarData.DoubleExemplar
+
+      def create(
+          startTimestamp: FiniteDuration,
+          collectTimestamp: FiniteDuration,
+          attributes: Attributes,
+          exemplars: Vector[ExemplarData.DoubleExemplar],
+          value: A
+      ): PointData.DoubleNumber =
+        PointData.DoubleNumber(
+          startTimestamp,
+          collectTimestamp,
+          attributes,
+          exemplars,
+          cast(value)
+        )
+    }
 
 }

@@ -56,8 +56,8 @@ trait MetricStorage[F[_]] {
 
 object MetricStorage {
 
-  trait Writeable[F[_]] {
-    def record[A: MeasurementValue](
+  trait Writeable[F[_], A] {
+    def record(
         value: A,
         attributes: Attributes,
         context: Context
@@ -65,9 +65,9 @@ object MetricStorage {
   }
 
   object Writeable {
-    def of[F[_]: Applicative](storages: Writeable[F]*): Writeable[F] =
-      new Writeable[F] {
-        def record[A: MeasurementValue](
+    def of[F[_]: Applicative, A](storages: Writeable[F, A]*): Writeable[F, A] =
+      new Writeable[F, A] {
+        def record(
             value: A,
             attributes: Attributes,
             context: Context
@@ -76,7 +76,7 @@ object MetricStorage {
       }
   }
 
-  trait Synchronous[F[_]] extends MetricStorage[F] with Writeable[F]
+  trait Synchronous[F[_], A] extends MetricStorage[F] with Writeable[F, A]
 
   trait Asynchronous[F[_]] extends MetricStorage[F] {
     def record(measurement: Measurement): F[Unit] = ???
@@ -84,20 +84,20 @@ object MetricStorage {
     def reader: RegisteredReader[F]
   }
 
-  def synchronous[F[_]: Concurrent](
+  def synchronous[F[_]: Concurrent, A: MeasurementValue: Numeric](
       reader: RegisteredReader[F],
       registeredView: RegisteredView,
       instrumentDescriptor: InstrumentDescriptor,
       exemplarFilter: ExemplarFilter
-  ): F[Synchronous[F]] = {
+  ): F[Synchronous[F, A]] = {
     val view = registeredView.view
     val descriptor = MetricDescriptor(view, instrumentDescriptor)
 
     view.aggregation match {
       case Aggregation.Drop =>
         Concurrent[F].pure {
-          new Synchronous[F] {
-            def record[A: MeasurementValue](
+          new Synchronous[F, A] {
+            def record(
                 value: A,
                 attributes: Attributes,
                 context: Context
@@ -118,7 +118,7 @@ object MetricStorage {
         }
 
       case aggregation: Aggregation.HasAggregator =>
-        val aggregator: Aggregator[F] =
+        val aggregator: Aggregator[F, A] =
           Aggregator.create(
             aggregation,
             instrumentDescriptor,
@@ -126,12 +126,12 @@ object MetricStorage {
           )
 
         AtomicCell[F]
-          .of(Map.empty[Attributes, Aggregator.Handle[F, PointData]])
+          .of(Map.empty[Attributes, Aggregator.Handle[F, A, PointData]])
           .map { handlers =>
             new DefaultSynchronous(
               reader,
               descriptor,
-              aggregator.asInstanceOf[Aggregator.Aux[F, PointData]],
+              aggregator.asInstanceOf[Aggregator.Aux[F, A, PointData]],
               registeredView.viewAttributesProcessor,
               registeredView.cardinalityLimit - 1,
               handlers
@@ -146,21 +146,21 @@ object MetricStorage {
       descriptor: InstrumentDescriptor
   ): F[Asynchronous[F]] = ???
 
-  private final class DefaultSynchronous[F[_]: Monad](
+  private final class DefaultSynchronous[F[_]: Monad, A](
       reader: RegisteredReader[F],
       val metricDescriptor: MetricDescriptor,
-      aggregator: Aggregator.Aux[F, PointData],
+      aggregator: Aggregator.Aux[F, A, PointData],
       attributesProcessor: AttributesProcessor,
       maxCardinality: Int,
-      handlers: AtomicCell[F, Map[Attributes, Aggregator.Handle[F, PointData]]]
-  ) extends Synchronous[F] {
+      handlers: AtomicCell[F, Map[Attributes, Aggregator.Handle[F, A, PointData]]]
+  ) extends Synchronous[F, A] {
 
     private val aggregationTemporality =
       reader.reader.aggregationTemporality(
         metricDescriptor.sourceInstrument.instrumentType
       )
 
-    def record[A: MeasurementValue](
+    def record(
         value: A,
         attributes: Attributes,
         context: Context
@@ -204,7 +204,7 @@ object MetricStorage {
     private def getHandle(
         attributes: Attributes,
         context: Context
-    ): F[Aggregator.Handle[F, PointData]] =
+    ): F[Aggregator.Handle[F, A, PointData]] =
       handlers.evalModify { map =>
         val attrs = attributesProcessor.process(attributes, context)
         map.get(attrs) match {

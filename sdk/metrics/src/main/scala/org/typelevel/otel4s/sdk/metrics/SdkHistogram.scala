@@ -48,7 +48,7 @@ private object SdkHistogram {
       cast: A => Primitive,
       castDuration: Double => Primitive,
       name: String,
-      storage: MetricStorage.Writeable[F]
+      storage: MetricStorage.Writeable[F, Primitive]
   ) extends Histogram.Backend[F, A] {
     def meta: Histogram.Meta[F] = Histogram.Meta.enabled
 
@@ -118,18 +118,24 @@ private object SdkHistogram {
         Advice(boundaries)
       )
 
-      for {
-        storage <- sharedState.registerMetricStorage(descriptor)
-      } yield {
-        val backend: Histogram.Backend[F, A] =
-          MeasurementValue[A] match {
-            case MeasurementValue.LongMeasurementValue(cast) =>
-              new Backend[F, A, Long](cast, _.toLong, name, storage)
-            case MeasurementValue.DoubleMeasurementValue(cast) =>
-              new Backend[F, A, Double](cast, identity, name, storage)
-          }
+      MeasurementValue[A] match {
+        case MeasurementValue.LongMeasurementValue(cast) =>
+          sharedState
+            .registerMetricStorage[Long](descriptor)
+            .map { storage =>
+              Histogram.fromBackend(
+                new Backend[F, A, Long](cast, _.toLong, name, storage)
+              )
+            }
 
-        Histogram.fromBackend(backend)
+        case MeasurementValue.DoubleMeasurementValue(cast) =>
+          sharedState
+            .registerMetricStorage[Double](descriptor)
+            .map { storage =>
+              Histogram.fromBackend(
+                new Backend[F, A, Double](cast, identity, name, storage)
+              )
+            }
       }
     }
   }

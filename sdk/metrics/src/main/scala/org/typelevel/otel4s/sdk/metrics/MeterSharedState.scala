@@ -17,7 +17,6 @@
 package org.typelevel.otel4s.sdk.metrics
 
 import cats.effect.Concurrent
-import cats.effect.MonadCancelThrow
 import cats.effect.Ref
 import cats.effect.std.Mutex
 import cats.syntax.flatMap._
@@ -46,16 +45,15 @@ private[metrics] final class MeterSharedState[F[_]: Concurrent](
     registries: Map[RegisteredReader[F], MetricStorageRegistry[F]]
 ) {
 
-  def registerMetricStorage(
+  def registerMetricStorage[A: MeasurementValue: Numeric](
       descriptor: InstrumentDescriptor
-  ): F[MetricStorage.Writeable[F]] =
+  ): F[MetricStorage.Writeable[F, A]] =
     registries.toVector
       .flatTraverse { case (reader, registry) =>
         reader.viewRegistry.findViews(descriptor, scope).flatTraverse {
           registeredView =>
             if (registeredView.view.aggregation == Aggregation.drop) {
-              MonadCancelThrow[F]
-                .pure(Vector.empty[MetricStorage.Synchronous[F]])
+              Concurrent[F].pure(Vector.empty[MetricStorage.Synchronous[F, A]])
             } else {
               for {
                 s <- MetricStorage.synchronous(
@@ -81,8 +79,7 @@ private[metrics] final class MeterSharedState[F[_]: Concurrent](
         reader.viewRegistry.findViews(descriptor, scope).flatTraverse {
           registeredView =>
             if (registeredView.view.aggregation == Aggregation.drop) {
-              MonadCancelThrow[F]
-                .pure(Vector.empty[MetricStorage.Asynchronous[F]])
+              Concurrent[F].pure(Vector.empty[MetricStorage.Asynchronous[F]])
             } else {
               for {
                 s <- MetricStorage.asynchronous(

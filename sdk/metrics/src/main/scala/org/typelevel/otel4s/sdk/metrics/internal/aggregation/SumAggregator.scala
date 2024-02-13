@@ -17,6 +17,7 @@
 package org.typelevel.otel4s.sdk.metrics.internal.aggregation
 
 import cats.Monad
+import cats.effect.Concurrent
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import org.typelevel.otel4s.Attributes
@@ -30,30 +31,35 @@ import org.typelevel.otel4s.sdk.metrics.data.Data
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
-import org.typelevel.otel4s.sdk.metrics.internal.ExemplarReservoir
-import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.{
+  ExemplarReservoir,
+  MetricDescriptor
+}
 
 import scala.concurrent.duration.FiniteDuration
 
 private final class SumAggregator[
-    F[_]: Monad,
-    Input,
-    P <: PointData.NumberPoint,
-    E <: ExemplarData
+    F[_]: Concurrent,
+    A: MeasurementValue: Numeric
 ](
-    makeReservoir: F[ExemplarReservoir[F, E]],
-    makeAdder: F[Adder[F, Input]],
-    pointDataBuilder: PointDataBuilder[Input, P, E]
-) extends Aggregator[F] {
+   reservoirSize: Int,
+   filter: ExemplarFilter,
+   val builder: PointDataBuilder[A]
+) extends Aggregator[F, A] {
+
   import SumAggregator.Handle
 
-  type Point = P
+  type Point = builder.Point
 
-  def createHandle: F[Aggregator.Handle[F, Point]] =
+  def createHandle: F[Aggregator.Handle[F, A, Point]] =
     for {
-      adder <- makeAdder
+      adder <- Adder.make[F, A]
       reservoir <- makeReservoir
-    } yield new Handle[F, Input, Point, E](adder, reservoir, pointDataBuilder)
+    } yield new Handle[F, A, Point, builder.Exemplar](
+      adder,
+      reservoir,
+      builder
+    )
 
   def toMetricData(
       resource: TelemetryResource,
@@ -73,73 +79,44 @@ private final class SumAggregator[
       )
     )
 
+  // todo size = availableProcessors ???
+  private def makeReservoir =
+    ExemplarReservoir
+      .fixedSize[F, builder.Exemplar](size = reservoirSize)
+      .map(r => ExemplarReservoir.filtered(filter, r))
+
 }
 
 private object SumAggregator {
 
-  type OfLong[F[_]] =
-    SumAggregator[
-      F,
-      Long,
-      PointData.LongNumber,
-      ExemplarData.LongExemplar
-    ]
-
-  type OfDouble[F[_]] =
-    SumAggregator[
-      F,
-      Double,
-      PointData.DoubleNumber,
-      ExemplarData.DoubleExemplar
-    ]
-
-  def ofLong[F[_]: Monad](
+  def apply[F[_]: Concurrent, A: MeasurementValue: Numeric](
       reservoirSize: Int,
       filter: ExemplarFilter
-  ): OfLong[F] = {
-    val reservoir = ExemplarReservoir
-      .longFixedSize[F](reservoirSize) // todo size = availableProcessors
-      .map(r => ExemplarReservoir.filtered(filter, r))
+  ): Aggregator[F, A] =
+    new SumAggregator(reservoirSize, filter, PointDataBuilder[A])
 
-    new SumAggregator(
-      reservoir,
-      Adder.makeLong,
-      PointDataBuilder.longPoint
-    )
-  }
-
-  def ofDouble[F[_]: Monad](
-      reservoirSize: Int,
-      filter: ExemplarFilter
-  ): OfDouble[F] = {
-    val reservoir = ExemplarReservoir
-      .doubleFixedSize[F](reservoirSize) // todo size = availableProcessors
-      .map(r => ExemplarReservoir.filtered(filter, r))
-
-    new SumAggregator(
-      reservoir,
-      Adder.makeDouble,
-      PointDataBuilder.doublePoint
-    )
-  }
-
-  private class Handle[F[_]: Monad, I, P <: PointData, E <: ExemplarData](
-      adder: Adder[F, I],
+  private class Handle[
+      F[_]: Monad,
+      A: MeasurementValue,
+      P <: PointData.NumberPoint,
+      E <: ExemplarData
+  ](
+      adder: Adder[F, A],
       reservoir: ExemplarReservoir[F, E],
-      builder: PointDataBuilder[I, P, E]
-  ) extends Aggregator.Handle[F, P] {
+      target: PointDataBuilder.Aux[A, P, E]
+  ) extends Aggregator.Handle[F, A, P] {
 
     def aggregate(
         startTimestamp: FiniteDuration,
         collectTimestamp: FiniteDuration,
         attributes: Attributes,
         reset: Boolean
-    ): F[Option[P]] = {
+    ): F[Option[P]] =
       for {
         value <- adder.sum(reset)
         exemplars <- reservoir.collectAndReset(attributes)
       } yield Some(
-        builder.create(
+        target.create(
           startTimestamp,
           collectTimestamp,
           attributes,
@@ -147,29 +124,14 @@ private object SumAggregator {
           value
         )
       )
-    }
 
-    def record[A: MeasurementValue](
+    def record(
         value: A,
         attributes: Attributes,
         context: Context
     ): F[Unit] =
-      MeasurementValue[A] match {
-        case MeasurementValue.LongMeasurementValue(cast) =>
-          recordLong(cast(value), attributes, context)
-        case MeasurementValue.DoubleMeasurementValue(cast) =>
-          recordDouble(cast(value), attributes, context)
-      }
+      reservoir.offerMeasurement(value, attributes, context) >> adder.add(value)
 
-    private def recordLong(value: Long, a: Attributes, c: Context): F[Unit] =
-      reservoir.offerLongMeasurement(value, a, c) >> adder.addLong(value)
-
-    private def recordDouble(
-        value: Double,
-        a: Attributes,
-        c: Context
-    ): F[Unit] =
-      reservoir.offerDoubleMeasurement(value, a, c) >> adder.addDouble(value)
   }
 
 }
