@@ -48,7 +48,7 @@ import scala.concurrent.duration._
   *   [[https://opentelemetry.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/]]
   */
 private final class OtlpHttpMetricExporter[F[_]: Applicative] private (
-    client: OtlpHttpExporter[F, MetricData],
+    client: OtlpHttpClient[F, MetricData],
 ) extends MetricExporter[F] {
 
   val name: String = s"OtlpHttpMetricExporter{client=$client}"
@@ -190,7 +190,7 @@ object OtlpHttpMetricExporter {
       import MetricsProtoEncoder.jsonPrinter
 
       for {
-        client <- OtlpHttpExporter.create[F, MetricData](
+        client <- OtlpHttpClient.create[F, MetricData](
           encoding,
           endpoint,
           timeout,

@@ -372,11 +372,6 @@ object CardinalityLimitSelector {
 
 object SdkMeterProvider {
 
-  private[metrics] final case class Config(
-      resource: TelemetryResource,
-      exemplarFilter: ExemplarFilter
-  )
-
   sealed trait Builder[F[_]] {
 
     /** Sets a [[TelemetryResource]] to be attached to all spans created by
@@ -477,8 +472,6 @@ object SdkMeterProvider {
               RegisteredReader.create(reader, registry)
             }
             .flatMap { readers =>
-              val config = Config(resource, exemplarFilter)
-
               ComponentRegistry
                 .create { scope =>
                   for {

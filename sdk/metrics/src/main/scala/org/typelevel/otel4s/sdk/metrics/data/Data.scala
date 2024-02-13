@@ -22,25 +22,15 @@ sealed abstract class Data(val tpe: MetricDataType) {
 
 object Data {
 
-  final case class DoubleSum(
-      points: Vector[PointData.DoublePoint],
+  final case class Sum[A <: PointData.NumberPoint](
+      points: Vector[A],
       isMonotonic: Boolean,
       aggregationTemporality: AggregationTemporality
-  ) extends Data(MetricDataType.DoubleSum)
+  ) extends Data(MetricDataType.Sum)
 
-  final case class LongSum(
-      points: Vector[PointData.LongPoint],
-      isMonotonic: Boolean,
-      aggregationTemporality: AggregationTemporality
-  ) extends Data(MetricDataType.LongSum)
-
-  final case class DoubleGauge(
-      points: Vector[PointData.DoublePoint]
-  ) extends Data(MetricDataType.DoubleGauge)
-
-  final case class LongGauge(
-      points: Vector[PointData.LongPoint]
-  ) extends Data(MetricDataType.LongGauge)
+  final case class Gauge[A <: PointData.NumberPoint](
+      points: Vector[A]
+  ) extends Data(MetricDataType.Gauge)
 
   final case class Summary(
       points: Vector[PointData.Summary]

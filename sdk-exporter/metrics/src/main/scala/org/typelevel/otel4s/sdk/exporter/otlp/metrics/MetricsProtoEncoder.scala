@@ -20,13 +20,18 @@ package exporter.otlp.metrics
 
 import io.opentelemetry.proto.collector.metrics.v1.metrics_service.ExportMetricsServiceRequest
 import io.opentelemetry.proto.metrics.v1.{metrics => Proto}
-import io.opentelemetry.proto.metrics.v1.metrics.ResourceMetrics
-import io.opentelemetry.proto.metrics.v1.metrics.ScopeMetrics
+import io.opentelemetry.proto.metrics.v1.metrics.{
+  ResourceMetrics,
+  ScopeMetrics
+}
 import org.typelevel.otel4s.sdk.exporter.otlp.ProtoEncoder
-import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
-import org.typelevel.otel4s.sdk.metrics.data.Data
-import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
-import org.typelevel.otel4s.sdk.metrics.data.MetricData
+import org.typelevel.otel4s.sdk.metrics.data.{
+  AggregationTemporality,
+  Data,
+  ExemplarData,
+  MetricData,
+  PointData
+}
 import scalapb_circe.Printer
 
 /** @see
@@ -45,82 +50,57 @@ private object MetricsProtoEncoder {
       Proto.AggregationTemporality.AGGREGATION_TEMPORALITY_CUMULATIVE
   }
 
-  implicit val exemplarEncoder: ProtoEncoder[ExemplarData, Proto.Exemplar] = {
-    exemplar =>
-      Proto.Exemplar(
-        ProtoEncoder.encode(exemplar.filteredAttributes),
-        exemplar.timestamp.toNanos,
-        exemplar match {
-          case ExemplarData.LongExemplar(_, _, value) =>
-            Proto.Exemplar.Value.AsInt(value)
-          case ExemplarData.DoubleExemplar(_, _, value) =>
-            Proto.Exemplar.Value.AsDouble(value)
-        }
-      )
+  implicit val exemplarEncoder: ProtoEncoder[
+    ExemplarData,
+    Proto.Exemplar
+  ] = { exemplar =>
+    val value = exemplar match {
+      case ExemplarData.LongExemplar(_, _, value) =>
+        Proto.Exemplar.Value.AsInt(value)
+      case ExemplarData.DoubleExemplar(_, _, value) =>
+        Proto.Exemplar.Value.AsDouble(value)
+    }
+
+    Proto.Exemplar(
+      ProtoEncoder.encode(exemplar.filteredAttributes),
+      exemplar.timestamp.toNanos,
+      value
+    )
+  }
+
+  implicit val numberPointEncoder: ProtoEncoder[
+    PointData.NumberPoint,
+    Proto.NumberDataPoint
+  ] = { point =>
+    val value = point match {
+      case PointData.LongNumber(_, _, _, _, value) =>
+        Proto.NumberDataPoint.Value.AsInt(value)
+      case PointData.DoubleNumber(_, _, _, _, value) =>
+        Proto.NumberDataPoint.Value.AsDouble(value)
+    }
+
+    Proto.NumberDataPoint(
+      ProtoEncoder.encode(point.attributes),
+      point.startTimestamp.toNanos,
+      point.timestamp.toNanos,
+      value = value,
+      exemplars = point.exemplars.map(ProtoEncoder.encode(_)),
+    )
   }
 
   implicit val dataEncoder: ProtoEncoder[Data, Proto.Metric.Data] = {
-    case Data.DoubleSum(points, isMonotonic, aggregationTemporality) =>
+    case Data.Sum(points, isMonotonic, aggregationTemporality) =>
       Proto.Metric.Data.Sum(
         Proto.Sum(
-          points.map(p =>
-            Proto.NumberDataPoint(
-              ProtoEncoder.encode(p.attributes),
-              p.startTimestamp.toNanos,
-              p.timestamp.toNanos,
-              value = Proto.NumberDataPoint.Value.AsDouble(p.value),
-              exemplars = p.exemplars.map(ProtoEncoder.encode(_)),
-            )
-          ),
+          points.map(ProtoEncoder.encode(_)),
           ProtoEncoder.encode(aggregationTemporality),
           isMonotonic
         )
       )
 
-    case Data.LongSum(points, isMonotonic, aggregationTemporality) =>
-      Proto.Metric.Data.Sum(
-        Proto.Sum(
-          points.map(p =>
-            Proto.NumberDataPoint(
-              ProtoEncoder.encode(p.attributes),
-              p.startTimestamp.toNanos,
-              p.timestamp.toNanos,
-              value = Proto.NumberDataPoint.Value.AsInt(p.value),
-              exemplars = p.exemplars.map(ProtoEncoder.encode(_)),
-            )
-          ),
-          ProtoEncoder.encode(aggregationTemporality),
-          isMonotonic
-        )
-      )
-
-    case Data.DoubleGauge(points) =>
+    case Data.Gauge(points) =>
       Proto.Metric.Data.Gauge(
-        Proto.Gauge(
-          points.map(p =>
-            Proto.NumberDataPoint(
-              ProtoEncoder.encode(p.attributes),
-              p.startTimestamp.toNanos,
-              p.timestamp.toNanos,
-              value = Proto.NumberDataPoint.Value.AsDouble(p.value),
-              exemplars = p.exemplars.map(ProtoEncoder.encode(_)),
-            )
-          )
-        )
-      )
-    case Data.LongGauge(points) =>
-      Proto.Metric.Data.Gauge(
-        Proto.Gauge(
-          points.map(p =>
-            Proto.NumberDataPoint(
-              ProtoEncoder.encode(p.attributes),
-              p.startTimestamp.toNanos,
-              p.timestamp.toNanos,
-              value = Proto.NumberDataPoint.Value.AsInt(p.value),
-              exemplars = p.exemplars.map(ProtoEncoder.encode(_)),
-            )
-          )
-        )
+        Proto.Gauge(points.map(ProtoEncoder.encode(_)))
       )
 
     case Data.Summary(points) =>
@@ -199,44 +179,47 @@ private object MetricsProtoEncoder {
       )
   }
 
-  implicit val metricDataEncoder: ProtoEncoder[MetricData, Proto.Metric] = {
-    metric =>
-      Proto.Metric(
-        metric.name,
-        metric.description.getOrElse(""),
-        unit = metric.unit.getOrElse(""),
-        data = ProtoEncoder.encode(metric.data)
-      )
+  implicit val metricDataEncoder: ProtoEncoder[
+    MetricData,
+    Proto.Metric
+  ] = { metric =>
+    Proto.Metric(
+      metric.name,
+      metric.description.getOrElse(""),
+      unit = metric.unit.getOrElse(""),
+      data = ProtoEncoder.encode(metric.data)
+    )
   }
 
-  implicit val exportMetricsRequest
-      : ProtoEncoder[List[MetricData], ExportMetricsServiceRequest] = {
-    metrics =>
-      val resourceSpans =
-        metrics
-          .groupBy(_.resource)
-          .map { case (resource, resourceSpans) =>
-            val scopeSpans: List[ScopeMetrics] =
-              resourceSpans
-                .groupBy(_.instrumentationScope)
-                .map { case (scope, spans) =>
-                  ScopeMetrics(
-                    scope = Some(ProtoEncoder.encode(scope)),
-                    metrics = spans.map(metric => ProtoEncoder.encode(metric)),
-                    schemaUrl = scope.schemaUrl.getOrElse("")
-                  )
-                }
-                .toList
+  implicit val exportMetricsRequest: ProtoEncoder[
+    List[MetricData],
+    ExportMetricsServiceRequest
+  ] = { metrics =>
+    val resourceSpans =
+      metrics
+        .groupBy(_.resource)
+        .map { case (resource, resourceSpans) =>
+          val scopeSpans: List[ScopeMetrics] =
+            resourceSpans
+              .groupBy(_.instrumentationScope)
+              .map { case (scope, spans) =>
+                ScopeMetrics(
+                  scope = Some(ProtoEncoder.encode(scope)),
+                  metrics = spans.map(metric => ProtoEncoder.encode(metric)),
+                  schemaUrl = scope.schemaUrl.getOrElse("")
+                )
+              }
+              .toList
 
-            ResourceMetrics(
-              Some(ProtoEncoder.encode(resource)),
-              scopeSpans,
-              resource.schemaUrl.getOrElse("")
-            )
-          }
-          .toList
+          ResourceMetrics(
+            Some(ProtoEncoder.encode(resource)),
+            scopeSpans,
+            resource.schemaUrl.getOrElse("")
+          )
+        }
+        .toList
 
-      ExportMetricsServiceRequest(resourceSpans)
+    ExportMetricsServiceRequest(resourceSpans)
   }
 
 }

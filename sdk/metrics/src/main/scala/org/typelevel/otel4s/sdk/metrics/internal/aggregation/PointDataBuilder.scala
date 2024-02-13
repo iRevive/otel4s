@@ -36,9 +36,9 @@ private object PointDataBuilder {
   import PointData._
   import ExemplarData._
 
-  def longPoint: PointDataBuilder[Long, LongPoint, LongExemplar] =
+  def longPoint: PointDataBuilder[Long, LongNumber, LongExemplar] =
     (startTimestamp, collectTimestamp, attributes, exemplars, value) =>
-      PointData.LongPoint(
+      PointData.LongNumber(
         startTimestamp,
         collectTimestamp,
         attributes,
@@ -46,9 +46,9 @@ private object PointDataBuilder {
         value
       )
 
-  def doublePoint: PointDataBuilder[Double, DoublePoint, DoubleExemplar] =
+  def doublePoint: PointDataBuilder[Double, DoubleNumber, DoubleExemplar] =
     (startTimestamp, collectTimestamp, attributes, exemplars, value) =>
-      PointData.DoublePoint(
+      PointData.DoubleNumber(
         startTimestamp,
         collectTimestamp,
         attributes,

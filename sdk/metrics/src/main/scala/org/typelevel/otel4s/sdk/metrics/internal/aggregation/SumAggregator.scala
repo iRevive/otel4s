@@ -38,13 +38,12 @@ import scala.concurrent.duration.FiniteDuration
 private final class SumAggregator[
     F[_]: Monad,
     Input,
-    P <: PointData,
+    P <: PointData.NumberPoint,
     E <: ExemplarData
 ](
     makeReservoir: F[ExemplarReservoir[F, E]],
     makeAdder: F[Adder[F, Input]],
-    pointDataBuilder: PointDataBuilder[Input, P, E],
-    createData: (Vector[P], Boolean, AggregationTemporality) => Data
+    pointDataBuilder: PointDataBuilder[Input, P, E]
 ) extends Aggregator[F] {
   import SumAggregator.Handle
 
@@ -70,7 +69,7 @@ private final class SumAggregator[
         descriptor.name,
         descriptor.description,
         descriptor.sourceInstrument.unit,
-        createData(points, true, temporality) // todo isMonotonic?
+        Data.Sum(points, true, temporality) // todo isMonotonic?
       )
     )
 
@@ -79,10 +78,20 @@ private final class SumAggregator[
 private object SumAggregator {
 
   type OfLong[F[_]] =
-    SumAggregator[F, Long, PointData.LongPoint, ExemplarData.LongExemplar]
+    SumAggregator[
+      F,
+      Long,
+      PointData.LongNumber,
+      ExemplarData.LongExemplar
+    ]
 
   type OfDouble[F[_]] =
-    SumAggregator[F, Double, PointData.DoublePoint, ExemplarData.DoubleExemplar]
+    SumAggregator[
+      F,
+      Double,
+      PointData.DoubleNumber,
+      ExemplarData.DoubleExemplar
+    ]
 
   def ofLong[F[_]: Monad](
       reservoirSize: Int,
@@ -95,8 +104,7 @@ private object SumAggregator {
     new SumAggregator(
       reservoir,
       Adder.makeLong,
-      PointDataBuilder.longPoint,
-      Data.LongSum
+      PointDataBuilder.longPoint
     )
   }
 
@@ -111,8 +119,7 @@ private object SumAggregator {
     new SumAggregator(
       reservoir,
       Adder.makeDouble,
-      PointDataBuilder.doublePoint,
-      Data.DoubleSum
+      PointDataBuilder.doublePoint
     )
   }
 

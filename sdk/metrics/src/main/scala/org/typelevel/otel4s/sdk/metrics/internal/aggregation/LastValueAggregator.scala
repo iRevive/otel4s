@@ -36,12 +36,11 @@ import scala.concurrent.duration.FiniteDuration
 private final class LastValueAggregator[
     F[_]: Concurrent,
     Input,
-    P <: PointData,
+    P <: PointData.NumberPoint,
     E <: ExemplarData
 ](
     makeCurrent: F[Current[F, Input]],
-    pointDataBuilder: PointDataBuilder[Input, P, E],
-    createData: Vector[P] => Data
+    pointDataBuilder: PointDataBuilder[Input, P, E]
 ) extends Aggregator[F] {
   import LastValueAggregator.Handle
 
@@ -66,7 +65,7 @@ private final class LastValueAggregator[
         descriptor.name,
         descriptor.description,
         descriptor.sourceInstrument.unit,
-        createData(points)
+        Data.Gauge(points)
       )
     )
 
@@ -75,29 +74,26 @@ private final class LastValueAggregator[
 private object LastValueAggregator {
 
   type OfLong[F[_]] =
-    LastValueAggregator[F, Long, PointData.LongPoint, ExemplarData.LongExemplar]
+    LastValueAggregator[
+      F,
+      Long,
+      PointData.LongNumber,
+      ExemplarData.LongExemplar
+    ]
 
   type OfDouble[F[_]] =
     LastValueAggregator[
       F,
       Double,
-      PointData.DoublePoint,
+      PointData.DoubleNumber,
       ExemplarData.DoubleExemplar
     ]
 
   def ofLong[F[_]: Concurrent]: OfLong[F] =
-    new LastValueAggregator(
-      Current.makeLong,
-      PointDataBuilder.longPoint,
-      Data.LongGauge
-    )
+    new LastValueAggregator(Current.makeLong, PointDataBuilder.longPoint)
 
   def ofDouble[F[_]: Concurrent]: OfDouble[F] =
-    new LastValueAggregator(
-      Current.makeDouble,
-      PointDataBuilder.doublePoint,
-      Data.DoubleGauge
-    )
+    new LastValueAggregator(Current.makeDouble, PointDataBuilder.doublePoint)
 
   private class Handle[F[_]: Monad, I, P <: PointData, E <: ExemplarData](
       current: Current[F, I],

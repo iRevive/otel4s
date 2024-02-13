@@ -24,26 +24,29 @@ sealed trait PointData {
   def startTimestamp: FiniteDuration
   def timestamp: FiniteDuration
   def attributes: Attributes
-  def exemplars: Vector[ExemplarData]
 }
 
 object PointData {
 
-  final case class LongPoint(
+  sealed trait NumberPoint extends PointData {
+    def exemplars: Vector[ExemplarData]
+  }
+
+  final case class LongNumber(
       startTimestamp: FiniteDuration,
       timestamp: FiniteDuration,
       attributes: Attributes,
       exemplars: Vector[ExemplarData.LongExemplar],
       value: Long
-  ) extends PointData
+  ) extends NumberPoint
 
-  final case class DoublePoint(
+  final case class DoubleNumber(
       startTimestamp: FiniteDuration,
       timestamp: FiniteDuration,
       attributes: Attributes,
       exemplars: Vector[ExemplarData.DoubleExemplar],
       value: Double
-  ) extends PointData
+  ) extends NumberPoint
 
   final case class Summary(
       startTimestamp: FiniteDuration,
@@ -52,9 +55,7 @@ object PointData {
       count: Long,
       sum: Double,
       percentileValues: Vector[ValueAtQuantile]
-  ) extends PointData {
-    def exemplars: Vector[ExemplarData] = Vector.empty
-  }
+  ) extends PointData
 
   final case class Histogram(
       startTimestamp: FiniteDuration,

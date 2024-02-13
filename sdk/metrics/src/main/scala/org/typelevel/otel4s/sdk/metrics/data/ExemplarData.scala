@@ -30,6 +30,8 @@ sealed trait ExemplarData {
 
 object ExemplarData {
 
+
+
   final case class LongExemplar(
       filteredAttributes: Attributes,
       timestamp: FiniteDuration,

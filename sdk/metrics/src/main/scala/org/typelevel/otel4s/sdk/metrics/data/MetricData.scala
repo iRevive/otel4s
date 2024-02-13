@@ -19,6 +19,9 @@ package org.typelevel.otel4s.sdk.metrics.data
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 
+/**
+ * https://opentelemetry.io/docs/specs/otel/metrics/data-model/#timeseries-model
+ */
 sealed trait MetricData {
 
   def resource: TelemetryResource
