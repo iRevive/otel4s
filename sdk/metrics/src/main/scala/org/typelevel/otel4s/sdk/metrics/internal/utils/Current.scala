@@ -14,26 +14,26 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics.internal.aggregation
+package org.typelevel.otel4s.sdk.metrics.internal.utils
 
 import cats.effect.Concurrent
 import cats.syntax.functor._
 
-private trait Adder[F[_], A] {
-  def add(a: A): F[Unit]
-  def sum(reset: Boolean): F[A]
+private[internal] trait Current[F[_], A] {
+  def set(a: A): F[Unit]
+  def get(reset: Boolean): F[Option[A]]
 }
 
-private object Adder {
+private[internal] object Current {
 
-  def make[F[_]: Concurrent, A: Numeric]: F[Adder[F, A]] =
-    Concurrent[F].ref(Numeric[A].zero).map { ref =>
-      new Adder[F, A] {
-        def add(a: A): F[Unit] =
-          ref.update(v => Numeric[A].plus(v, a))
+  def create[F[_]: Concurrent, A]: F[Current[F, A]] =
+    Concurrent[F].ref(Option.empty[A]).map { ref =>
+      new Current[F, A] {
+        def set(a: A): F[Unit] =
+          ref.set(Some(a))
 
-        def sum(reset: Boolean): F[A] =
-          if (reset) ref.getAndSet(Numeric[A].zero) else ref.get
+        def get(reset: Boolean): F[Option[A]] =
+          if (reset) ref.getAndSet(None) else ref.get
       }
     }
 

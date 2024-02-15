@@ -30,21 +30,27 @@ import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.utils.Current
 
 import scala.concurrent.duration.FiniteDuration
 
-private final class LastValueAggregator[F[_]: Concurrent, A](
-    val builder: PointDataBuilder[A]
+private final class LastValueAggregator[
+    F[_]: Concurrent,
+    A,
+    P <: PointData.NumberPoint,
+    E <: ExemplarData
+](
+    make: PointData.NumberPoint.Make[A, P, E],
 ) extends Aggregator[F, A] {
 
   import LastValueAggregator.Handle
 
-  type Point = builder.Point
+  type Point = P
 
   def createHandle: F[Aggregator.Handle[F, A, Point]] =
     for {
-      current <- Current.make[F, A]
-    } yield new Handle[F, A, Point, builder.Exemplar](current, builder)
+      current <- Current.create[F, A]
+    } yield new Handle[F, A, Point, E](current, make)
 
   def toMetricData(
       resource: TelemetryResource,
@@ -69,7 +75,12 @@ private final class LastValueAggregator[F[_]: Concurrent, A](
 private object LastValueAggregator {
 
   def apply[F[_]: Concurrent, A: MeasurementValue]: Aggregator[F, A] =
-    new LastValueAggregator(PointDataBuilder[A])
+    MeasurementValue[A] match {
+      case MeasurementValue.LongMeasurementValue(_) =>
+        new LastValueAggregator(PointData.NumberPoint.Make.makeLong)
+      case MeasurementValue.DoubleMeasurementValue(_) =>
+        new LastValueAggregator(PointData.NumberPoint.Make.makeDouble)
+    }
 
   private class Handle[
       F[_]: Monad,
@@ -78,7 +89,7 @@ private object LastValueAggregator {
       E <: ExemplarData
   ](
       current: Current[F, A],
-      builder: PointDataBuilder.Aux[A, P, E]
+      make: PointData.NumberPoint.Make[A, P, E]
   ) extends Aggregator.Handle[F, A, P] {
 
     def aggregate(
@@ -89,7 +100,7 @@ private object LastValueAggregator {
     ): F[Option[P]] =
       current.get(reset).map { value =>
         value.map { v =>
-          builder.create(
+          make.make(
             startTimestamp,
             collectTimestamp,
             attributes,

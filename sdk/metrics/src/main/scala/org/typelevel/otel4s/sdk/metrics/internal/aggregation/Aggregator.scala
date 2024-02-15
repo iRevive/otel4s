@@ -16,7 +16,8 @@
 
 package org.typelevel.otel4s.sdk.metrics.internal.aggregation
 
-import cats.effect.Concurrent
+import cats.effect.Temporal
+import cats.effect.std.Random
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.metrics.BucketBoundaries
 import org.typelevel.otel4s.metrics.MeasurementValue
@@ -69,13 +70,14 @@ private[metrics] object Aggregator {
     ): F[Unit]
   }
 
-  def create[F[_]: Concurrent, A: MeasurementValue: Numeric](
+  def create[F[_]: Temporal: Random, A: MeasurementValue: Numeric](
       aggregation: Aggregation.HasAggregator,
       descriptor: InstrumentDescriptor,
       filter: ExemplarFilter
   ): Aggregator[F, A] = {
+    // todo size = availableProcessors ???
     def sum: Aggregator[F, A] =
-      SumAggregator.apply(1, filter)
+      SumAggregator(1, filter)
 
     def lastValue: Aggregator[F, A] =
       LastValueAggregator[F, A]

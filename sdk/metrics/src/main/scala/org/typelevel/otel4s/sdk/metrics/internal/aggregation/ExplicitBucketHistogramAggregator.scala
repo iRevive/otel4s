@@ -19,6 +19,7 @@ package org.typelevel.otel4s.sdk.metrics.internal.aggregation
 import cats.FlatMap
 import cats.effect.Concurrent
 import cats.effect.Ref
+import cats.effect.Temporal
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import org.typelevel.otel4s.Attributes
@@ -33,12 +34,15 @@ import org.typelevel.otel4s.sdk.metrics.data.Data
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
-import org.typelevel.otel4s.sdk.metrics.internal.ExemplarReservoir
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarReservoir
 
 import scala.concurrent.duration.FiniteDuration
 
-private final class ExplicitBucketHistogramAggregator[F[_]: Concurrent, A: MeasurementValue](
+private final class ExplicitBucketHistogramAggregator[
+    F[_]: Concurrent,
+    A: MeasurementValue
+](
     boundaries: BucketBoundaries,
     makeReservoir: F[ExemplarReservoir[F, A, ExemplarData.DoubleExemplar]]
 ) extends Aggregator[F, A] {
@@ -73,12 +77,12 @@ private final class ExplicitBucketHistogramAggregator[F[_]: Concurrent, A: Measu
 
 private object ExplicitBucketHistogramAggregator {
 
-  def apply[F[_]: Concurrent, A: MeasurementValue](
+  def apply[F[_]: Temporal, A: MeasurementValue: Numeric](
       boundaries: BucketBoundaries,
       filter: ExemplarFilter
   ): ExplicitBucketHistogramAggregator[F, A] = {
     val reservoir = ExemplarReservoir
-      .histogramBucket[F, A](boundaries)
+      .histogramBucket[F, A, ExemplarData.DoubleExemplar](boundaries)
       .map(r => ExemplarReservoir.filtered(filter, r))
 
     new ExplicitBucketHistogramAggregator[F, A](boundaries, reservoir)
@@ -128,27 +132,19 @@ private object ExplicitBucketHistogramAggregator {
         }
       }
 
-    def record(
-                value: A,
-                attributes: Attributes,
-                context: Context
-    ): F[Unit] = {
-      val doubleValue = MeasurementValue[A] match {
-        case MeasurementValue.LongMeasurementValue(cast) => cast(value).toDouble
-        case MeasurementValue.DoubleMeasurementValue(cast) => cast(value)
-      }
+    def record(value: A, attributes: Attributes, context: Context): F[Unit] = {
+      val doubleValue = MeasurementValue[A].toDouble(value)
 
-      reservoir.offerMeasurement(value, attributes, context) >> stateRef
-        .update { state =>
-          val idx = boundaries.bucketIndex(doubleValue)
-          state.copy(
-            sum = state.sum + doubleValue,
-            min = math.min(state.min, doubleValue),
-            max = math.max(state.max, doubleValue),
-            count = state.count + 1,
-            counts = state.counts.updated(idx, state.counts(idx) + 1)
-          )
-        }
+      reservoir.offer(value, attributes, context) >> stateRef.update { state =>
+        val idx = boundaries.bucketIndex(doubleValue)
+        state.copy(
+          sum = state.sum + doubleValue,
+          min = math.min(state.min, doubleValue),
+          max = math.max(state.max, doubleValue),
+          count = state.count + 1,
+          counts = state.counts.updated(idx, state.counts(idx) + 1)
+        )
+      }
     }
 
   }

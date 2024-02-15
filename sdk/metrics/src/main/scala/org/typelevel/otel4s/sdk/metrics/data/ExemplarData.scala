@@ -17,6 +17,7 @@
 package org.typelevel.otel4s.sdk.metrics.data
 
 import org.typelevel.otel4s.Attributes
+import org.typelevel.otel4s.metrics.MeasurementValue
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -41,5 +42,41 @@ object ExemplarData {
       timestamp: FiniteDuration,
       value: Double
   ) extends ExemplarData
+
+  private[metrics] sealed trait Make[A, E <: ExemplarData] {
+    def make(attributes: Attributes, timestamp: FiniteDuration, value: A): E
+  }
+
+  private[metrics] object Make {
+
+    implicit def makeLong[A: MeasurementValue]: Make[A, LongExemplar] =
+      new Make[A, LongExemplar] {
+        def make(
+            attributes: Attributes,
+            timestamp: FiniteDuration,
+            value: A
+        ): LongExemplar =
+          ExemplarData.LongExemplar(
+            attributes,
+            timestamp,
+            MeasurementValue[A].toLong(value)
+          )
+      }
+
+    implicit def makeDouble[A: MeasurementValue]: Make[A, DoubleExemplar] =
+      new Make[A, DoubleExemplar] {
+        def make(
+            attributes: Attributes,
+            timestamp: FiniteDuration,
+            value: A
+        ): DoubleExemplar =
+          ExemplarData.DoubleExemplar(
+            attributes,
+            timestamp,
+            MeasurementValue[A].toDouble(value)
+          )
+      }
+
+  }
 
 }

@@ -24,6 +24,7 @@ import cats.effect.Concurrent
 import cats.effect.Ref
 import cats.effect.Temporal
 import cats.effect.std.Console
+import cats.effect.std.Random
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.functor._
@@ -401,7 +402,7 @@ object SdkMeterProvider {
     def build: F[MeterProvider[F]]
   }
 
-  def builder[F[_]: Temporal: Console: AskContext]: Builder[F] =
+  def builder[F[_]: Temporal: Random: Console: AskContext]: Builder[F] =
     BuilderImpl(
       resource = TelemetryResource.default,
       exemplarFilter = ExemplarFilter.traceBased,
@@ -410,7 +411,9 @@ object SdkMeterProvider {
       metricProducers = Vector.empty
     )
 
-  private final case class BuilderImpl[F[_]: Temporal: Console: AskContext](
+  private final case class BuilderImpl[
+      F[_]: Temporal: Random: Console: AskContext
+  ](
       resource: TelemetryResource,
       exemplarFilter: ExemplarFilter,
       registeredViews: Vector[RegisteredView],

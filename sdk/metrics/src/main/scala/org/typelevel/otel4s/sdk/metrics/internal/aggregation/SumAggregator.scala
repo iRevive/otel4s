@@ -17,7 +17,8 @@
 package org.typelevel.otel4s.sdk.metrics.internal.aggregation
 
 import cats.Monad
-import cats.effect.Concurrent
+import cats.effect.Temporal
+import cats.effect.std.Random
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import org.typelevel.otel4s.Attributes
@@ -31,32 +32,37 @@ import org.typelevel.otel4s.sdk.metrics.data.Data
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
-import org.typelevel.otel4s.sdk.metrics.internal.ExemplarReservoir
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarReservoir
+import org.typelevel.otel4s.sdk.metrics.internal.utils.Adder
 
 import scala.concurrent.duration.FiniteDuration
 
 private final class SumAggregator[
-    F[_]: Concurrent,
-    A: MeasurementValue: Numeric
+    F[_]: Temporal: Random,
+    A: MeasurementValue: Numeric,
+    P <: PointData.NumberPoint,
+    E <: ExemplarData
 ](
     reservoirSize: Int,
     filter: ExemplarFilter,
-    val builder: PointDataBuilder[A]
+    makeNumberPoint: PointData.NumberPoint.Make[A, P, E],
+    makeExemplar: ExemplarData.Make[A, E]
 ) extends Aggregator[F, A] {
+  private implicit val make: ExemplarData.Make[A, E] = makeExemplar
 
   import SumAggregator.Handle
 
-  type Point = builder.Point
+  type Point = P
 
   def createHandle: F[Aggregator.Handle[F, A, Point]] =
     for {
-      adder <- Adder.make[F, A]
+      adder <- Adder.create[F, A]
       reservoir <- makeReservoir
-    } yield new Handle[F, A, Point, builder.Exemplar](
+    } yield new Handle[F, A, Point, E](
       adder,
       reservoir,
-      builder
+      makeNumberPoint
     )
 
   def toMetricData(
@@ -77,21 +83,37 @@ private final class SumAggregator[
       )
     )
 
-  // todo size = availableProcessors ???
-  private def makeReservoir =
+  private def makeReservoir: F[ExemplarReservoir[F, A, E]] =
     ExemplarReservoir
-      .fixedSize[F, A, builder.Exemplar](size = reservoirSize)
+      .fixedSize[F, A, E](size = reservoirSize)
       .map(r => ExemplarReservoir.filtered(filter, r))
 
 }
 
 private object SumAggregator {
 
-  def apply[F[_]: Concurrent, A: MeasurementValue: Numeric](
+  def apply[F[_]: Temporal: Random, A: MeasurementValue: Numeric](
       reservoirSize: Int,
       filter: ExemplarFilter
-  ): Aggregator[F, A] =
-    new SumAggregator(reservoirSize, filter, PointDataBuilder[A])
+  ): Aggregator[F, A] = {
+    MeasurementValue[A] match {
+      case MeasurementValue.LongMeasurementValue(_) =>
+        new SumAggregator(
+          reservoirSize,
+          filter,
+          PointData.NumberPoint.Make.makeLong,
+          ExemplarData.Make.makeLong
+        )
+
+      case MeasurementValue.DoubleMeasurementValue(_) =>
+        new SumAggregator(
+          reservoirSize,
+          filter,
+          PointData.NumberPoint.Make.makeDouble,
+          ExemplarData.Make.makeDouble
+        )
+    }
+  }
 
   private class Handle[
       F[_]: Monad,
@@ -101,7 +123,7 @@ private object SumAggregator {
   ](
       adder: Adder[F, A],
       reservoir: ExemplarReservoir[F, A, E],
-      target: PointDataBuilder.Aux[A, P, E]
+      make: PointData.NumberPoint.Make[A, P, E]
   ) extends Aggregator.Handle[F, A, P] {
 
     def aggregate(
@@ -114,7 +136,7 @@ private object SumAggregator {
         value <- adder.sum(reset)
         exemplars <- reservoir.collectAndReset(attributes)
       } yield Some(
-        target.create(
+        make.make(
           startTimestamp,
           collectTimestamp,
           attributes,
@@ -123,12 +145,8 @@ private object SumAggregator {
         )
       )
 
-    def record(
-        value: A,
-        attributes: Attributes,
-        context: Context
-    ): F[Unit] =
-      reservoir.offerMeasurement(value, attributes, context) >> adder.add(value)
+    def record(value: A, attributes: Attributes, context: Context): F[Unit] =
+      reservoir.offer(value, attributes, context) >> adder.add(value)
 
   }
 

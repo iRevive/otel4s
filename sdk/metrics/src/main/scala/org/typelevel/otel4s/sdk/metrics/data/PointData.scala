@@ -17,6 +17,7 @@
 package org.typelevel.otel4s.sdk.metrics.data
 
 import org.typelevel.otel4s.Attributes
+import org.typelevel.otel4s.metrics.MeasurementValue
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -90,6 +91,68 @@ object PointData {
   ) extends PointData {
     val count: Long =
       zeroCount + positiveBuckets.totalCount + negativeBuckets.totalCount
+  }
+
+  object NumberPoint {
+
+    private[metrics] sealed trait Make[A, P <: NumberPoint, E <: ExemplarData] {
+      def make(
+          startTimestamp: FiniteDuration,
+          collectTimestamp: FiniteDuration,
+          attributes: Attributes,
+          exemplars: Vector[E],
+          value: A
+      ): P
+    }
+
+    private[metrics] object Make {
+
+      def makeLong[A: MeasurementValue]: Make[
+        A,
+        LongNumber,
+        ExemplarData.LongExemplar
+      ] =
+        new Make[A, LongNumber, ExemplarData.LongExemplar] {
+          def make(
+              startTimestamp: FiniteDuration,
+              collectTimestamp: FiniteDuration,
+              attributes: Attributes,
+              exemplars: Vector[ExemplarData.LongExemplar],
+              value: A
+          ): LongNumber =
+            LongNumber(
+              startTimestamp,
+              collectTimestamp,
+              attributes,
+              exemplars,
+              MeasurementValue[A].toLong(value)
+            )
+        }
+
+      def makeDouble[A: MeasurementValue]: Make[
+        A,
+        DoubleNumber,
+        ExemplarData.DoubleExemplar
+      ] =
+        new Make[A, DoubleNumber, ExemplarData.DoubleExemplar] {
+          def make(
+              startTimestamp: FiniteDuration,
+              collectTimestamp: FiniteDuration,
+              attributes: Attributes,
+              exemplars: Vector[ExemplarData.DoubleExemplar],
+              value: A
+          ): DoubleNumber =
+            DoubleNumber(
+              startTimestamp,
+              collectTimestamp,
+              attributes,
+              exemplars,
+              MeasurementValue[A].toDouble(value)
+            )
+        }
+
+    }
+
   }
 
 }

@@ -16,9 +16,10 @@
 
 package org.typelevel.otel4s.sdk.metrics
 
-import cats.effect.Concurrent
 import cats.effect.Ref
+import cats.effect.Temporal
 import cats.effect.std.Mutex
+import cats.effect.std.Random
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.functor._
@@ -35,7 +36,7 @@ import org.typelevel.otel4s.sdk.metrics.storage.MetricStorage
 
 import scala.concurrent.duration.FiniteDuration
 
-private[metrics] final class MeterSharedState[F[_]: Concurrent](
+private[metrics] final class MeterSharedState[F[_]: Temporal: Random](
     mutex: Mutex[F],
     resource: TelemetryResource,
     val scope: InstrumentationScope,
@@ -53,7 +54,7 @@ private[metrics] final class MeterSharedState[F[_]: Concurrent](
         reader.viewRegistry.findViews(descriptor, scope).flatTraverse {
           registeredView =>
             if (registeredView.view.aggregation == Aggregation.drop) {
-              Concurrent[F].pure(Vector.empty[MetricStorage.Synchronous[F, A]])
+              Temporal[F].pure(Vector.empty[MetricStorage.Synchronous[F, A]])
             } else {
               for {
                 s <- MetricStorage.synchronous(
@@ -79,7 +80,7 @@ private[metrics] final class MeterSharedState[F[_]: Concurrent](
         reader.viewRegistry.findViews(descriptor, scope).flatTraverse {
           registeredView =>
             if (registeredView.view.aggregation == Aggregation.drop) {
-              Concurrent[F].pure(Vector.empty[MetricStorage.Asynchronous[F]])
+              Temporal[F].pure(Vector.empty[MetricStorage.Asynchronous[F]])
             } else {
               for {
                 s <- MetricStorage.asynchronous(
@@ -133,7 +134,7 @@ private[metrics] final class MeterSharedState[F[_]: Concurrent](
 
 private object MeterSharedState {
 
-  def create[F[_]: Concurrent](
+  def create[F[_]: Temporal: Random](
       resource: TelemetryResource,
       scope: InstrumentationScope,
       startTimestamp: FiniteDuration,

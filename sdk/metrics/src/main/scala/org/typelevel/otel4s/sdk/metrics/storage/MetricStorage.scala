@@ -18,8 +18,9 @@ package org.typelevel.otel4s.sdk.metrics.storage
 
 import cats.Applicative
 import cats.Monad
-import cats.effect.Concurrent
+import cats.effect.Temporal
 import cats.effect.std.AtomicCell
+import cats.effect.std.Random
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.functor._
@@ -84,7 +85,7 @@ object MetricStorage {
     def reader: RegisteredReader[F]
   }
 
-  def synchronous[F[_]: Concurrent, A: MeasurementValue: Numeric](
+  def synchronous[F[_]: Temporal: Random, A: MeasurementValue: Numeric](
       reader: RegisteredReader[F],
       registeredView: RegisteredView,
       instrumentDescriptor: InstrumentDescriptor,
@@ -95,14 +96,14 @@ object MetricStorage {
 
     view.aggregation match {
       case Aggregation.Drop =>
-        Concurrent[F].pure {
+        Temporal[F].pure {
           new Synchronous[F, A] {
             def record(
                 value: A,
                 attributes: Attributes,
                 context: Context
             ): F[Unit] =
-              Concurrent[F].unit
+              Temporal[F].unit
 
             def metricDescriptor: MetricDescriptor =
               descriptor // todo should be noop
@@ -113,7 +114,7 @@ object MetricStorage {
                 startTimestamp: FiniteDuration,
                 collectTimestamp: FiniteDuration
             ): F[Option[MetricData]] =
-              Concurrent[F].pure(None)
+              Temporal[F].pure(None)
           }
         }
 
@@ -152,7 +153,10 @@ object MetricStorage {
       aggregator: Aggregator.Aux[F, A, PointData],
       attributesProcessor: AttributesProcessor,
       maxCardinality: Int,
-      handlers: AtomicCell[F, Map[Attributes, Aggregator.Handle[F, A, PointData]]]
+      handlers: AtomicCell[
+        F,
+        Map[Attributes, Aggregator.Handle[F, A, PointData]]
+      ]
   ) extends Synchronous[F, A] {
 
     private val aggregationTemporality =
