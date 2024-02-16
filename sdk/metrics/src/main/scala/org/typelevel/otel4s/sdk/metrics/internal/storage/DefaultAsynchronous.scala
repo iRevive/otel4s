@@ -17,6 +17,7 @@
 package org.typelevel.otel4s.sdk.metrics.internal.storage
 
 import cats.Monad
+import cats.effect.Concurrent
 import cats.effect.Ref
 import cats.effect.Temporal
 import cats.effect.std.Console
@@ -45,89 +46,51 @@ import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage.Asynchron
 
 import scala.concurrent.duration.FiniteDuration
 
-private final class DefaultAsynchronous[
-    F[_]: Monad: Console: AskContext,
-    A: Numeric
-](
+private final class DefaultAsynchronous[F[_]: Monad: Console: AskContext, A](
     val reader: RegisteredReader[F],
     val metricDescriptor: MetricDescriptor,
+    aggregationTemporality: AggregationTemporality,
     aggregator: Aggregator[F, A],
     attributesProcessor: AttributesProcessor,
     maxCardinality: Int,
-    points: Ref[F, Map[Attributes, Measurement[A]]],
-    lastPoints: Ref[F, Map[Attributes, Measurement[A]]]
+    collector: DefaultAsynchronous.Collector[F, A]
 ) extends Asynchronous[F, A] {
 
-  private val aggregationTemporality =
-    reader.reader.aggregationTemporality(
-      metricDescriptor.sourceInstrument.instrumentType
-    )
-
-  def record(m: Measurement[A]): F[Unit] = {
-
-    def doRecord(measurement: Measurement[A]) = {
-      points.update(_.updated(measurement.attributes, measurement))
-    }
-
+  def record(m: Measurement[A]): F[Unit] =
     for {
       context <- Ask[F, Context].ask
       attributes = attributesProcessor.process(m.attributes, context)
-      start <-
-        if (aggregationTemporality == AggregationTemporality.Delta)
-          reader.getLastCollectTimestamp
-        else
-          Monad[F].pure(m.startTimestamp)
+      start <- collector.startTimestamp(m)
       measurement = m.withAttributes(attributes).withStartTimestamp(start)
-      k <- points.get
+      points <- collector.currentPoints
       _ <- {
-        if (k.contains(attributes)) {
+        if (points.contains(attributes)) {
           Console[F].errorln(
             s"Instrument ${metricDescriptor.sourceInstrument.name} has recorded multiple values for the same attributes ${attributes}"
           )
         } else {
-          if (k.sizeIs >= maxCardinality) {
+          if (points.sizeIs >= maxCardinality) {
             Console[F].errorln(
               s"Instrument ${metricDescriptor.sourceInstrument.name} has exceeded the maximum allowed cardinality [$maxCardinality]"
-            ) >> doRecord(
+            ) >> collector.record(
               measurement.withAttributes(
                 attributes.updated("otel.metric.overflow", true)
               )
             )
           } else {
-            doRecord(measurement)
+            collector.record(measurement)
           }
         }
       }
     } yield ()
-  }
 
   def collect(
       resource: TelemetryResource,
       scope: InstrumentationScope,
       startTimestamp: FiniteDuration,
       collectTimestamp: FiniteDuration
-  ): F[Option[MetricData]] = {
-    val delta: F[Vector[Measurement[A]]] = aggregationTemporality match {
-      case AggregationTemporality.Delta =>
-        for {
-          points <- points.get
-          lastPoints <- lastPoints.getAndSet(points)
-        } yield {
-          points.map { case (k, v) =>
-            lastPoints.get(k) match {
-              case Some(lastPoint) =>
-                v.withValue(Numeric[A].minus(lastPoint.value, v.value))
-              case None =>
-                v
-            }
-          }.toVector
-        }
-
-      case AggregationTemporality.Cumulative =>
-        points.getAndSet(Map.empty).map(_.values.toVector)
-    }
-
-    delta.flatMap { measurements =>
+  ): F[Option[MetricData]] =
+    collector.collectPoints.flatMap { measurements =>
       val points = measurements.flatMap { measurement =>
         aggregator.toPointData(
           measurement.startTimestamp,
@@ -147,7 +110,6 @@ private final class DefaultAsynchronous[
         )
         .map(Some(_))
     }
-  }
 
 }
 
@@ -165,26 +127,95 @@ private object DefaultAsynchronous {
     val view = registeredView.view
     val descriptor = MetricDescriptor(view, instrumentDescriptor)
 
-    val aggregator: Aggregator[F, A] =
-      Aggregator.create(
-        aggregation,
-        instrumentDescriptor,
-        ExemplarFilter.alwaysOff
-      )
+    val aggregator: Aggregator[F, A] = Aggregator.create(
+      aggregation,
+      instrumentDescriptor,
+      ExemplarFilter.alwaysOff
+    )
 
-    Ref.of(Map.empty[Attributes, Measurement[A]]).flatMap { points =>
-      Ref.of(Map.empty[Attributes, Measurement[A]]).map { lastPoints =>
-        new DefaultAsynchronous[F, A](
-          reader,
-          descriptor,
-          aggregator,
-          registeredView.viewAttributesProcessor,
-          registeredView.cardinalityLimit - 1,
-          points,
-          lastPoints
-        )
+    val aggregationTemporality = reader.reader.aggregationTemporality(
+      descriptor.sourceInstrument.instrumentType
+    )
+
+    for {
+      collector <- Collector.create[F, A](aggregationTemporality, reader)
+    } yield new DefaultAsynchronous[F, A](
+      reader,
+      descriptor,
+      aggregationTemporality,
+      aggregator,
+      registeredView.viewAttributesProcessor,
+      registeredView.cardinalityLimit - 1,
+      collector
+    )
+  }
+
+  private trait Collector[F[_], A] {
+    def startTimestamp(measurement: Measurement[A]): F[FiniteDuration]
+    def record(measurement: Measurement[A]): F[Unit]
+    def currentPoints: F[Map[Attributes, Measurement[A]]]
+    def collectPoints: F[Vector[Measurement[A]]]
+  }
+
+  private object Collector {
+
+    def create[F[_]: Concurrent, A: Numeric](
+        aggregationTemporality: AggregationTemporality,
+        reader: RegisteredReader[F]
+    ): F[Collector[F, A]] =
+      aggregationTemporality match {
+        case AggregationTemporality.Delta      => delta[F, A](reader)
+        case AggregationTemporality.Cumulative => cumulative[F, A]
       }
-    }
+
+    private def delta[F[_]: Concurrent, A: Numeric](
+        reader: RegisteredReader[F]
+    ): F[Collector[F, A]] =
+      Ref.of(Map.empty[Attributes, Measurement[A]]).flatMap { pointsRef =>
+        Ref.of(Map.empty[Attributes, Measurement[A]]).map { lastPointsRef =>
+          new Collector[F, A] {
+            def startTimestamp(measurement: Measurement[A]): F[FiniteDuration] =
+              reader.getLastCollectTimestamp
+
+            def record(measurement: Measurement[A]): F[Unit] =
+              pointsRef.update(_.updated(measurement.attributes, measurement))
+
+            def currentPoints: F[Map[Attributes, Measurement[A]]] =
+              pointsRef.get
+
+            def collectPoints: F[Vector[Measurement[A]]] =
+              for {
+                points <- pointsRef.get
+                lastPoints <- lastPointsRef.getAndSet(points)
+              } yield points.toVector.map { case (k, v) =>
+                lastPoints.get(k) match {
+                  case Some(lastPoint) =>
+                    v.withValue(Numeric[A].minus(lastPoint.value, v.value))
+                  case None =>
+                    v
+                }
+              }
+          }
+        }
+      }
+
+    private def cumulative[F[_]: Concurrent, A]: F[Collector[F, A]] =
+      Ref.of(Map.empty[Attributes, Measurement[A]]).map { pointsRef =>
+        new Collector[F, A] {
+          def startTimestamp(measurement: Measurement[A]): F[FiniteDuration] =
+            Monad[F].pure(measurement.startTimestamp)
+
+          def record(measurement: Measurement[A]): F[Unit] =
+            pointsRef.update(_.updated(measurement.attributes, measurement))
+
+          def currentPoints: F[Map[Attributes, Measurement[A]]] =
+            pointsRef.get
+
+          def collectPoints: F[Vector[Measurement[A]]] =
+            pointsRef.getAndSet(Map.empty).map(_.values.toVector)
+        }
+      }
+
   }
 
 }
