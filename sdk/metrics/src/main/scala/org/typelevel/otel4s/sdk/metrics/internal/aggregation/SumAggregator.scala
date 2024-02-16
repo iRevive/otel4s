@@ -32,10 +32,8 @@ import org.typelevel.otel4s.sdk.metrics.data.Data
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
-import org.typelevel.otel4s.sdk.metrics.internal.{
-  InstrumentType,
-  MetricDescriptor
-}
+import org.typelevel.otel4s.sdk.metrics.internal.InstrumentType
+import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarReservoir
 import org.typelevel.otel4s.sdk.metrics.internal.utils.Adder
 

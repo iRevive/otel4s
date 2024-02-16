@@ -18,7 +18,9 @@ package org.typelevel.otel4s.sdk.metrics
 
 import cats.effect.Ref
 import cats.effect.Temporal
-import cats.effect.std.{Console, Mutex, Random}
+import cats.effect.std.Console
+import cats.effect.std.Mutex
+import cats.effect.std.Random
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.functor._
@@ -53,7 +55,8 @@ private[metrics] final class MeterSharedState[
   ): F[MetricStorage.Writeable[F, A]] =
     registries.toVector
       .flatTraverse { case (reader, registry) =>
-        reader.viewRegistry.findViews(descriptor, scope)
+        reader.viewRegistry
+          .findViews(descriptor, scope)
           .flatTraverse { registeredView =>
             registeredView.view.aggregation match {
               case Aggregation.Drop =>
@@ -71,7 +74,7 @@ private[metrics] final class MeterSharedState[
                   _ <- registry.register(storage)
                 } yield Vector(storage)
             }
-        }
+          }
       }
       .map { storages =>
         MetricStorage.Writeable.of(storages: _*)
@@ -96,7 +99,6 @@ private[metrics] final class MeterSharedState[
                     registeredView,
                     descriptor,
                     aggregation,
-
                   )
                   _ <- registry.register(storage)
                 } yield Vector(storage)

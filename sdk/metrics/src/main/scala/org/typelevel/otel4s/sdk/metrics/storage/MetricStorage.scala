@@ -18,7 +18,8 @@ package org.typelevel.otel4s.sdk.metrics.storage
 
 import cats.Applicative
 import cats.Monad
-import cats.effect.{Ref, Temporal}
+import cats.effect.Ref
+import cats.effect.Temporal
 import cats.effect.std.AtomicCell
 import cats.effect.std.Console
 import cats.effect.std.Random
@@ -31,16 +32,15 @@ import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
-import org.typelevel.otel4s.sdk.context.{AskContext, Context}
+import org.typelevel.otel4s.sdk.context.AskContext
+import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.Aggregation
 import org.typelevel.otel4s.sdk.metrics.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.RegisteredView
-import org.typelevel.otel4s.sdk.metrics.data.{
-  AggregationTemporality,
-  MetricData,
-  PointData
-}
+import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
+import org.typelevel.otel4s.sdk.metrics.data.MetricData
+import org.typelevel.otel4s.sdk.metrics.data.PointData
 import org.typelevel.otel4s.sdk.metrics.internal.AttributesProcessor
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.Measurement
@@ -317,7 +317,7 @@ object MetricStorage {
           }
 
         case AggregationTemporality.Cumulative =>
-          points.get.map(_.values.toVector)
+          points.getAndSet(Map.empty).map(_.values.toVector)
       }
 
       delta.flatMap { measurements =>

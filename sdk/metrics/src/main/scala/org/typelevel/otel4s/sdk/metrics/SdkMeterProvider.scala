@@ -196,7 +196,11 @@ object ExemplarFilter {
   }
 
   def alwaysOff: ExemplarFilter = new ExemplarFilter {
-    def shouldSample[A: MeasurementValue](value: A, attributes: Attributes, context: Context): Boolean =
+    def shouldSample[A: MeasurementValue](
+        value: A,
+        attributes: Attributes,
+        context: Context
+    ): Boolean =
       false
   }
 }
