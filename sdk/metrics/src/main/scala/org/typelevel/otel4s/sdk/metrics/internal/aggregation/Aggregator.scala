@@ -40,6 +40,13 @@ private[metrics] trait Aggregator[F[_], A] {
 
   def createHandle: F[Aggregator.Handle[F, A, Point]]
 
+  def toPointData(
+      startTimestamp: FiniteDuration,
+      collectTimestamp: FiniteDuration,
+      attributes: Attributes,
+      value: A
+  ): Option[Point]
+
   def toMetricData(
       resource: TelemetryResource,
       scope: InstrumentationScope,
@@ -75,9 +82,8 @@ private[metrics] object Aggregator {
       descriptor: InstrumentDescriptor,
       filter: ExemplarFilter
   ): Aggregator[F, A] = {
-    // todo size = availableProcessors ???
     def sum: Aggregator[F, A] =
-      SumAggregator(1, filter)
+      SumAggregator(Runtime.getRuntime.availableProcessors, filter)
 
     def lastValue: Aggregator[F, A] =
       LastValueAggregator[F, A]

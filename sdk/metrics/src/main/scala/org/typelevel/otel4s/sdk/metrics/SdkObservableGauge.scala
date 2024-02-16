@@ -58,19 +58,44 @@ private object SdkObservableGauge {
     ): Resource[F, ObservableGauge] = {
       val descriptor = makeDescriptor
 
-      Resource
-        .eval(sharedState.registerObservableMeasurement(descriptor))
-        .flatMap { observable =>
-          val runnable = cb(observable)
-          val cr =
-            new CallbackRegistration[F](NonEmptyList.one(observable), runnable)
+      val makeCallbackRegistration: F[CallbackRegistration[F]] =
+        MeasurementValue[A] match {
+          case MeasurementValue.LongMeasurementValue(cast) =>
+            sharedState
+              .registerObservableMeasurement[Long](descriptor)
+              .map { observable =>
+                val runnable = cb { (value, attributes) =>
+                  observable.record(cast(value), attributes)
+                }
 
-          Resource
-            .make(sharedState.registerCallback(cr))(_ =>
-              sharedState.removeCallback(cr)
-            )
-            .as(new ObservableGauge {})
+                new CallbackRegistration[F](
+                  NonEmptyList.one(observable),
+                  runnable
+                )
+              }
+
+          case MeasurementValue.DoubleMeasurementValue(cast) =>
+            sharedState
+              .registerObservableMeasurement[Double](descriptor)
+              .map { observable =>
+                val runnable = cb { (value, attributes) =>
+                  observable.record(cast(value), attributes)
+                }
+
+                new CallbackRegistration[F](
+                  NonEmptyList.one(observable),
+                  runnable
+                )
+              }
         }
+
+      Resource.eval(makeCallbackRegistration).flatMap { cr =>
+        Resource
+          .make(sharedState.registerCallback(cr))(_ =>
+            sharedState.removeCallback(cr)
+          )
+          .as(new ObservableGauge {})
+      }
     }
 
     def create(
@@ -86,7 +111,21 @@ private object SdkObservableGauge {
     def createObserver: F[ObservableMeasurement[F, A]] = {
       val descriptor = makeDescriptor
 
-      sharedState.registerObservableMeasurement(descriptor).widen
+      MeasurementValue[A] match {
+        case MeasurementValue.LongMeasurementValue(cast) =>
+          sharedState
+            .registerObservableMeasurement[Long](descriptor)
+            .map { observable => (value, attributes) =>
+              observable.record(cast(value), attributes)
+            }
+
+        case MeasurementValue.DoubleMeasurementValue(cast) =>
+          sharedState
+            .registerObservableMeasurement[Double](descriptor)
+            .map { observable => (value, attributes) =>
+              observable.record(cast(value), attributes)
+            }
+      }
     }
 
     private def makeDescriptor: InstrumentDescriptor =

@@ -17,41 +17,59 @@
 package org.typelevel.otel4s.sdk.metrics.internal
 
 import org.typelevel.otel4s.Attributes
-import org.typelevel.otel4s.metrics.MeasurementValue
 
 import scala.concurrent.duration.FiniteDuration
 
-sealed trait Measurement {
+sealed trait Measurement[A] {
   def startTimestamp: FiniteDuration
   def collectTimestamp: FiniteDuration
   def attributes: Attributes
+  def value: A
 
-  def withAttributes(attributes: Attributes): Measurement
+  def withAttributes(attributes: Attributes): Measurement[A]
+
+  def withStartTimestamp(start: FiniteDuration): Measurement[A]
+
+  def withValue(a: A): Measurement[A]
 }
 
 object Measurement {
 
-  def of[A: MeasurementValue](
-      start: FiniteDuration,
-      collect: FiniteDuration,
+  def apply[A](
+      startTimestamp: FiniteDuration,
+      collectTimestamp: FiniteDuration,
       attributes: Attributes,
       value: A
-  ): Measurement =
-    MeasurementValue[A] match {
-      case MeasurementValue.LongMeasurementValue(cast) =>
-        LongMeasurement(start, collect, attributes, cast(value))
-      case MeasurementValue.DoubleMeasurementValue(cast) =>
-        DoubleMeasurement(start, collect, attributes, cast(value))
-    }
+  ): Measurement[A] =
+    Impl(startTimestamp, collectTimestamp, attributes, value)
 
+  private final case class Impl[A](
+      startTimestamp: FiniteDuration,
+      collectTimestamp: FiniteDuration,
+      attributes: Attributes,
+      value: A
+  ) extends Measurement[A] {
+    def withAttributes(attributes: Attributes): Measurement[A] =
+      copy(attributes = attributes)
+
+    def withStartTimestamp(start: FiniteDuration): Measurement[A] =
+      copy(startTimestamp = start)
+
+    def withValue(a: A): Measurement[A] =
+      copy(value = a)
+  }
+  /*
   final case class LongMeasurement(
       startTimestamp: FiniteDuration,
       collectTimestamp: FiniteDuration,
       attributes: Attributes,
       value: Long
-  ) extends Measurement {
-    def withAttributes(attributes: Attributes): Measurement =
+  ) extends Measurement[Long] {
+    def withAttributes(attributes: Attributes): Measurement[Long] =
       copy(attributes = attributes)
+
+    def withStartTimestamp(start: FiniteDuration): Measurement[Long] =
+      copy(startTimestamp = start)
   }
 
   final case class DoubleMeasurement(
@@ -59,8 +77,11 @@ object Measurement {
       collectTimestamp: FiniteDuration,
       attributes: Attributes,
       value: Double
-  ) extends Measurement {
-    def withAttributes(attributes: Attributes): Measurement =
+  ) extends Measurement[Double] {
+    def withAttributes(attributes: Attributes): Measurement[Double] =
       copy(attributes = attributes)
-  }
+
+    def withStartTimestamp(start: FiniteDuration): Measurement[Double] =
+      copy(startTimestamp = start)
+  }*/
 }

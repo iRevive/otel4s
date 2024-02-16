@@ -56,6 +56,14 @@ private final class ExplicitBucketHistogramAggregator[
       reservoir <- makeReservoir
     } yield new Handle(state, boundaries, reservoir)
 
+  def toPointData(
+      startTimestamp: FiniteDuration,
+      collectTimestamp: FiniteDuration,
+      attributes: Attributes,
+      value: A
+  ): Option[PointData.Histogram] =
+    None
+
   def toMetricData(
       resource: TelemetryResource,
       scope: InstrumentationScope,

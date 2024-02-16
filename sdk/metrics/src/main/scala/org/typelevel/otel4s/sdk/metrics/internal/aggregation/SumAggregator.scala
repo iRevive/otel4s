@@ -32,7 +32,10 @@ import org.typelevel.otel4s.sdk.metrics.data.Data
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
-import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.{
+  InstrumentType,
+  MetricDescriptor
+}
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarReservoir
 import org.typelevel.otel4s.sdk.metrics.internal.utils.Adder
 
@@ -65,6 +68,22 @@ private final class SumAggregator[
       makeNumberPoint
     )
 
+  def toPointData(
+      startTimestamp: FiniteDuration,
+      collectTimestamp: FiniteDuration,
+      attributes: Attributes,
+      value: A
+  ): Option[P] =
+    Some(
+      makeNumberPoint.make(
+        startTimestamp,
+        collectTimestamp,
+        attributes,
+        Vector.empty,
+        value
+      )
+    )
+
   def toMetricData(
       resource: TelemetryResource,
       scope: InstrumentationScope,
@@ -79,9 +98,17 @@ private final class SumAggregator[
         descriptor.name,
         descriptor.description,
         descriptor.sourceInstrument.unit,
-        Data.Sum(points, true, temporality) // todo isMonotonic?
+        Data.Sum(points, isMonotonic(descriptor), temporality)
       )
     )
+
+  private def isMonotonic(descriptor: MetricDescriptor): Boolean =
+    descriptor.sourceInstrument.instrumentType match {
+      case InstrumentType.Counter           => true
+      case InstrumentType.Histogram         => true
+      case InstrumentType.ObservableCounter => true
+      case _                                => false
+    }
 
   private def makeReservoir: F[ExemplarReservoir[F, A, E]] =
     ExemplarReservoir

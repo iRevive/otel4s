@@ -24,7 +24,6 @@ import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.functor._
 import org.typelevel.otel4s.Attributes
-import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.metrics.ObservableMeasurement
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.metrics.RegisteredReader
@@ -32,14 +31,11 @@ import org.typelevel.otel4s.sdk.metrics.storage.MetricStorage
 
 import scala.concurrent.duration.FiniteDuration
 
-private[metrics] final class SdkObservableMeasurement[
-    F[_]: Monad,
-    A: MeasurementValue
-](
+private[metrics] final class SdkObservableMeasurement[F[_]: Monad, A](
     stateRef: Ref[F, SdkObservableMeasurement.State[F]],
     val scope: InstrumentationScope,
     val descriptor: InstrumentDescriptor,
-    val storages: Vector[MetricStorage.Asynchronous[F]]
+    val storages: Vector[MetricStorage.Asynchronous[F, A]]
 ) extends ObservableMeasurement[F, A] {
   import SdkObservableMeasurement._
 
@@ -60,7 +56,7 @@ private[metrics] final class SdkObservableMeasurement[
 
       case State.WithReader(reader, start, collect) =>
         val attrs = Attributes.fromSpecific(attributes)
-        val measurement = Measurement.of(start, collect, attrs, value)
+        val measurement = Measurement(start, collect, attrs, value)
 
         storages.traverse_ { storage =>
           storage.record(measurement).whenA(storage.reader == reader)
@@ -83,8 +79,8 @@ object SdkObservableMeasurement {
     ) extends State[F]
   }
 
-  def create[F[_]: Concurrent, A: MeasurementValue](
-      storages: Vector[MetricStorage.Asynchronous[F]],
+  def create[F[_]: Concurrent, A](
+      storages: Vector[MetricStorage.Asynchronous[F, A]],
       scope: InstrumentationScope,
       descriptor: InstrumentDescriptor
   ): F[SdkObservableMeasurement[F, A]] =

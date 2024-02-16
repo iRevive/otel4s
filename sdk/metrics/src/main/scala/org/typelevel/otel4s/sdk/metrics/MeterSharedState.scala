@@ -18,8 +18,7 @@ package org.typelevel.otel4s.sdk.metrics
 
 import cats.effect.Ref
 import cats.effect.Temporal
-import cats.effect.std.Mutex
-import cats.effect.std.Random
+import cats.effect.std.{Console, Mutex, Random}
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.functor._
@@ -27,6 +26,7 @@ import cats.syntax.traverse._
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
+import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.internal.CallbackRegistration
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
@@ -36,7 +36,9 @@ import org.typelevel.otel4s.sdk.metrics.storage.MetricStorage
 
 import scala.concurrent.duration.FiniteDuration
 
-private[metrics] final class MeterSharedState[F[_]: Temporal: Random](
+private[metrics] final class MeterSharedState[
+    F[_]: Temporal: Random: Console: AskContext
+](
     mutex: Mutex[F],
     resource: TelemetryResource,
     val scope: InstrumentationScope,
@@ -51,20 +53,23 @@ private[metrics] final class MeterSharedState[F[_]: Temporal: Random](
   ): F[MetricStorage.Writeable[F, A]] =
     registries.toVector
       .flatTraverse { case (reader, registry) =>
-        reader.viewRegistry.findViews(descriptor, scope).flatTraverse {
-          registeredView =>
-            if (registeredView.view.aggregation == Aggregation.drop) {
-              Temporal[F].pure(Vector.empty[MetricStorage.Synchronous[F, A]])
-            } else {
-              for {
-                s <- MetricStorage.synchronous(
-                  reader,
-                  registeredView,
-                  descriptor,
-                  exemplarFilter
-                )
-                _ <- registry.register(s)
-              } yield Vector(s)
+        reader.viewRegistry.findViews(descriptor, scope)
+          .flatTraverse { registeredView =>
+            registeredView.view.aggregation match {
+              case Aggregation.Drop =>
+                Temporal[F].pure(Vector.empty[MetricStorage.Synchronous[F, A]])
+
+              case aggregation: Aggregation.HasAggregator =>
+                for {
+                  storage <- MetricStorage.synchronous(
+                    reader,
+                    registeredView,
+                    descriptor,
+                    exemplarFilter,
+                    aggregation
+                  )
+                  _ <- registry.register(storage)
+                } yield Vector(storage)
             }
         }
       }
@@ -72,26 +77,31 @@ private[metrics] final class MeterSharedState[F[_]: Temporal: Random](
         MetricStorage.Writeable.of(storages: _*)
       }
 
-  def registerObservableMeasurement[A: MeasurementValue](
+  def registerObservableMeasurement[A: MeasurementValue: Numeric](
       descriptor: InstrumentDescriptor
   ): F[SdkObservableMeasurement[F, A]] =
     registries.toVector
       .flatTraverse { case (reader, registry) =>
-        reader.viewRegistry.findViews(descriptor, scope).flatTraverse {
-          registeredView =>
-            if (registeredView.view.aggregation == Aggregation.drop) {
-              Temporal[F].pure(Vector.empty[MetricStorage.Asynchronous[F]])
-            } else {
-              for {
-                s <- MetricStorage.asynchronous(
-                  reader,
-                  registeredView,
-                  descriptor
-                )
-                _ <- registry.register(s)
-              } yield Vector(s)
+        reader.viewRegistry
+          .findViews(descriptor, scope)
+          .flatTraverse { registeredView =>
+            registeredView.view.aggregation match {
+              case Aggregation.Drop =>
+                Temporal[F].pure(Vector.empty[MetricStorage.Asynchronous[F, A]])
+
+              case aggregation: Aggregation.HasAggregator =>
+                for {
+                  storage <- MetricStorage.asynchronous(
+                    reader,
+                    registeredView,
+                    descriptor,
+                    aggregation,
+
+                  )
+                  _ <- registry.register(storage)
+                } yield Vector(storage)
             }
-        }
+          }
       }
       .flatMap { storages =>
         SdkObservableMeasurement.create(storages, scope, descriptor)
@@ -134,7 +144,7 @@ private[metrics] final class MeterSharedState[F[_]: Temporal: Random](
 
 private object MeterSharedState {
 
-  def create[F[_]: Temporal: Random](
+  def create[F[_]: Temporal: Random: Console: AskContext](
       resource: TelemetryResource,
       scope: InstrumentationScope,
       startTimestamp: FiniteDuration,

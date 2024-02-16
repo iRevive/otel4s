@@ -52,6 +52,22 @@ private final class LastValueAggregator[
       current <- Current.create[F, A]
     } yield new Handle[F, A, Point, E](current, make)
 
+  def toPointData(
+      startTimestamp: FiniteDuration,
+      collectTimestamp: FiniteDuration,
+      attributes: Attributes,
+      value: A
+  ): Option[P] =
+    Some(
+      make.make(
+        startTimestamp,
+        collectTimestamp,
+        attributes,
+        Vector.empty,
+        value
+      )
+    )
+
   def toMetricData(
       resource: TelemetryResource,
       scope: InstrumentationScope,
