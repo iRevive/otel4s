@@ -16,27 +16,25 @@
 
 package org.typelevel.otel4s.sdk.metrics.internal.storage
 
-import cats.effect.std.{Console, Random}
-import cats.effect.Temporal
-import cats.syntax.foldable._
 import cats.Applicative
+import cats.effect.Temporal
+import cats.effect.std.Console
+import cats.effect.std.Random
+import cats.syntax.foldable._
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
-import org.typelevel.otel4s.sdk.context.{AskContext, Context}
+import org.typelevel.otel4s.sdk.context.AskContext
+import org.typelevel.otel4s.sdk.context.Context
+import org.typelevel.otel4s.sdk.metrics.Aggregation
+import org.typelevel.otel4s.sdk.metrics.ExemplarFilter
+import org.typelevel.otel4s.sdk.metrics.RegisteredReader
+import org.typelevel.otel4s.sdk.metrics.RegisteredView
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
-import org.typelevel.otel4s.sdk.metrics.internal.{
-  InstrumentDescriptor,
-  Measurement,
-  MetricDescriptor
-}
-import org.typelevel.otel4s.sdk.metrics.{
-  Aggregation,
-  ExemplarFilter,
-  RegisteredReader,
-  RegisteredView
-}
+import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.Measurement
+import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 
 import scala.concurrent.duration.FiniteDuration
 

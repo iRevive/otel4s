@@ -1,8 +1,25 @@
+/*
+ * Copyright 2024 Typelevel
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.typelevel.otel4s.sdk.metrics.internal.storage
 
 import cats.Monad
 import cats.effect.Temporal
-import cats.effect.std.{AtomicCell, Random}
+import cats.effect.std.AtomicCell
+import cats.effect.std.Random
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.traverse._
@@ -11,9 +28,16 @@ import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.Context
-import org.typelevel.otel4s.sdk.metrics.{Aggregation, ExemplarFilter, RegisteredReader, RegisteredView}
-import org.typelevel.otel4s.sdk.metrics.data.{AggregationTemporality, MetricData, PointData}
-import org.typelevel.otel4s.sdk.metrics.internal.{AttributesProcessor, InstrumentDescriptor, MetricDescriptor}
+import org.typelevel.otel4s.sdk.metrics.Aggregation
+import org.typelevel.otel4s.sdk.metrics.ExemplarFilter
+import org.typelevel.otel4s.sdk.metrics.RegisteredReader
+import org.typelevel.otel4s.sdk.metrics.RegisteredView
+import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
+import org.typelevel.otel4s.sdk.metrics.data.MetricData
+import org.typelevel.otel4s.sdk.metrics.data.PointData
+import org.typelevel.otel4s.sdk.metrics.internal.AttributesProcessor
+import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.aggregation.Aggregator
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage.Synchronous
 
