@@ -27,7 +27,7 @@ import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.metrics.ObservableMeasurement
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.metrics.RegisteredReader
-import org.typelevel.otel4s.sdk.metrics.storage.MetricStorage
+import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
 
 import scala.concurrent.duration.FiniteDuration
 

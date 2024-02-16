@@ -32,7 +32,7 @@ import org.typelevel.otel4s.sdk.metrics.internal.Advice
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentType
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentValueType
-import org.typelevel.otel4s.sdk.metrics.storage.MetricStorage
+import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
 
 private object SdkUpDownCounter {
 

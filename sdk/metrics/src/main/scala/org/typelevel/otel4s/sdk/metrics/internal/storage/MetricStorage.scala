@@ -1,0 +1,117 @@
+/*
+ * Copyright 2024 Typelevel
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.typelevel.otel4s.sdk.metrics.internal.storage
+
+import cats.effect.std.{Console, Random}
+import cats.effect.Temporal
+import cats.syntax.foldable._
+import cats.Applicative
+import org.typelevel.otel4s.Attributes
+import org.typelevel.otel4s.metrics.MeasurementValue
+import org.typelevel.otel4s.sdk.TelemetryResource
+import org.typelevel.otel4s.sdk.common.InstrumentationScope
+import org.typelevel.otel4s.sdk.context.{AskContext, Context}
+import org.typelevel.otel4s.sdk.metrics.data.MetricData
+import org.typelevel.otel4s.sdk.metrics.internal.{
+  InstrumentDescriptor,
+  Measurement,
+  MetricDescriptor
+}
+import org.typelevel.otel4s.sdk.metrics.{
+  Aggregation,
+  ExemplarFilter,
+  RegisteredReader,
+  RegisteredView
+}
+
+import scala.concurrent.duration.FiniteDuration
+
+private[metrics] trait MetricStorage[F[_]] {
+  def metricDescriptor: MetricDescriptor
+  def collect(
+      resource: TelemetryResource,
+      scope: InstrumentationScope,
+      startTimestamp: FiniteDuration,
+      collectTimestamp: FiniteDuration
+  ): F[Option[MetricData]]
+}
+
+private[metrics] object MetricStorage {
+
+  trait Writeable[F[_], A] {
+    def record(
+        value: A,
+        attributes: Attributes,
+        context: Context
+    ): F[Unit]
+  }
+
+  object Writeable {
+    def of[F[_]: Applicative, A](storages: Writeable[F, A]*): Writeable[F, A] =
+      new Writeable[F, A] {
+        def record(
+            value: A,
+            attributes: Attributes,
+            context: Context
+        ): F[Unit] =
+          storages.traverse_(_.record(value, attributes, context))
+      }
+  }
+
+  trait Synchronous[F[_], A] extends MetricStorage[F] with Writeable[F, A]
+
+  trait Asynchronous[F[_], A] extends MetricStorage[F] {
+    def record(measurement: Measurement[A]): F[Unit]
+    def reader: RegisteredReader[F]
+  }
+
+  def synchronous[
+      F[_]: Temporal: Random,
+      A: MeasurementValue: Numeric
+  ](
+      reader: RegisteredReader[F],
+      registeredView: RegisteredView,
+      instrumentDescriptor: InstrumentDescriptor,
+      exemplarFilter: ExemplarFilter,
+      aggregation: Aggregation.HasAggregator
+  ): F[Synchronous[F, A]] =
+    DefaultSynchronous.create(
+      reader,
+      registeredView,
+      instrumentDescriptor,
+      exemplarFilter,
+      aggregation
+    )
+
+  def asynchronous[
+      F[_]: Temporal: Random: Console: AskContext,
+      A: MeasurementValue: Numeric
+  ](
+      reader: RegisteredReader[F],
+      registeredView: RegisteredView,
+      instrumentDescriptor: InstrumentDescriptor,
+      aggregation: Aggregation.HasAggregator
+  ): F[Asynchronous[F, A]] = {
+    DefaultAsynchronous.create(
+      reader,
+      registeredView,
+      instrumentDescriptor,
+      aggregation
+    )
+  }
+
+}

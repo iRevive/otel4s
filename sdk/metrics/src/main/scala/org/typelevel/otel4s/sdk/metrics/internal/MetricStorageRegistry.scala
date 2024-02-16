@@ -20,7 +20,7 @@ import cats.Monad
 import cats.effect.Concurrent
 import cats.effect.Ref
 import cats.syntax.functor._
-import org.typelevel.otel4s.sdk.metrics.storage.MetricStorage
+import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
 
 private[metrics] final class MetricStorageRegistry[F[_]: Monad](
     registry: Ref[F, Map[MetricDescriptor, MetricStorage[F]]]
