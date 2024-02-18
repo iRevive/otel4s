@@ -69,7 +69,8 @@ trait RegisteredView {
 }
 
 object RegisteredView {
-  def apply(selector: InstrumentSelector, view: View): RegisteredView = ???
+  def apply(selector: InstrumentSelector, view: View): RegisteredView =
+    Impl(selector, view, view.attributesProcessor, view.cardinalityLimit)
 
   def apply(
       selector: InstrumentSelector,
