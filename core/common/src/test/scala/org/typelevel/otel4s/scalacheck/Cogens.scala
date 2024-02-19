@@ -45,14 +45,14 @@ trait Cogens {
         Cogen[List[A]].perturb(seed, attr.value.asInstanceOf[List[A]])
 
       val valueCogen: Seed => Seed = attr.key.`type` match {
-        case AttributeType.Boolean     => primitive[Boolean]
-        case AttributeType.Double      => primitive[Double]
-        case AttributeType.String      => primitive[String]
-        case AttributeType.Long        => primitive[Long]
-        case AttributeType.BooleanList => list[Boolean]
-        case AttributeType.DoubleList  => list[Double]
-        case AttributeType.StringList  => list[String]
-        case AttributeType.LongList    => list[Long]
+        case AttributeType.Boolean    => primitive[Boolean]
+        case AttributeType.Double     => primitive[Double]
+        case AttributeType.String     => primitive[String]
+        case AttributeType.Long       => primitive[Long]
+        case AttributeType.BooleanSeq => list[Boolean]
+        case AttributeType.DoubleSeq  => list[Double]
+        case AttributeType.StringSeq  => list[String]
+        case AttributeType.LongSeq    => list[Long]
       }
 
       valueCogen(attributeKeyCogen.perturb(seed, attr.key))

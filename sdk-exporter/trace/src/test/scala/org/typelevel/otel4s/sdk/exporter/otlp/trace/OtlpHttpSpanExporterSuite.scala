@@ -207,11 +207,11 @@ class OtlpHttpSpanExporterSuite
     val adapted = attributes.map { attribute =>
       val name = attribute.key.name
       attribute.key.`type` match {
-        case AttributeType.Double     => Attribute(name, 1.1)
-        case AttributeType.DoubleList => Attribute(name, List(1.1))
-        case AttributeType.Long       => Attribute(name, 1L)
-        case AttributeType.LongList   => Attribute(name, List(1L))
-        case _                        => attribute
+        case AttributeType.Double    => Attribute(name, 1.1)
+        case AttributeType.DoubleSeq => Attribute(name, List(1.1))
+        case AttributeType.Long      => Attribute(name, 1L)
+        case AttributeType.LongSeq   => Attribute(name, List(1L))
+        case _                       => attribute
       }
     }
 
@@ -230,14 +230,14 @@ class OtlpHttpSpanExporterSuite
     }
 
     a.key.`type` match {
-      case AttributeType.Boolean     => primitive[Boolean]("bool")
-      case AttributeType.String      => primitive[String]("string")
-      case AttributeType.Double      => primitive[Double]("float64")
-      case AttributeType.Long        => primitive[Long]("int64")
-      case AttributeType.BooleanList => list[Boolean]
-      case AttributeType.StringList  => list[String]
-      case AttributeType.DoubleList  => list[Double]
-      case AttributeType.LongList    => list[Long]
+      case AttributeType.Boolean    => primitive[Boolean]("bool")
+      case AttributeType.String     => primitive[String]("string")
+      case AttributeType.Double     => primitive[Double]("float64")
+      case AttributeType.Long       => primitive[Long]("int64")
+      case AttributeType.BooleanSeq => list[Boolean]
+      case AttributeType.StringSeq  => list[String]
+      case AttributeType.DoubleSeq  => list[Double]
+      case AttributeType.LongSeq    => list[Long]
     }
   }
 

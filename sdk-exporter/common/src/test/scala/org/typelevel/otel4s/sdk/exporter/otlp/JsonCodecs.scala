@@ -79,27 +79,27 @@ trait JsonCodecs {
       Encoder[String].contramap(_.toString)
 
     attributeType match {
-      case AttributeType.Boolean     => primitive[Boolean]
-      case AttributeType.Double      => primitive[Double]
-      case AttributeType.String      => primitive[String]
-      case AttributeType.Long        => primitive[Long]
-      case AttributeType.BooleanList => list[Boolean](AttributeType.Boolean)
-      case AttributeType.DoubleList  => list[Double](AttributeType.Double)
-      case AttributeType.StringList  => list[String](AttributeType.String)
-      case AttributeType.LongList    => list[Long](AttributeType.Long)
+      case AttributeType.Boolean    => primitive[Boolean]
+      case AttributeType.Double     => primitive[Double]
+      case AttributeType.String     => primitive[String]
+      case AttributeType.Long       => primitive[Long]
+      case AttributeType.BooleanSeq => list[Boolean](AttributeType.Boolean)
+      case AttributeType.DoubleSeq  => list[Double](AttributeType.Double)
+      case AttributeType.StringSeq  => list[String](AttributeType.String)
+      case AttributeType.LongSeq    => list[Long](AttributeType.Long)
     }
   }
 
   private def attributeTypeName(attributeType: AttributeType[_]): String =
     attributeType match {
-      case AttributeType.Boolean     => "boolValue"
-      case AttributeType.Double      => "doubleValue"
-      case AttributeType.String      => "stringValue"
-      case AttributeType.Long        => "intValue"
-      case AttributeType.BooleanList => "arrayValue"
-      case AttributeType.DoubleList  => "arrayValue"
-      case AttributeType.StringList  => "arrayValue"
-      case AttributeType.LongList    => "arrayValue"
+      case AttributeType.Boolean    => "boolValue"
+      case AttributeType.Double     => "doubleValue"
+      case AttributeType.String     => "stringValue"
+      case AttributeType.Long       => "intValue"
+      case AttributeType.BooleanSeq => "arrayValue"
+      case AttributeType.DoubleSeq  => "arrayValue"
+      case AttributeType.StringSeq  => "arrayValue"
+      case AttributeType.LongSeq    => "arrayValue"
     }
 
 }

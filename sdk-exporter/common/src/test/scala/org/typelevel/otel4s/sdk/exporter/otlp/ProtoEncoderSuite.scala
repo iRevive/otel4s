@@ -63,13 +63,13 @@ class ProtoEncoderSuite extends ScalaCheckSuite {
             Json.obj("stringValue" := value.asInstanceOf[String])
           case AttributeType.Long =>
             Json.obj("intValue" := value.asInstanceOf[Long])
-          case AttributeType.BooleanList =>
+          case AttributeType.BooleanSeq =>
             Json.obj("arrayValue" := list[Boolean]("boolValue"))
-          case AttributeType.DoubleList =>
+          case AttributeType.DoubleSeq =>
             Json.obj("arrayValue" := list[Double]("doubleValue"))
-          case AttributeType.StringList =>
+          case AttributeType.StringSeq =>
             Json.obj("arrayValue" := list[String]("stringValue"))
-          case AttributeType.LongList =>
+          case AttributeType.LongSeq =>
             Json.obj("arrayValue" := list[Long]("intValue"))
         }
 

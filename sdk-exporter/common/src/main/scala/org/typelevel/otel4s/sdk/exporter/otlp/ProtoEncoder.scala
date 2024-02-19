@@ -76,14 +76,14 @@ private[otlp] object ProtoEncoder {
     }
 
     val value = att.key.`type` match {
-      case AttributeType.Boolean     => primitive[Boolean](Value.BoolValue(_))
-      case AttributeType.Double      => primitive[Double](Value.DoubleValue(_))
-      case AttributeType.String      => primitive[String](Value.StringValue(_))
-      case AttributeType.Long        => primitive[Long](Value.IntValue(_))
-      case AttributeType.BooleanList => list[Boolean](Value.BoolValue(_))
-      case AttributeType.DoubleList  => list[Double](Value.DoubleValue(_))
-      case AttributeType.StringList  => list[String](Value.StringValue(_))
-      case AttributeType.LongList    => list[Long](Value.IntValue(_))
+      case AttributeType.Boolean    => primitive[Boolean](Value.BoolValue(_))
+      case AttributeType.Double     => primitive[Double](Value.DoubleValue(_))
+      case AttributeType.String     => primitive[String](Value.StringValue(_))
+      case AttributeType.Long       => primitive[Long](Value.IntValue(_))
+      case AttributeType.BooleanSeq => list[Boolean](Value.BoolValue(_))
+      case AttributeType.DoubleSeq  => list[Double](Value.DoubleValue(_))
+      case AttributeType.StringSeq  => list[String](Value.StringValue(_))
+      case AttributeType.LongSeq    => list[Long](Value.IntValue(_))
     }
 
     KeyValue(att.key.name, Some(AnyValue(value)))
