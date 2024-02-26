@@ -30,9 +30,10 @@ import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.internal.Advice
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
-import org.typelevel.otel4s.sdk.metrics.internal.InstrumentType
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentValueType
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
+
+import scala.collection.immutable
 
 private object SdkUpDownCounter {
 
@@ -47,19 +48,19 @@ private object SdkUpDownCounter {
   ) extends UpDownCounter.Backend[F, A] {
     def meta: InstrumentMeta[F] = InstrumentMeta.enabled
 
-    def add(value: A, attributes: Attribute[_]*): F[Unit] =
-      record(cast(value), Attributes.fromSpecific(attributes))
+    def add(value: A, attributes: immutable.Iterable[Attribute[_]]): F[Unit] =
+      record(cast(value), attributes)
 
-    def inc(attributes: Attribute[_]*): F[Unit] =
-      record(Numeric[Primitive].one, Attributes.fromSpecific(attributes))
+    def inc(attributes: immutable.Iterable[Attribute[_]]): F[Unit] =
+      record(Numeric[Primitive].one, attributes)
 
-    def dec(attributes: Attribute[_]*): F[Unit] =
-      record(
-        Numeric[Primitive].negate(Numeric[Primitive].one),
-        Attributes.fromSpecific(attributes)
-      )
+    def dec(attributes: immutable.Iterable[Attribute[_]]): F[Unit] =
+      record(Numeric[Primitive].negate(Numeric[Primitive].one), attributes)
 
-    private def record(value: Primitive, attributes: Attributes): F[Unit] = {
+    private def record(
+        value: Primitive,
+        attributes: immutable.Iterable[Attribute[_]]
+    ): F[Unit] = {
       if (Numeric[Primitive].lt(value, Numeric[Primitive].zero)) {
         Console[F].println(
           s"Counters can only increase. Instrument $name has tried to record a negative value."
@@ -67,7 +68,7 @@ private object SdkUpDownCounter {
       } else {
         for {
           ctx <- Ask[F, Context].ask
-          _ <- storage.record(value, attributes, ctx)
+          _ <- storage.record(value, attributes.to(Attributes), ctx)
         } yield ()
       }
     }

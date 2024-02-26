@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics.exporter
+package org.typelevel.otel4s.sdk.metrics
+package exporter
 
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
-import org.typelevel.otel4s.sdk.metrics.internal.InstrumentType
 
 trait MetricReader[F[_]] {
   def defaultAggregationSelector: DefaultAggregationSelector

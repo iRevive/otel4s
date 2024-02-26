@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics.exporter
+package org.typelevel.otel4s.sdk.metrics
+package exporter
 
 import cats.effect.Concurrent
 import cats.effect.Fiber
@@ -31,7 +32,6 @@ import cats.syntax.flatMap._
 import cats.syntax.functor._
 import org.typelevel.otel4s.sdk.metrics.Aggregation
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
-import org.typelevel.otel4s.sdk.metrics.internal.InstrumentType
 
 import scala.concurrent.duration.FiniteDuration
 

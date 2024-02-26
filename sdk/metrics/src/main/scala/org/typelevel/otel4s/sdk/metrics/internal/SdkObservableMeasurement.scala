@@ -55,8 +55,7 @@ private[metrics] final class SdkObservableMeasurement[F[_]: Monad, A](
         Monad[F].unit // todo: log warning
 
       case State.WithReader(reader, start, collect) =>
-        val attrs = Attributes.fromSpecific(attributes)
-        val measurement = Measurement(start, collect, attrs, value)
+        val measurement = Measurement(start, collect, attributes, value)
 
         storages.traverse_ { storage =>
           storage.record(measurement).whenA(storage.reader == reader)

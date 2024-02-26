@@ -45,7 +45,6 @@ import org.typelevel.otel4s.sdk.metrics.exporter.MetricProducer
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricReader
 import org.typelevel.otel4s.sdk.metrics.internal.AttributesProcessor
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
-import org.typelevel.otel4s.sdk.metrics.internal.InstrumentType
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.FiniteDuration
@@ -134,7 +133,7 @@ object ViewRegistry {
   ): ViewRegistry = {
     val defaultViews = InstrumentType.values.map { tpe =>
       tpe -> RegisteredView(
-        InstrumentSelector.builder.withName("*").build,
+        InstrumentSelector.builder.withInstrumentName("*").build,
         View.builder.withAggregation(defaultAggregationSelector.get(tpe)).build,
         AttributesProcessor.noop,
         cardinalityLimitSelector.limit(tpe)
@@ -205,156 +204,9 @@ object ExemplarFilter {
       false
   }
 }
-sealed trait InstrumentSelector {
-  def instrumentType: Option[InstrumentType]
-  def instrumentName: Option[String]
-  def instrumentUnit: Option[String]
-  def meterName: Option[String]
-  def meterVersion: Option[String]
-  def meterSchemaUrl: Option[String]
-}
 
-object InstrumentSelector {
 
-  sealed trait Builder {
-    def withType(tpe: InstrumentType): Builder
-    def withName(name: String): Builder
-    def withUnit(unit: String): Builder
-    def withMeterName(name: String): Builder
-    def withMeterVersion(version: String): Builder
-    def withMeterSchemaUrl(schemaUrl: String): Builder
-    def build: InstrumentSelector
-  }
 
-  def builder: Builder =
-    BuilderImpl()
-
-  private final case class BuilderImpl(
-      instrumentType: Option[InstrumentType] = None,
-      instrumentName: Option[String] = None,
-      instrumentUnit: Option[String] = None,
-      meterName: Option[String] = None,
-      meterVersion: Option[String] = None,
-      meterSchemaUrl: Option[String] = None
-  ) extends Builder
-      with InstrumentSelector {
-
-    def withType(tpe: InstrumentType): Builder =
-      copy(instrumentType = Some(tpe))
-
-    def withName(name: String): Builder =
-      copy(instrumentName = Some(name))
-
-    def withUnit(unit: String): Builder =
-      copy(instrumentUnit = Some(unit))
-
-    def withMeterName(name: String): Builder =
-      copy(meterName = Some(name))
-
-    def withMeterVersion(version: String): Builder =
-      copy(meterVersion = Some(version))
-
-    def withMeterSchemaUrl(schemaUrl: String): Builder =
-      copy(meterSchemaUrl = Some(schemaUrl))
-
-    def build: InstrumentSelector = {
-      require(
-        instrumentType.isDefined || instrumentName.isDefined ||
-          instrumentUnit.isDefined || meterName.isDefined ||
-          meterVersion.isDefined || meterSchemaUrl.isDefined,
-        "at least one criteria must be defined"
-      )
-
-      this
-    }
-  }
-
-}
-
-sealed trait View {
-  def name: Option[String]
-  def description: Option[String]
-  def aggregation: Aggregation
-  def attributesProcessor: AttributesProcessor
-  def cardinalityLimit: Int
-}
-
-object View {
-
-  sealed trait Builder {
-    def withName(name: String): Builder
-    def withDescription(description: String): Builder
-    def withAggregation(aggregation: Aggregation): Builder
-    def withAttributeFilter(retain: Set[String]): Builder
-    def withAttributeFilter(filter: String => Boolean): Builder
-    def withCardinalityLimit(limit: Int): Builder
-    def addAttributesProcessor(processor: AttributesProcessor): Builder
-    def build: View
-  }
-
-  def builder: Builder =
-    BuilderImpl()
-
-  private final case class ViewImpl(
-      name: Option[String],
-      description: Option[String],
-      aggregation: Aggregation,
-      attributesProcessor: AttributesProcessor,
-      cardinalityLimit: Int
-  ) extends View
-
-  private final case class BuilderImpl(
-      name: Option[String] = None,
-      description: Option[String] = None,
-      aggregation: Option[Aggregation] = None,
-      cardinalityLimit: Option[Int] = None,
-      attributesProcessors: List[AttributesProcessor] = Nil
-  ) extends Builder {
-
-    def withName(name: String): Builder = copy(name = Some(name))
-
-    def withDescription(description: String): Builder =
-      copy(description = Some(description))
-
-    def withAggregation(aggregation: Aggregation): Builder =
-      copy(aggregation = Some(aggregation))
-
-    def withAttributeFilter(retain: Set[String]): Builder =
-      copy(attributesProcessors =
-        List(AttributesProcessor.filterByKeyName(retain.contains))
-      )
-
-    def withAttributeFilter(filter: String => Boolean): Builder =
-      copy(attributesProcessors =
-        List(AttributesProcessor.filterByKeyName(filter))
-      )
-
-    def withCardinalityLimit(limit: Int): Builder =
-      copy(cardinalityLimit = Some(limit))
-
-    def addAttributesProcessor(processor: AttributesProcessor): Builder =
-      copy(attributesProcessors = attributesProcessors :+ processor)
-
-    def build: View = {
-      val attributesProcessor =
-        new AttributesProcessor {
-          def process(incoming: Attributes, context: Context): Attributes =
-            attributesProcessors.foldLeft(incoming) { (attrs, processor) =>
-              processor.process(attrs, context)
-            }
-        }
-
-      ViewImpl(
-        name,
-        description,
-        aggregation.getOrElse(Aggregation.default),
-        attributesProcessor,
-        cardinalityLimit.getOrElse(2000)
-      )
-    }
-  }
-
-}
 
 trait CardinalityLimitSelector {
   def limit(instrumentType: InstrumentType): Int

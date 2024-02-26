@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics.exporter
-
-import org.typelevel.otel4s.sdk.metrics.Aggregation
-import org.typelevel.otel4s.sdk.metrics.internal.InstrumentType
+package org.typelevel.otel4s.sdk.metrics
+package exporter
 
 trait DefaultAggregationSelector {
   def get(instrumentType: InstrumentType): Aggregation

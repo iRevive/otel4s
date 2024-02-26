@@ -32,10 +32,10 @@ import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.internal.Advice
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
-import org.typelevel.otel4s.sdk.metrics.internal.InstrumentType
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentValueType
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
 
+import scala.collection.immutable
 import scala.concurrent.duration.TimeUnit
 
 private object SdkHistogram {
@@ -52,12 +52,12 @@ private object SdkHistogram {
   ) extends Histogram.Backend[F, A] {
     def meta: Histogram.Meta[F] = Histogram.Meta.enabled
 
-    def record(value: A, attributes: Attribute[_]*): F[Unit] =
+    def record(value: A, attributes: immutable.Iterable[Attribute[_]]): F[Unit] =
       doRecord(cast(value), Attributes.fromSpecific(attributes))
 
     def recordDuration(
         timeUnit: TimeUnit,
-        attributes: Attribute[_]*
+        attributes: immutable.Iterable[Attribute[_]]
     ): Resource[F, Unit] =
       Resource
         .makeCase(Clock[F].monotonic) { case (start, ec) =>

@@ -32,10 +32,10 @@ import org.http4s.Uri
 import org.http4s.headers.`User-Agent`
 import org.http4s.syntax.literals._
 import org.typelevel.otel4s.sdk.BuildInfo
+import org.typelevel.otel4s.sdk.metrics.InstrumentType
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricExporter
-import org.typelevel.otel4s.sdk.metrics.internal.InstrumentType
 
 import scala.concurrent.duration._
 

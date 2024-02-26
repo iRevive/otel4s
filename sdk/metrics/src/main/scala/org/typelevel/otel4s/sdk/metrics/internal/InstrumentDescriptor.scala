@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics.internal
+package org.typelevel.otel4s.sdk.metrics
+package internal
 
 import org.typelevel.otel4s.metrics.BucketBoundaries
 import org.typelevel.otel4s.metrics.MeasurementValue
@@ -52,25 +53,7 @@ object InstrumentDescriptor {
 
 }
 
-sealed trait InstrumentType extends Product with Serializable
-object InstrumentType {
 
-  case object Counter extends InstrumentType
-  case object UpDownCounter extends InstrumentType
-  case object Histogram extends InstrumentType
-  case object ObservableCounter extends InstrumentType
-  case object ObservableUpDownCounter extends InstrumentType
-  case object ObservableGauge extends InstrumentType
-
-  val values: Set[InstrumentType] = Set(
-    Counter,
-    UpDownCounter,
-    Histogram,
-    ObservableCounter,
-    ObservableUpDownCounter,
-    ObservableGauge
-  )
-}
 
 sealed trait InstrumentValueType
 object InstrumentValueType {

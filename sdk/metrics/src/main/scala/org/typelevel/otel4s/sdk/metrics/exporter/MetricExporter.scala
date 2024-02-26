@@ -17,9 +17,9 @@
 package org.typelevel.otel4s.sdk.metrics.exporter
 
 import cats.Foldable
+import org.typelevel.otel4s.sdk.metrics.InstrumentType
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
-import org.typelevel.otel4s.sdk.metrics.internal.InstrumentType
 
 trait MetricExporter[F[_]] {
   def aggregationTemporality(
