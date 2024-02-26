@@ -30,6 +30,7 @@ import org.typelevel.otel4s.metrics.ObservableUpDownCounter
 import org.typelevel.otel4s.metrics.UpDownCounter
 import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
+import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 
 import scala.concurrent.duration.FiniteDuration
 

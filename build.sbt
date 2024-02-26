@@ -15,8 +15,6 @@ ThisBuild / tlSonatypeUseLegacyHost := false
 // publish website from this branch
 ThisBuild / tlSitePublishBranch := Some("main")
 
-resolvers ++= Resolver.sonatypeOssRepos("snapshots")
-
 lazy val scalafixSettings = Seq(
   semanticdbOptions ++= Seq("-P:semanticdb:synthetics:on").filter(_ =>
     !tlIsScala3.value

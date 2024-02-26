@@ -26,7 +26,7 @@ import cats.syntax.functor._
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.metrics.ObservableMeasurement
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
-import org.typelevel.otel4s.sdk.metrics.RegisteredReader
+import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
 
 import scala.concurrent.duration.FiniteDuration

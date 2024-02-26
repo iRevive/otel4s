@@ -16,9 +16,17 @@
 
 package org.typelevel.otel4s.sdk.metrics.data
 
+/** The time period over which the measurements are aggregated.
+  */
 sealed trait AggregationTemporality
 
 object AggregationTemporality {
+
+  /** Measurements are aggregated since the previous collection.
+    */
   case object Delta extends AggregationTemporality
+
+  /** Measurements are aggregated over the lifetime of the instrument.
+    */
   case object Cumulative extends AggregationTemporality
 }

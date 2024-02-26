@@ -52,7 +52,10 @@ private object SdkHistogram {
   ) extends Histogram.Backend[F, A] {
     def meta: Histogram.Meta[F] = Histogram.Meta.enabled
 
-    def record(value: A, attributes: immutable.Iterable[Attribute[_]]): F[Unit] =
+    def record(
+        value: A,
+        attributes: immutable.Iterable[Attribute[_]]
+    ): F[Unit] =
       doRecord(cast(value), Attributes.fromSpecific(attributes))
 
     def recordDuration(

@@ -16,10 +16,11 @@
 
 package org.typelevel.otel4s.sdk.metrics
 
-import cats.{Hash, Show}
+import cats.Hash
+import cats.Show
 
 /** Instrument selection criteria for applying [[View]]s registered via
-  * [[SdkMeterProvider.Builder.registerView()]].
+  * [[SdkMeterProvider.Builder.registerView]].
   *
   * The predicate is built by the logical conjunction of the present properties.
   */
@@ -83,7 +84,7 @@ sealed trait InstrumentSelector {
 
 object InstrumentSelector {
 
-  /** A builder of [[InstrumentSelector]].
+  /** A builder of an [[InstrumentSelector]].
     */
   sealed trait Builder {
 
@@ -135,7 +136,7 @@ object InstrumentSelector {
     def build: InstrumentSelector
   }
 
-  /** Returns an empty [[Builder]] of [[InstrumentSelector]].
+  /** Returns an empty [[Builder]] of an [[InstrumentSelector]].
     */
   def builder: Builder =
     BuilderImpl()
@@ -164,7 +165,7 @@ object InstrumentSelector {
         prop(_.meterName, "meterName"),
         prop(_.meterVersion, "meterVersion"),
         prop(_.meterSchemaUrl, "meterSchemaUrl"),
-      ).mkString("InstrumentSelector", ", ", "}")
+      ).mkString("InstrumentSelector{", ", ", "}")
     }
   }
 

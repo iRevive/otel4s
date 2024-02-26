@@ -16,10 +16,13 @@
 
 package org.typelevel.otel4s.sdk.metrics.internal
 
+import cats.Hash
 import cats.Semigroup
+import cats.Show
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.sdk.context.Context
 
+// todo: consider moving outside of the 'internal' package
 /** The AttributesProcessor is used to define the actual set of attributes that
   * will be used in a metric.
   */
@@ -44,11 +47,18 @@ object AttributesProcessor {
         attributes
     }
 
+  // todo: use case class to have proper hashcode
   def filterByKeyName(keepWhen: String => Boolean): AttributesProcessor =
     new AttributesProcessor {
       def process(attributes: Attributes, context: Context): Attributes =
         attributes.filter(attribute => keepWhen(attribute.key.name))
     }
+
+  implicit val attributesProcessorHash: Hash[AttributesProcessor] =
+    Hash.fromUniversalHashCode
+
+  implicit val attributesProcessorShow: Show[AttributesProcessor] =
+    Show.fromToString
 
   implicit val attributesProcessorSemigroup: Semigroup[AttributesProcessor] =
     new Semigroup[AttributesProcessor] {

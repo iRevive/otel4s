@@ -17,11 +17,8 @@
 package org.typelevel.otel4s.sdk.metrics
 
 import cats.Applicative
-import cats.Functor
 import cats.Monad
 import cats.effect.Clock
-import cats.effect.Concurrent
-import cats.effect.Ref
 import cats.effect.Temporal
 import cats.effect.std.Console
 import cats.effect.std.Random
@@ -29,204 +26,56 @@ import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.functor._
 import cats.syntax.traverse._
-import org.typelevel.otel4s.Attributes
-import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.metrics.MeterBuilder
 import org.typelevel.otel4s.metrics.MeterProvider
 import org.typelevel.otel4s.sdk.TelemetryResource
-import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.AskContext
-import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.internal.ComponentRegistry
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.exporter.CollectionRegistration
-import org.typelevel.otel4s.sdk.metrics.exporter.DefaultAggregationSelector
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricProducer
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricReader
-import org.typelevel.otel4s.sdk.metrics.internal.AttributesProcessor
-import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
+import org.typelevel.otel4s.sdk.metrics.internal.view.RegisteredView
+import org.typelevel.otel4s.sdk.metrics.internal.view.ViewRegistry
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.duration.FiniteDuration
-
-private final class SdkMeterProvider[F[_]: Functor](
+private final class SdkMeterProvider[F[_]: Applicative](
     componentRegistry: ComponentRegistry[F, SdkMeter[F]],
+    resource: TelemetryResource,
     views: Vector[RegisteredView],
     readers: Vector[RegisteredReader[F]],
     producers: Vector[MetricProducer[F]]
 ) extends MeterProvider[F] {
+  import SdkMeterProvider.DefaultMeterName
 
   def meter(name: String): MeterBuilder[F] =
-    SdkMeterBuilder(componentRegistry, name)
-}
-
-trait RegisteredView {
-  def selector: InstrumentSelector
-  def view: View
-  def viewAttributesProcessor: AttributesProcessor
-  def cardinalityLimit: Int
-}
-
-object RegisteredView {
-  def apply(selector: InstrumentSelector, view: View): RegisteredView =
-    Impl(selector, view, view.attributesProcessor, view.cardinalityLimit)
-
-  def apply(
-      selector: InstrumentSelector,
-      view: View,
-      attributesProcessor: AttributesProcessor,
-      cardinalityLimit: Int
-  ): RegisteredView =
-    Impl(selector, view, attributesProcessor, cardinalityLimit)
-
-  private final case class Impl(
-      selector: InstrumentSelector,
-      view: View,
-      viewAttributesProcessor: AttributesProcessor,
-      cardinalityLimit: Int
-  ) extends RegisteredView
-
-}
-
-trait RegisteredReader[F[_]] {
-  def reader: MetricReader[F]
-  def viewRegistry: ViewRegistry
-  def getLastCollectTimestamp: F[FiniteDuration]
-  def setLastCollectTimestamp(timestamp: FiniteDuration): F[Unit]
-}
-
-object RegisteredReader {
-  def create[F[_]: Concurrent](
-      reader: MetricReader[F],
-      viewRegistry: ViewRegistry
-  ): F[RegisteredReader[F]] =
-    Concurrent[F].ref(Duration.Zero).map { ref =>
-      new Impl(ref, reader, viewRegistry)
+    if (readers.isEmpty) {
+      MeterBuilder.noop[F]
+    } else {
+      val meterName = if (name.trim.isEmpty) DefaultMeterName else name
+      SdkMeterBuilder(componentRegistry, meterName)
     }
 
-  private final class Impl[F[_]](
-      lastCollectTimestamp: Ref[F, FiniteDuration],
-      val reader: MetricReader[F],
-      val viewRegistry: ViewRegistry
-  ) extends RegisteredReader[F] {
-
-    def getLastCollectTimestamp: F[FiniteDuration] =
-      lastCollectTimestamp.get
-
-    def setLastCollectTimestamp(timestamp: FiniteDuration): F[Unit] =
-      lastCollectTimestamp.set(timestamp)
-  }
-}
-
-trait ViewRegistry {
-  def findViews(
-      descriptor: InstrumentDescriptor,
-      scope: InstrumentationScope
-  ): Vector[RegisteredView]
-}
-
-object ViewRegistry {
-  def apply(
-      defaultAggregationSelector: DefaultAggregationSelector,
-      cardinalityLimitSelector: CardinalityLimitSelector,
-      registeredViews: Vector[RegisteredView]
-  ): ViewRegistry = {
-    val defaultViews = InstrumentType.values.map { tpe =>
-      tpe -> RegisteredView(
-        InstrumentSelector.builder.withInstrumentName("*").build,
-        View.builder.withAggregation(defaultAggregationSelector.get(tpe)).build,
-        AttributesProcessor.noop,
-        cardinalityLimitSelector.limit(tpe)
-      )
-    }
-
-    new Impl(defaultViews.toMap, registeredViews)
-  }
-
-  private final class Impl(
-      defaultViews: Map[InstrumentType, RegisteredView],
-      registeredViews: Vector[RegisteredView]
-  ) extends ViewRegistry {
-    def findViews(
-        descriptor: InstrumentDescriptor,
-        scope: InstrumentationScope
-    ): Vector[RegisteredView] = {
-      val result = registeredViews.filter { entry =>
-        matchesSelector(entry.selector, descriptor, scope) &&
-        entry.view.aggregation.compatibleWith(descriptor.instrumentType)
-      }
-
-      if (result.nonEmpty) {
-        result
-      } else {
-        val defaultView = defaultViews(descriptor.instrumentType)
-        // val aggregation = defaultView.view.aggregation
-
-        // todo  if (!aggregation.compatibleWith(descriptor))
-        // todo: applyAdviceToDefaultAttribute
-        // descriptor.advice.h
-        Vector(defaultView)
-      }
-    }
-
-    private def matchesSelector(
-        selector: InstrumentSelector,
-        descriptor: InstrumentDescriptor,
-        scope: InstrumentationScope
-    ): Boolean = ???
-  }
-}
-
-trait ExemplarFilter {
-  def shouldSample[A: MeasurementValue](
-      value: A,
-      attributes: Attributes,
-      context: Context
-  ): Boolean
-}
-
-object ExemplarFilter {
-  def traceBased: ExemplarFilter = new ExemplarFilter {
-    def shouldSample[A: MeasurementValue](
-        value: A,
-        attributes: Attributes,
-        context: Context
-    ): Boolean =
-      true
-  }
-
-  def alwaysOff: ExemplarFilter = new ExemplarFilter {
-    def shouldSample[A: MeasurementValue](
-        value: A,
-        attributes: Attributes,
-        context: Context
-    ): Boolean =
-      false
-  }
-}
-
-
-
-
-trait CardinalityLimitSelector {
-  def limit(instrumentType: InstrumentType): Int
-}
-
-object CardinalityLimitSelector {
-  private object Default extends CardinalityLimitSelector {
-    def limit(instrumentType: InstrumentType): Int = 2000
-  }
-
-  def default: CardinalityLimitSelector = Default
+  override def toString: String =
+    "SdkMeterProvider{" +
+      s"resource=$resource, " +
+      s"metricsReads=${readers.map(_.reader).mkString("[", ", ", "]")} " +
+      s"metricsProducers=${producers.mkString("[", ", ", "]")} " +
+      s"views=${views.mkString("[", ", ", "]")}" +
+      "}"
 
 }
 
 object SdkMeterProvider {
 
+  private val DefaultMeterName = "unknown"
+
+  /** Builder for [[org.typelevel.otel4s.metrics.MeterProvider MeterProvider]].
+    */
   sealed trait Builder[F[_]] {
 
-    /** Sets a [[TelemetryResource]] to be attached to all spans created by
-      * [[org.typelevel.otel4s.trace.Tracer Tracer]].
+    /** Sets a [[TelemetryResource]] to be attached to all metrics created by
+      * [[org.typelevel.otel4s.metrics.Meter Meter]].
       *
       * @note
       *   on multiple subsequent calls, the resource from the last call will be
@@ -251,19 +100,59 @@ object SdkMeterProvider {
       */
     def addResource(resource: TelemetryResource): Builder[F]
 
+    /** Sets an [[ExemplarFilter]] to be used by all metrics.
+      *
+      * @param filter
+      *   the [[ExemplarFilter]] to register
+      */
     def withExemplarFilter(filter: ExemplarFilter): Builder[F]
 
+    /** Registers a [[View]] for the given [[InstrumentSelector]].
+      *
+      * [[View]] affects aggregation and export of the instruments that match
+      * the given `selector`.
+      *
+      * @param selector
+      *   the [[InstrumentSelector]] to filter instruments with
+      *
+      * @param view
+      *   the [[View]] to register
+      */
     def registerView(selector: InstrumentSelector, view: View): Builder[F]
+
+    /** Registers a
+      * [[org.typelevel.otel4s.sdk.metrics.exporter.MetricReader MetricReader]].
+      *
+      * @param reader
+      *   the
+      *   [[org.typelevel.otel4s.sdk.metrics.exporter.MetricReader MetricReader]]
+      *   to register
+      */
     def registerMetricReader(reader: MetricReader[F]): Builder[F]
+
     def registerMetricReader(
         reader: MetricReader[F],
         selector: CardinalityLimitSelector
     ): Builder[F]
+
+    /** Registers a
+      * [[org.typelevel.otel4s.sdk.metrics.exporter.MetricProducer MetricProducer]].
+      *
+      * @param producer
+      *   the
+      *   [[org.typelevel.otel4s.sdk.metrics.exporter.MetricProducer MetricProducer]]
+      *   to register
+      */
     def registerMetricProducer(producer: MetricProducer[F]): Builder[F]
 
+    /** Creates [[org.typelevel.otel4s.metrics.MeterProvider MeterProvider]]
+      * with the configuration of this builder.
+      */
     def build: F[MeterProvider[F]]
   }
 
+  /** Creates a new [[Builder]] with default configuration.
+    */
   def builder[F[_]: Temporal: Random: Console: AskContext]: Builder[F] =
     BuilderImpl(
       resource = TelemetryResource.default,
@@ -293,7 +182,9 @@ object SdkMeterProvider {
       copy(exemplarFilter = filter)
 
     def registerView(selector: InstrumentSelector, view: View): Builder[F] =
-      copy(registeredViews = registeredViews :+ RegisteredView(selector, view))
+      copy(registeredViews =
+        registeredViews :+ internal.view.RegisteredView(selector, view)
+      )
 
     def registerMetricReader(reader: MetricReader[F]): Builder[F] =
       copy(metricReaders =
@@ -356,6 +247,7 @@ object SdkMeterProvider {
                     .map { _ =>
                       new SdkMeterProvider(
                         registry,
+                        resource,
                         registeredViews,
                         readers,
                         metricProducers

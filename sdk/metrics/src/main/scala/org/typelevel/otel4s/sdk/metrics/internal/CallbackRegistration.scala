@@ -22,7 +22,7 @@ import cats.effect.syntax.monadCancel._
 import cats.syntax.applicative._
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
-import org.typelevel.otel4s.sdk.metrics.RegisteredReader
+import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 
 import scala.concurrent.duration.FiniteDuration
 

@@ -54,7 +54,10 @@ private object SdkCounter {
     def inc(attributes: immutable.Iterable[Attribute[_]]): F[Unit] =
       record(Numeric[Primitive].one, attributes)
 
-    private def record(value: Primitive, attributes: immutable.Iterable[Attribute[_]]): F[Unit] =
+    private def record(
+        value: Primitive,
+        attributes: immutable.Iterable[Attribute[_]]
+    ): F[Unit] =
       if (Numeric[Primitive].lt(value, Numeric[Primitive].zero)) {
         Console[F].println(
           s"Counters can only increase. Instrument $name has tried to record a negative value."

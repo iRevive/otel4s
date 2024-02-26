@@ -33,8 +33,6 @@ import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.Aggregation
 import org.typelevel.otel4s.sdk.metrics.ExemplarFilter
-import org.typelevel.otel4s.sdk.metrics.RegisteredReader
-import org.typelevel.otel4s.sdk.metrics.RegisteredView
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.internal.AttributesProcessor
@@ -42,7 +40,9 @@ import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.Measurement
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.aggregation.Aggregator
+import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage.Asynchronous
+import org.typelevel.otel4s.sdk.metrics.internal.view.RegisteredView
 
 import scala.concurrent.duration.FiniteDuration
 

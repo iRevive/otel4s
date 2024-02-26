@@ -13,3 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+package org.typelevel.otel4s.sdk.metrics.internal
+
+import org.typelevel.otel4s.metrics.BucketBoundaries
+
+sealed trait Advice {
+  def explicitBoundaries: Option[BucketBoundaries]
+}
+
+object Advice {
+  def empty: Advice = new Advice {
+    def explicitBoundaries: Option[BucketBoundaries] = None
+  }
+
+  def apply(bucketBoundaries: Option[BucketBoundaries]): Advice =
+    new Advice {
+      def explicitBoundaries: Option[BucketBoundaries] = bucketBoundaries
+    }
+}

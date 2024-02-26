@@ -13,3 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+package org.typelevel.otel4s.sdk.metrics.internal
+
+import org.typelevel.otel4s.metrics.MeasurementValue
+
+sealed trait InstrumentValueType
+
+object InstrumentValueType {
+  case object LongValue extends InstrumentValueType
+  case object DoubleValue extends InstrumentValueType
+
+  def of[A: MeasurementValue]: InstrumentValueType =
+    MeasurementValue[A] match {
+      case MeasurementValue.LongMeasurementValue(_)   => LongValue
+      case MeasurementValue.DoubleMeasurementValue(_) => DoubleValue
+    }
+}

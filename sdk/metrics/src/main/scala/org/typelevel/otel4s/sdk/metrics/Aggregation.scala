@@ -16,8 +16,16 @@
 
 package org.typelevel.otel4s.sdk.metrics
 
+import cats.Hash
+import cats.Show
+import cats.syntax.show._
 import org.typelevel.otel4s.metrics.BucketBoundaries
 
+/** The aggregation strategy for measurements.
+  *
+  * @param supportedInstruments
+  *   the set of supported instruments
+  */
 sealed abstract class Aggregation(
     supportedInstruments: Set[InstrumentType]
 ) {
@@ -27,13 +35,115 @@ sealed abstract class Aggregation(
 
 object Aggregation {
 
+  /** Drops all measurements and doesn't export any metric.
+    */
   def drop: Aggregation = Drop
 
+  /** Chooses an aggregator based on the [[InstrumentType]]:
+    *   - counter - [[sum]]
+    *   - up down counter - [[sum]]
+    *   - observable counter - [[sum]]
+    *   - observable up down counter - [[sum]]
+    *   - histogram - `explicitBucketHistogram`
+    *   - observable gauge - [[lastValue]]
+    */
   def default: Aggregation = Default
 
+  /** Aggregates measurements into
+    * [[org.typelevel.otel4s.sdk.metrics.data.MetricDataType.Sum MetricDataType.Sum]].
+    *
+    * Compatible instruments:
+    *   - [[org.typelevel.otel4s.metrics.Counter Counter]]
+    *   - [[org.typelevel.otel4s.metrics.UpDownCounter UpDownCounter]]
+    *   - [[org.typelevel.otel4s.metrics.Histogram Histogram]]
+    *   - [[org.typelevel.otel4s.metrics.ObservableGauge ObservableGauge]]
+    *   - [[org.typelevel.otel4s.metrics.ObservableCounter ObservableCounter]]
+    */
   def sum: Aggregation = Sum
 
+  /** Aggregates measurements into
+    * [[org.typelevel.otel4s.sdk.metrics.data.MetricDataType.Gauge MetricDataType.Gauge]]
+    * using the last seen measurement.
+    *
+    * Compatible instruments:
+    *   - [[org.typelevel.otel4s.metrics.ObservableGauge ObservableGauge]]
+    */
   def lastValue: Aggregation = LastValue
+
+  /** Aggregates measurements into an explicit bucket
+    * [[org.typelevel.otel4s.sdk.metrics.data.MetricDataType.Histogram MetricDataType.Histogram]]
+    * using the default bucket boundaries.
+    *
+    * Compatible instruments:
+    *   - [[org.typelevel.otel4s.metrics.Counter Counter]]
+    *   - [[org.typelevel.otel4s.metrics.Histogram Histogram]]
+    *
+    * @see
+    *   [[org.typelevel.otel4s.metrics.BucketBoundaries.default]] - default
+    *   bucket boundaries
+    */
+  def explicitBucketHistogram: Aggregation =
+    ExplicitBucketHistogram(BucketBoundaries.default)
+
+  /** Aggregates measurements into an explicit bucket
+    * [[org.typelevel.otel4s.sdk.metrics.data.MetricDataType.Histogram MetricDataType.Histogram]]
+    * using the given bucket boundaries.
+    *
+    * Compatible instruments:
+    *   - [[org.typelevel.otel4s.metrics.Counter Counter]]
+    *   - [[org.typelevel.otel4s.metrics.Histogram Histogram]]
+    *
+    * @param boundaries
+    *   the boundaries to use
+    */
+  def explicitBucketHistogram(boundaries: BucketBoundaries): Aggregation =
+    ExplicitBucketHistogram(boundaries)
+
+  /** Aggregates measurements into a base-2
+    * [[org.typelevel.otel4s.sdk.metrics.data.MetricDataType.ExponentialHistogram MetricDataType.ExponentialHistogram]]
+    * using the default `maxBuckets` and `maxScale`.
+    *
+    * Compatible instruments:
+    *   - [[org.typelevel.otel4s.metrics.Counter Counter]]
+    *   - [[org.typelevel.otel4s.metrics.Histogram Histogram]]
+    */
+  def base2ExponentialBucketHistogram: Aggregation =
+    Base2ExponentialHistogram(160, 20) // todo: use const variables
+
+  /** Aggregates measurements into a base-2
+    * [[org.typelevel.otel4s.sdk.metrics.data.MetricDataType.ExponentialHistogram MetricDataType.ExponentialHistogram]]
+    * using the given `maxBuckets` and `maxScale`.
+    *
+    * Compatible instruments:
+    *   - [[org.typelevel.otel4s.metrics.Counter Counter]]
+    *   - [[org.typelevel.otel4s.metrics.Histogram Histogram]]
+    *
+    * @param maxBuckets
+    *   the max number of positive and negative buckets
+    *
+    * @param maxScale
+    *   the maximum and initial scale
+    */
+  def base2ExponentialBucketHistogram(
+      maxBuckets: Int,
+      maxScale: Int
+  ): Aggregation =
+    Base2ExponentialHistogram(maxBuckets, maxScale)
+
+  implicit val aggregationHash: Hash[Aggregation] =
+    Hash.fromUniversalHashCode
+
+  implicit val aggregationShow: Show[Aggregation] =
+    Show.show {
+      case Drop      => "Aggregation.Drop"
+      case Default   => "Aggregation.Default"
+      case Sum       => "Aggregation.Sum"
+      case LastValue => "Aggregation.LastValue"
+      case ExplicitBucketHistogram(boundaries) =>
+        show"Aggregation.ExplicitBucketHistogram{boundaries=$boundaries}"
+      case Base2ExponentialHistogram(maxBuckets, maxScale) =>
+        show"Aggregation.Base2ExponentialHistogram{maxBuckets=$maxBuckets, maxScale=$maxScale}"
+    }
 
   private[metrics] sealed trait HasAggregator
 

@@ -16,7 +16,15 @@
 
 package org.typelevel.otel4s.sdk.metrics.data
 
+/** A collection of metric data points.
+  *
+  * @param tpe
+  *   the type of the metric data
+  */
 sealed abstract class Data(val tpe: MetricDataType) {
+
+  /** The collection of the metric [[PointData]]s.
+    */
   def points: Vector[PointData]
 }
 

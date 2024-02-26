@@ -16,7 +16,8 @@
 
 package org.typelevel.otel4s.sdk.metrics
 
-import cats.{Hash, Show}
+import cats.Hash
+import cats.Show
 
 sealed trait InstrumentType extends Product with Serializable
 

@@ -13,3 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+package org.typelevel.otel4s.sdk.metrics
+
+trait CardinalityLimitSelector {
+  def limit(instrumentType: InstrumentType): Int
+}
+
+object CardinalityLimitSelector {
+  private object Default extends CardinalityLimitSelector {
+    def limit(instrumentType: InstrumentType): Int = 2000
+  }
+
+  def default: CardinalityLimitSelector = Default
+
+}
