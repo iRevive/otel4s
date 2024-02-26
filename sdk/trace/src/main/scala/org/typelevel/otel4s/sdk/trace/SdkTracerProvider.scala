@@ -29,6 +29,7 @@ import org.typelevel.otel4s.sdk.context.LocalContext
 import org.typelevel.otel4s.sdk.trace.processor.SpanProcessor
 import org.typelevel.otel4s.sdk.trace.processor.SpanStorage
 import org.typelevel.otel4s.sdk.trace.samplers.Sampler
+import org.typelevel.otel4s.trace.TraceScope
 import org.typelevel.otel4s.trace.TracerBuilder
 import org.typelevel.otel4s.trace.TracerProvider
 
@@ -38,7 +39,7 @@ private class SdkTracerProvider[F[_]: Temporal: Parallel: Console](
     sampler: Sampler,
     propagators: ContextPropagators[Context],
     spanProcessors: List[SpanProcessor[F]],
-    traceScope: SdkTraceScope[F],
+    traceScope: TraceScope[F, Context],
     storage: SpanStorage[F]
 ) extends TracerProvider[F] {
 
@@ -52,6 +53,10 @@ private class SdkTracerProvider[F[_]: Temporal: Parallel: Console](
 
   def tracer(name: String): TracerBuilder[F] =
     new SdkTracerBuilder[F](propagators, traceScope, sharedState, storage, name)
+
+  override def toString: String =
+    s"SdkTracerProvider{resource=$resource, sampler=$sampler, spanProcessor=${sharedState.spanProcessor}}"
+
 }
 
 object SdkTracerProvider {
@@ -114,7 +119,7 @@ object SdkTracerProvider {
       */
     def withSampler(sampler: Sampler): Builder[F]
 
-    /** Adds a
+    /** Adds
       * [[org.typelevel.otel4s.context.propagation.TextMapPropagator TextMapPropagator]]s
       * to use for the context propagation.
       *
