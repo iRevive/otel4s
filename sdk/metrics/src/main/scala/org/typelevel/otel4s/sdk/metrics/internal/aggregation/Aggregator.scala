@@ -109,7 +109,7 @@ private[metrics] object Aggregator {
       case Aggregation.ExplicitBucketHistogram(boundaries) =>
         ExplicitBucketHistogramAggregator(boundaries, filter)
 
-      case Aggregation.Base2ExponentialHistogram(maxBuckets, maxScale) =>
+      case Aggregation.Base2ExponentialHistogram(_, _) =>
         ???
     }
   }

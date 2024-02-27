@@ -32,7 +32,7 @@ sealed trait BucketBoundaries {
   override final def equals(obj: Any): Boolean =
     obj match {
       case other: BucketBoundaries => Hash[BucketBoundaries].eqv(this, other)
-      case _              => false
+      case _                       => false
     }
 
   override final def toString: String =
@@ -43,8 +43,8 @@ object BucketBoundaries {
 
   private val Default = Impl(
     Vector(
-      0d, 5d, 10d, 25d, 50d, 75d, 100d, 250d, 500d, 750d, 1_000d, 2_500d,
-      5_000d, 7_500d, 10_000d
+      0d, 5d, 10d, 25d, 50d, 75d, 100d, 250d, 500d, 750d, 1000d, 2500d, 5000d,
+      7500d, 10000d
     )
   )
 

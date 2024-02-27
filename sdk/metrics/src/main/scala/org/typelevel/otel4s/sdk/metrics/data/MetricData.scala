@@ -35,7 +35,6 @@ sealed trait MetricData {
 
   def data: Data
 
-  final def tpe: MetricDataType = data.tpe
   final def isEmpty: Boolean = data.points.isEmpty
   final def nonEmpty: Boolean = !isEmpty
 }
@@ -50,7 +49,7 @@ object MetricData {
       unit: Option[String],
       data: Data
   ): MetricData =
-    MetricDataImpl(
+    Impl(
       resource = resource,
       instrumentationScope = scope,
       name = name,
@@ -59,7 +58,7 @@ object MetricData {
       data = data
     )
 
-  private final case class MetricDataImpl(
+  private final case class Impl(
       resource: TelemetryResource,
       instrumentationScope: InstrumentationScope,
       name: String,

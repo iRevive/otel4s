@@ -17,11 +17,8 @@
 package org.typelevel.otel4s.sdk.metrics.data
 
 /** A collection of metric data points.
-  *
-  * @param tpe
-  *   the type of the metric data
   */
-sealed abstract class Data(val tpe: MetricDataType) {
+sealed abstract class Data {
 
   /** The collection of the metric [[PointData]]s.
     */
@@ -34,24 +31,24 @@ object Data {
       points: Vector[A],
       isMonotonic: Boolean,
       aggregationTemporality: AggregationTemporality
-  ) extends Data(MetricDataType.Sum)
+  ) extends Data
 
   final case class Gauge[A <: PointData.NumberPoint](
       points: Vector[A]
-  ) extends Data(MetricDataType.Gauge)
+  ) extends Data
 
   final case class Summary(
       points: Vector[PointData.Summary]
-  ) extends Data(MetricDataType.Summary)
+  ) extends Data
 
   final case class Histogram(
       points: Vector[PointData.Histogram],
       aggregationTemporality: AggregationTemporality
-  ) extends Data(MetricDataType.Histogram)
+  ) extends Data
 
   final case class ExponentialHistogram(
       points: Vector[PointData.ExponentialHistogram],
       aggregationTemporality: AggregationTemporality
-  ) extends Data(MetricDataType.ExponentialHistogram)
+  ) extends Data
 
 }
