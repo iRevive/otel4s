@@ -21,6 +21,11 @@ import org.typelevel.otel4s.metrics.MeasurementValue
 
 import scala.concurrent.duration.FiniteDuration
 
+/** A point in the metric data model.
+  *
+  * A point represents the aggregation of measurements recorded with a
+  * particular set of [[Attributes]] over some time interval.
+  */
 sealed trait PointData {
   def startTimestamp: FiniteDuration
   def collectTimestamp: FiniteDuration

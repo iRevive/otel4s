@@ -17,6 +17,8 @@
 package org.typelevel.otel4s.sdk.metrics.data
 
 /** A collection of metric data points.
+ *
+ * @see [[https://opentelemetry.io/docs/specs/otel/metrics/data-model/#metric-points]]
   */
 sealed abstract class Data {
 
