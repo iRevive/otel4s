@@ -16,6 +16,8 @@
 
 package org.typelevel.otel4s.sdk.metrics.internal
 
+import cats.Hash
+import cats.Show
 import org.typelevel.otel4s.metrics.MeasurementValue
 
 sealed trait InstrumentValueType
@@ -29,4 +31,10 @@ object InstrumentValueType {
       case MeasurementValue.LongMeasurementValue(_)   => LongValue
       case MeasurementValue.DoubleMeasurementValue(_) => DoubleValue
     }
+
+  implicit val instrumentValueTypeHash: Hash[InstrumentValueType] =
+    Hash.fromUniversalHashCode
+
+  implicit val instrumentValueTypeShow: Show[InstrumentValueType] =
+    Show.fromToString
 }

@@ -21,6 +21,7 @@ import cats.effect.Temporal
 import cats.effect.std.Console
 import cats.effect.std.Random
 import cats.syntax.foldable._
+import org.typelevel.otel4s.Attribute
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.TelemetryResource
@@ -50,6 +51,9 @@ private[metrics] trait MetricStorage[F[_]] {
 
 private[metrics] object MetricStorage {
 
+  private[storage] val OverflowAttribute: Attribute[Boolean] =
+    Attribute("otel.metric.overflow", true)
+
   trait Writeable[F[_], A] {
     def record(
         value: A,
@@ -78,7 +82,7 @@ private[metrics] object MetricStorage {
   }
 
   def synchronous[
-      F[_]: Temporal: Random,
+      F[_]: Temporal: Console: Random,
       A: MeasurementValue: Numeric
   ](
       reader: RegisteredReader[F],

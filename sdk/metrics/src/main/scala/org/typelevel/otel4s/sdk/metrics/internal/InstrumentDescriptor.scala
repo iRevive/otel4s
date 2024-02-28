@@ -17,14 +17,33 @@
 package org.typelevel.otel4s.sdk.metrics
 package internal
 
+import cats.Hash
+import cats.Show
+import cats.syntax.foldable._
+
+/** A description of an instrument that was registered to record data.
+  */
 sealed trait InstrumentDescriptor {
 
   def name: String
   def description: Option[String]
   def unit: Option[String]
   def instrumentType: InstrumentType
-  def valueType: InstrumentValueType
+  def instrumentValueType: InstrumentValueType
   def advice: Advice
+
+  override final def hashCode(): Int =
+    Hash[InstrumentDescriptor].hash(this)
+
+  override final def equals(obj: Any): Boolean =
+    obj match {
+      case other: InstrumentDescriptor =>
+        Hash[InstrumentDescriptor].eqv(this, other)
+      case _ => false
+    }
+
+  override final def toString: String =
+    Show[InstrumentDescriptor].show(this)
 }
 
 object InstrumentDescriptor {
@@ -39,12 +58,34 @@ object InstrumentDescriptor {
   ): InstrumentDescriptor =
     Impl(name, description, unit, instrumentType, instrumentValueType, advice)
 
+  // advice is not a part of the hash, it's intended
+  implicit val instrumentDescriptorHash: Hash[InstrumentDescriptor] =
+    Hash.by { descriptor =>
+      (
+        descriptor.name.toLowerCase, // name is case-insensitive
+        descriptor.description,
+        descriptor.unit,
+        descriptor.instrumentType,
+        descriptor.instrumentValueType
+      )
+    }
+
+  implicit val instrumentDescriptorShow: Show[InstrumentDescriptor] =
+    Show.show { descriptor =>
+      val description = descriptor.description.foldMap(d => s"description=$d, ")
+      val unit = descriptor.unit.foldMap(d => s"unit=$d, ")
+      s"InstrumentDescriptor{name=${descriptor.name}, $description$unit" +
+        s"type=${descriptor.instrumentType}, " +
+        s"valueType=${descriptor.instrumentValueType}, " +
+        s"advice=${descriptor.advice}}"
+    }
+
   private final case class Impl(
       name: String,
       description: Option[String],
       unit: Option[String],
       instrumentType: InstrumentType,
-      valueType: InstrumentValueType,
+      instrumentValueType: InstrumentValueType,
       advice: Advice
   ) extends InstrumentDescriptor
 

@@ -66,15 +66,13 @@ private final class DefaultAsynchronous[F[_]: Monad: Console: AskContext, A](
       _ <- {
         if (points.contains(attributes)) {
           Console[F].errorln(
-            s"Instrument ${metricDescriptor.sourceInstrument.name} has recorded multiple values for the same attributes ${attributes}"
+            s"Instrument ${metricDescriptor.sourceInstrument.name} has recorded multiple values for the same attributes $attributes"
           )
         } else {
           if (points.sizeIs >= maxCardinality) {
-            Console[F].errorln(
-              s"Instrument ${metricDescriptor.sourceInstrument.name} has exceeded the maximum allowed cardinality [$maxCardinality]"
-            ) >> collector.record(
+            cardinalityWarning >> collector.record(
               measurement.withAttributes(
-                attributes.updated("otel.metric.overflow", true)
+                attributes.updated(MetricStorage.OverflowAttribute)
               )
             )
           } else {
@@ -111,6 +109,10 @@ private final class DefaultAsynchronous[F[_]: Monad: Console: AskContext, A](
         .map(Some(_))
     }
 
+  private def cardinalityWarning: F[Unit] =
+    Console[F].errorln(
+      s"Instrument [${metricDescriptor.sourceInstrument.name}] has exceeded the maximum allowed cardinality [$maxCardinality]"
+    )
 }
 
 private object DefaultAsynchronous {
@@ -133,9 +135,10 @@ private object DefaultAsynchronous {
       ExemplarFilter.alwaysOff
     )
 
-    val aggregationTemporality = reader.reader.aggregationTemporality(
-      descriptor.sourceInstrument.instrumentType
-    )
+    val aggregationTemporality =
+      reader.reader.aggregationTemporalitySelector.select(
+        descriptor.sourceInstrument.instrumentType
+      )
 
     for {
       collector <- Collector.create[F, A](aggregationTemporality, reader)

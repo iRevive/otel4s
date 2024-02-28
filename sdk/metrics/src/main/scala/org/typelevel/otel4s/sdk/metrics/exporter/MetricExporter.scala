@@ -17,16 +17,15 @@
 package org.typelevel.otel4s.sdk.metrics.exporter
 
 import cats.Foldable
-import org.typelevel.otel4s.sdk.metrics.InstrumentType
-import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 
 trait MetricExporter[F[_]] {
-  def aggregationTemporality(
-      instrumentType: InstrumentType
-  ): AggregationTemporality
 
   def name: String
+
+  def defaultAggregationSelector: DefaultAggregationSelector
+
+  def aggregationTemporalitySelector: AggregationTemporalitySelector
 
   def exportMetrics[G[_]: Foldable](metrics: G[MetricData]): F[Unit]
 

@@ -16,19 +16,59 @@
 
 package org.typelevel.otel4s.sdk.metrics.internal
 
+import cats.Hash
+import cats.Show
+import org.typelevel.otel4s.AttributeKey
 import org.typelevel.otel4s.metrics.BucketBoundaries
 
 sealed trait Advice {
+
+  /** The explicit bucket histogram boundaries.
+    */
   def explicitBoundaries: Option[BucketBoundaries]
+
+  /** The list of the attribute keys to be used for the resulting instrument.
+    */
+  def attributeKeys: Option[Set[AttributeKey[_]]]
+
+  override final def hashCode(): Int =
+    Hash[Advice].hash(this)
+
+  override final def equals(obj: Any): Boolean =
+    obj match {
+      case other: Advice => Hash[Advice].eqv(this, other)
+      case _             => false
+    }
+
+  override final def toString: String =
+    Show[Advice].show(this)
 }
 
 object Advice {
   def empty: Advice = new Advice {
     def explicitBoundaries: Option[BucketBoundaries] = None
+    def attributeKeys: Option[Set[AttributeKey[_]]] = None
   }
 
   def apply(bucketBoundaries: Option[BucketBoundaries]): Advice =
     new Advice {
       def explicitBoundaries: Option[BucketBoundaries] = bucketBoundaries
+      def attributeKeys: Option[Set[AttributeKey[_]]] = None
+    }
+
+  implicit val adviceHash: Hash[Advice] =
+    Hash.by(a => (a.attributeKeys, a.explicitBoundaries))
+
+  implicit val adviceShow: Show[Advice] =
+    Show.show { advice =>
+      val attributeKeys = advice.attributeKeys.map { k =>
+        s"attributeKeys=${k.mkString("[", ",", "]")}"
+      }
+
+      val boundaries = advice.explicitBoundaries.map { b =>
+        s"explicitBoundaries=$b"
+      }
+
+      Vector(attributeKeys, boundaries).flatten.mkString("Advice{", ", ", "}")
     }
 }

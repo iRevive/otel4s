@@ -19,6 +19,7 @@ package org.typelevel.otel4s.sdk.metrics.internal.storage
 import cats.Monad
 import cats.effect.Temporal
 import cats.effect.std.AtomicCell
+import cats.effect.std.Console
 import cats.effect.std.Random
 import cats.syntax.flatMap._
 import cats.syntax.functor._
@@ -43,7 +44,7 @@ import org.typelevel.otel4s.sdk.metrics.internal.view.RegisteredView
 
 import scala.concurrent.duration.FiniteDuration
 
-private final class DefaultSynchronous[F[_]: Monad, A](
+private final class DefaultSynchronous[F[_]: Monad: Console, A](
     reader: RegisteredReader[F],
     val metricDescriptor: MetricDescriptor,
     aggregator: Aggregator.Aux[F, A, PointData],
@@ -56,7 +57,7 @@ private final class DefaultSynchronous[F[_]: Monad, A](
 ) extends Synchronous[F, A] {
 
   private val aggregationTemporality =
-    reader.reader.aggregationTemporality(
+    reader.reader.aggregationTemporalitySelector.select(
       metricDescriptor.sourceInstrument.instrumentType
     )
 
@@ -107,23 +108,37 @@ private final class DefaultSynchronous[F[_]: Monad, A](
   ): F[Aggregator.Handle[F, A, PointData]] =
     handlers.evalModify { map =>
       val attrs = attributesProcessor.process(attributes, context)
+
+      def createHandle =
+        for {
+          handle <- aggregator.createHandle
+        } yield (map.updated(attrs, handle), handle)
+
       map.get(attrs) match {
         case Some(handle) =>
           Monad[F].pure((map, handle))
 
         case None =>
-          // todo: check cardinality
-          for {
-            handle <- aggregator.createHandle
-          } yield (map.updated(attrs, handle), handle)
+          if (map.sizeIs >= maxCardinality) {
+            cardinalityWarning >> map
+              .get(attributes.updated(MetricStorage.OverflowAttribute))
+              .fold(createHandle)(v => Monad[F].pure((map, v)))
+          } else {
+            createHandle
+          }
       }
     }
+
+  private def cardinalityWarning: F[Unit] =
+    Console[F].errorln(
+      s"Instrument [${metricDescriptor.sourceInstrument.name}] has exceeded the maximum allowed cardinality [$maxCardinality]"
+    )
 
 }
 
 object DefaultSynchronous {
 
-  def create[F[_]: Temporal: Random, A: MeasurementValue: Numeric](
+  def create[F[_]: Temporal: Console: Random, A: MeasurementValue: Numeric](
       reader: RegisteredReader[F],
       registeredView: RegisteredView,
       instrumentDescriptor: InstrumentDescriptor,

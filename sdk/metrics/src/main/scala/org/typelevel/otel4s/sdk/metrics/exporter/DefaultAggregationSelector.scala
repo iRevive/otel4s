@@ -18,7 +18,12 @@ package org.typelevel.otel4s.sdk.metrics
 package exporter
 
 trait DefaultAggregationSelector {
-  def get(instrumentType: InstrumentType): Aggregation
+
+  /** Returns preferred [[Aggregation]] for the given [[InstrumentType]].
+    */
+  def select(instrumentType: InstrumentType): Aggregation
 }
 
-object DefaultAggregationSelector {}
+object DefaultAggregationSelector {
+  def default: DefaultAggregationSelector = _ => Aggregation.default
+}

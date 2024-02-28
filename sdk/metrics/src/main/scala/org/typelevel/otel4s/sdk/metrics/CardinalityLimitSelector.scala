@@ -17,12 +17,12 @@
 package org.typelevel.otel4s.sdk.metrics
 
 trait CardinalityLimitSelector {
-  def limit(instrumentType: InstrumentType): Int
+  def select(instrumentType: InstrumentType): Int
 }
 
 object CardinalityLimitSelector {
   private object Default extends CardinalityLimitSelector {
-    def limit(instrumentType: InstrumentType): Int = 2000
+    def select(instrumentType: InstrumentType): Int = 2000
   }
 
   def default: CardinalityLimitSelector = Default

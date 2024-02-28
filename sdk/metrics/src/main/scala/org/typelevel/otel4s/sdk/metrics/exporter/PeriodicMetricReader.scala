@@ -30,8 +30,6 @@ import cats.syntax.applicative._
 import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import org.typelevel.otel4s.sdk.metrics.Aggregation
-import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -43,15 +41,10 @@ class PeriodicMetricReader[F[_]: Temporal: Console](
   import PeriodicMetricReader._
 
   def defaultAggregationSelector: DefaultAggregationSelector =
-    new DefaultAggregationSelector {
-      def get(instrumentType: InstrumentType): Aggregation =
-        Aggregation.default
-    }
+    exporter.defaultAggregationSelector
 
-  def aggregationTemporality(
-      instrumentType: InstrumentType
-  ): AggregationTemporality =
-    exporter.aggregationTemporality(instrumentType)
+  def aggregationTemporalitySelector: AggregationTemporalitySelector =
+    exporter.aggregationTemporalitySelector
 
   def register(registration: CollectionRegistration[F]): F[Unit] =
     stateRef.evalUpdate {

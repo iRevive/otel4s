@@ -16,6 +16,8 @@
 
 package org.typelevel.otel4s.sdk.metrics.internal.view
 
+import java.util.regex.Pattern
+
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.metrics.CardinalityLimitSelector
 import org.typelevel.otel4s.sdk.metrics.InstrumentSelector
@@ -42,9 +44,11 @@ object ViewRegistry {
     val defaultViews = InstrumentType.values.map { tpe =>
       tpe -> view.RegisteredView(
         InstrumentSelector.builder.withInstrumentName("*").build,
-        View.builder.withAggregation(defaultAggregationSelector.get(tpe)).build,
+        View.builder
+          .withAggregation(defaultAggregationSelector.select(tpe))
+          .build,
         AttributesProcessor.noop,
-        cardinalityLimitSelector.limit(tpe)
+        cardinalityLimitSelector.select(tpe)
       )
     }
 
@@ -80,7 +84,26 @@ object ViewRegistry {
     private def matchesSelector(
         selector: InstrumentSelector,
         descriptor: InstrumentDescriptor,
-        scope: InstrumentationScope
-    ): Boolean = ???
+        meterScope: InstrumentationScope
+    ): Boolean = {
+      selector.instrumentType.forall(tpe => descriptor.instrumentType == tpe) &&
+      selector.instrumentUnit.forall(unit => descriptor.unit.contains(unit)) &&
+      selector.instrumentName.forall(n => toGlobPattern(n)(descriptor.name)) &&
+      selector.meterName.forall(n => n == meterScope.name) &&
+      selector.meterVersion.forall(v => meterScope.version.contains(v)) &&
+      selector.meterSchemaUrl.forall(s => meterScope.schemaUrl.contains(s))
+    }
+
+    private def toGlobPattern(globPattern: String): String => Boolean =
+      if (globPattern == "*") { _ =>
+        true
+      } else if (globPattern.exists(c => c == '*' || c == '?')) {
+        val pattern = toRegexPattern(globPattern)
+        s => pattern.matcher(s).matches()
+      } else { s =>
+        globPattern.equalsIgnoreCase(s)
+      }
+
+    private def toRegexPattern(str: String): Pattern = ???
   }
 }

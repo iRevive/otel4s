@@ -31,9 +31,6 @@ private[metrics] final class CallbackRegistration[F[_]: MonadCancelThrow](
     callback: F[Unit]
 ) {
 
-  private val descriptors: NonEmptyList[InstrumentDescriptor] =
-    measurements.map(_.descriptor)
-
   private val hasStorages: Boolean =
     measurements.exists(_.storages.nonEmpty)
 
@@ -48,4 +45,6 @@ private[metrics] final class CallbackRegistration[F[_]: MonadCancelThrow](
       .guarantee(measurements.traverse_(_.unsetActiveReader))
       .whenA(hasStorages)
 
+  override def toString: String =
+    s"CallbackRegistration{instrumentDescription=${measurements.map(_.descriptor).mkString_("[", ", ", "]")}"
 }
