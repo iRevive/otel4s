@@ -34,6 +34,7 @@ import org.typelevel.otel4s.sdk.metrics.internal.CallbackRegistration
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.MetricStorageRegistry
 import org.typelevel.otel4s.sdk.metrics.internal.SdkObservableMeasurement
+import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
 
@@ -47,6 +48,7 @@ private[metrics] final class MeterSharedState[
     val scope: InstrumentationScope,
     startTimestamp: FiniteDuration,
     exemplarFilter: ExemplarFilter,
+    traceContextLookup: TraceContextLookup,
     callbacks: Ref[F, Vector[CallbackRegistration[F]]],
     registries: Map[RegisteredReader[F], MetricStorageRegistry[F]]
 ) {
@@ -70,6 +72,7 @@ private[metrics] final class MeterSharedState[
                     registeredView,
                     descriptor,
                     exemplarFilter,
+                    traceContextLookup,
                     aggregation
                   )
                   _ <- registry.register(storage)
@@ -99,7 +102,8 @@ private[metrics] final class MeterSharedState[
                     reader,
                     registeredView,
                     descriptor,
-                    aggregation,
+                    traceContextLookup,
+                    aggregation
                   )
                   _ <- registry.register(storage)
                 } yield Vector(storage)
@@ -152,6 +156,7 @@ private object MeterSharedState {
       scope: InstrumentationScope,
       startTimestamp: FiniteDuration,
       exemplarFilter: ExemplarFilter,
+      traceContextLookup: TraceContextLookup,
       registeredReaders: Vector[RegisteredReader[F]]
   ): F[MeterSharedState[F]] =
     for {
@@ -166,6 +171,7 @@ private object MeterSharedState {
       scope,
       startTimestamp,
       exemplarFilter,
+      traceContextLookup,
       callbacks,
       registries.toMap
     )

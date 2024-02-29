@@ -35,6 +35,7 @@ import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.exporter.CollectionRegistration
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricProducer
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricReader
+import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.internal.view.RegisteredView
 import org.typelevel.otel4s.sdk.metrics.internal.view.ViewRegistry
@@ -107,6 +108,17 @@ object SdkMeterProvider {
       */
     def withExemplarFilter(filter: ExemplarFilter): Builder[F]
 
+    /** Sets a
+      * [[org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup TraceContextLookup]]
+      * to be used by exemplars.
+      *
+      * @param lookup
+      *   the
+      *   [[org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup]]
+      *   to use
+      */
+    def withTraceContextLookup(lookup: TraceContextLookup): Builder[F]
+
     /** Registers a [[View]] for the given [[InstrumentSelector]].
       *
       * [[View]] affects aggregation and export of the instruments that match
@@ -157,6 +169,7 @@ object SdkMeterProvider {
     BuilderImpl(
       resource = TelemetryResource.default,
       exemplarFilter = ExemplarFilter.traceBased,
+      traceContextLookup = TraceContextLookup.noop,
       registeredViews = Vector.empty,
       metricReaders = Map.empty,
       metricProducers = Vector.empty
@@ -167,6 +180,7 @@ object SdkMeterProvider {
   ](
       resource: TelemetryResource,
       exemplarFilter: ExemplarFilter,
+      traceContextLookup: TraceContextLookup,
       registeredViews: Vector[RegisteredView],
       metricReaders: Map[MetricReader[F], CardinalityLimitSelector],
       metricProducers: Vector[MetricProducer[F]]
@@ -180,6 +194,9 @@ object SdkMeterProvider {
 
     def withExemplarFilter(filter: ExemplarFilter): Builder[F] =
       copy(exemplarFilter = filter)
+
+    def withTraceContextLookup(lookup: TraceContextLookup): Builder[F] =
+      copy(traceContextLookup = lookup)
 
     def registerView(selector: InstrumentSelector, view: View): Builder[F] =
       copy(registeredViews =
@@ -224,6 +241,7 @@ object SdkMeterProvider {
                       scope,
                       now,
                       exemplarFilter,
+                      traceContextLookup,
                       readers
                     )
                   } yield new SdkMeter[F](state)

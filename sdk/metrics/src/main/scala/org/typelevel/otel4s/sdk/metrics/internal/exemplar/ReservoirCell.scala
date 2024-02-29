@@ -31,21 +31,22 @@ private[exemplar] final class ReservoirCell[
     A,
     E <: ExemplarData
 ](
-    stateRef: Ref[F, Option[ReservoirCell.State[A]]]
+    stateRef: Ref[F, Option[ReservoirCell.State[A]]],
+    lookup: TraceContextLookup
 )(implicit make: ExemplarData.Make[A, E]) {
 
   def record(value: A, attributes: Attributes, context: Context): F[Unit] =
     for {
       now <- Temporal[F].realTime
-      // context.get(SdkContextKeys.SpanContext)
-      _ <- stateRef.set(Some(ReservoirCell.State(value, attributes, now)))
+      ctx <- Temporal[F].pure(lookup.get(context))
+      _ <- stateRef.set(Some(ReservoirCell.State(value, attributes, ctx, now)))
     } yield ()
 
   def getAndReset(pointAttributes: Attributes): F[Option[E]] =
     stateRef.getAndSet(None).map { state =>
       state.map { s =>
         val attrs = filtered(s.attributes, pointAttributes)
-        make.make(attrs, s.recordTime, s.value)
+        make.make(attrs, s.recordTime, s.traceContext, s.value)
       }
     }
 
@@ -62,15 +63,15 @@ private[exemplar] object ReservoirCell {
   private final case class State[A](
       value: A,
       attributes: Attributes,
+      traceContext: Option[ExemplarData.TraceContext],
       recordTime: FiniteDuration
-      /*spanContext: SpanContext*/
   )
 
-  def create[F[_]: Temporal, A, E <: ExemplarData](implicit
-      make: ExemplarData.Make[A, E]
-  ): F[ReservoirCell[F, A, E]] =
+  def create[F[_]: Temporal, A, E <: ExemplarData](
+      lookup: TraceContextLookup
+  )(implicit make: ExemplarData.Make[A, E]): F[ReservoirCell[F, A, E]] =
     for {
       stateRef <- Temporal[F].ref(Option.empty[State[A]])
-    } yield new ReservoirCell(stateRef)
+    } yield new ReservoirCell(stateRef, lookup)
 
 }

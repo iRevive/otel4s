@@ -34,6 +34,7 @@ import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.Measurement
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.internal.view.RegisteredView
 
@@ -89,6 +90,7 @@ private[metrics] object MetricStorage {
       registeredView: RegisteredView,
       instrumentDescriptor: InstrumentDescriptor,
       exemplarFilter: ExemplarFilter,
+      traceContextLookup: TraceContextLookup,
       aggregation: Aggregation.HasAggregator
   ): F[Synchronous[F, A]] =
     DefaultSynchronous.create(
@@ -96,6 +98,7 @@ private[metrics] object MetricStorage {
       registeredView,
       instrumentDescriptor,
       exemplarFilter,
+      traceContextLookup,
       aggregation
     )
 
@@ -106,12 +109,14 @@ private[metrics] object MetricStorage {
       reader: RegisteredReader[F],
       registeredView: RegisteredView,
       instrumentDescriptor: InstrumentDescriptor,
+      traceContextLookup: TraceContextLookup,
       aggregation: Aggregation.HasAggregator
   ): F[Asynchronous[F, A]] = {
     DefaultAsynchronous.create(
       reader,
       registeredView,
       instrumentDescriptor,
+      traceContextLookup,
       aggregation
     )
   }

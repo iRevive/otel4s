@@ -22,29 +22,66 @@ import org.typelevel.otel4s.metrics.MeasurementValue
 import scala.concurrent.duration.FiniteDuration
 
 sealed trait ExemplarData {
-
   def filteredAttributes: Attributes
   def timestamp: FiniteDuration
-  // todo spanContext: SpanContext
-
+  def traceContext: Option[ExemplarData.TraceContext]
 }
 
 object ExemplarData {
 
+  sealed trait TraceContext {
+    def traceIdHex: String
+    def spanIdHex: String
+  }
+
+  object TraceContext {
+
+    def apply(traceIdHex: String, spanIdHex: String): TraceContext =
+      Impl(traceIdHex, spanIdHex)
+
+    private final case class Impl(
+        traceIdHex: String,
+        spanIdHex: String
+    ) extends TraceContext
+  }
+
+  /*type Aux[A] = ExemplarData { type Value = A }
+
+  def apply[A: MeasurementValue, E: MeasurementValue](
+      attributes: Attributes,
+      timestamp: FiniteDuration,
+      spanContext: Option[SpanContext],
+      value: A
+  ): ExemplarData.Aux[E] =
+    MeasurementValue[E] match {
+      case MeasurementValue.LongMeasurementValue(_)   =>
+        LongExemplar(attributes, timestamp, spanContext, MeasurementValue[A].toLong(value))
+
+      case MeasurementValue.DoubleMeasurementValue(_) =>
+        DoubleExemplar(attributes, timestamp, spanContext, MeasurementValue[A].toDouble(value))
+    }*/
+
   final case class LongExemplar(
       filteredAttributes: Attributes,
       timestamp: FiniteDuration,
+      traceContext: Option[TraceContext],
       value: Long
   ) extends ExemplarData
 
   final case class DoubleExemplar(
       filteredAttributes: Attributes,
       timestamp: FiniteDuration,
+      traceContext: Option[TraceContext],
       value: Double
   ) extends ExemplarData
 
   private[metrics] sealed trait Make[A, E <: ExemplarData] {
-    def make(attributes: Attributes, timestamp: FiniteDuration, value: A): E
+    def make(
+        attributes: Attributes,
+        timestamp: FiniteDuration,
+        traceContext: Option[TraceContext],
+        value: A
+    ): E
   }
 
   private[metrics] object Make {
@@ -54,11 +91,13 @@ object ExemplarData {
         def make(
             attributes: Attributes,
             timestamp: FiniteDuration,
+            traceContext: Option[TraceContext],
             value: A
         ): LongExemplar =
           ExemplarData.LongExemplar(
             attributes,
             timestamp,
+            traceContext,
             MeasurementValue[A].toLong(value)
           )
       }
@@ -68,11 +107,13 @@ object ExemplarData {
         def make(
             attributes: Attributes,
             timestamp: FiniteDuration,
+            traceContext: Option[TraceContext],
             value: A
         ): DoubleExemplar =
           ExemplarData.DoubleExemplar(
             attributes,
             timestamp,
+            traceContext,
             MeasurementValue[A].toDouble(value)
           )
       }

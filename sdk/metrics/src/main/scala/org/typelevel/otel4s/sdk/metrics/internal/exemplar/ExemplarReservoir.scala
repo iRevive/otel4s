@@ -41,17 +41,23 @@ private[internal] object ExemplarReservoir {
 
   // size = availableProcessors
   def fixedSize[F[_]: Temporal: Random, A: Numeric, E <: ExemplarData](
-      size: Int
+      size: Int,
+      lookup: TraceContextLookup
   )(implicit make: ExemplarData.Make[A, E]): F[ExemplarReservoir[F, A, E]] =
     for {
       selector <- CellSelector.random[F, A, E]
-      reservoir <- create(size, selector)
+      reservoir <- create(size, selector, lookup)
     } yield reservoir
 
   def histogramBucket[F[_]: Temporal, A: Numeric, E <: ExemplarData](
-      boundaries: BucketBoundaries
+      boundaries: BucketBoundaries,
+      lookup: TraceContextLookup
   )(implicit make: ExemplarData.Make[A, E]): F[ExemplarReservoir[F, A, E]] =
-    create(boundaries.length + 1, CellSelector.histogramBucket(boundaries))
+    create(
+      boundaries.length + 1,
+      CellSelector.histogramBucket(boundaries),
+      lookup
+    )
 
   def filtered[F[_]: Applicative, A: MeasurementValue, E <: ExemplarData](
       filter: ExemplarFilter,
@@ -71,10 +77,11 @@ private[internal] object ExemplarReservoir {
 
   private def create[F[_]: Temporal, A, E <: ExemplarData](
       size: Int,
-      cellSelector: CellSelector[F, A, E]
+      cellSelector: CellSelector[F, A, E],
+      lookup: TraceContextLookup
   )(implicit make: ExemplarData.Make[A, E]): F[ExemplarReservoir[F, A, E]] =
     for {
-      cells <- ReservoirCell.create[F, A, E].replicateA(size)
+      cells <- ReservoirCell.create[F, A, E](lookup).replicateA(size)
       hasMeasurement <- Temporal[F].ref(false)
     } yield new FixedSize(cells.toVector, cellSelector, hasMeasurement)
 

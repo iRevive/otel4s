@@ -36,6 +36,7 @@ import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarReservoir
+import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -87,10 +88,11 @@ private object ExplicitBucketHistogramAggregator {
 
   def apply[F[_]: Temporal, A: MeasurementValue: Numeric](
       boundaries: BucketBoundaries,
-      filter: ExemplarFilter
+      filter: ExemplarFilter,
+      lookup: TraceContextLookup
   ): ExplicitBucketHistogramAggregator[F, A] = {
     val reservoir = ExemplarReservoir
-      .histogramBucket[F, A, ExemplarData.DoubleExemplar](boundaries)
+      .histogramBucket[F, A, ExemplarData.DoubleExemplar](boundaries, lookup)
       .map(r => ExemplarReservoir.filtered(filter, r))
 
     new ExplicitBucketHistogramAggregator[F, A](boundaries, reservoir)

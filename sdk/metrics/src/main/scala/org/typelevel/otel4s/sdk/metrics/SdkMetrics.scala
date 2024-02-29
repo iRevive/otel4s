@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Typelevel
+ * Copyright 2024 Typelevel
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,60 +14,42 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.trace
+package org.typelevel.otel4s.sdk.metrics
 
 import cats.Applicative
-import cats.Parallel
 import cats.effect.Async
 import cats.effect.Resource
 import cats.effect.std.Console
 import cats.effect.std.Random
-import cats.mtl.Local
+import cats.mtl.Ask
 import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import org.typelevel.otel4s.context.LocalProvider
-import org.typelevel.otel4s.context.propagation.ContextPropagators
-import org.typelevel.otel4s.context.propagation.TextMapPropagator
+import org.typelevel.otel4s.metrics.MeterProvider
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.autoconfigure.AutoConfigure
 import org.typelevel.otel4s.sdk.autoconfigure.CommonConfigKeys
 import org.typelevel.otel4s.sdk.autoconfigure.Config
 import org.typelevel.otel4s.sdk.autoconfigure.TelemetryResourceAutoConfigure
 import org.typelevel.otel4s.sdk.context.Context
-import org.typelevel.otel4s.sdk.context.LocalContext
-import org.typelevel.otel4s.sdk.context.LocalContextProvider
-import org.typelevel.otel4s.sdk.trace.autoconfigure.ContextPropagatorsAutoConfigure
-import org.typelevel.otel4s.sdk.trace.autoconfigure.TracerProviderAutoConfigure
-import org.typelevel.otel4s.sdk.trace.exporter.SpanExporter
-import org.typelevel.otel4s.sdk.trace.samplers.Sampler
-import org.typelevel.otel4s.trace.TracerProvider
+import org.typelevel.otel4s.sdk.metrics.autoconfigure.MeterProviderAutoConfigure
+import org.typelevel.otel4s.sdk.metrics.exporter.MetricExporter
 
-/** The configured tracing module.
+/** The configured metrics module.
   *
   * @tparam F
   *   the higher-kinded type of a polymorphic effect
   */
-sealed trait SdkTraces[F[_]] {
+sealed trait SdkMetrics[F[_]] {
 
-  /** The [[org.typelevel.otel4s.trace.TracerProvider TracerProvider]].
+  /** The [[org.typelevel.otel4s.metrics.MeterProvider MeterProvider]].
     */
-  def tracerProvider: TracerProvider[F]
-
-  /** The propagators used by the
-    * [[org.typelevel.otel4s.trace.TracerProvider TracerProvider]].
-    */
-  def propagators: ContextPropagators[Context]
-
-  /** The [[org.typelevel.otel4s.sdk.context.LocalContext LocalContext]] used by
-    * the [[org.typelevel.otel4s.trace.TracerProvider TracerProvider]].
-    */
-  def localContext: LocalContext[F]
+  def meterProvider: MeterProvider[F]
 }
 
-object SdkTraces {
+object SdkMetrics {
 
-  /** Autoconfigures [[SdkTraces]] using [[AutoConfigured.Builder]].
+  /** Autoconfigures [[SdkMetrics]] using [[AutoConfigured.Builder]].
     *
     * @note
     *   the external components (e.g. OTLP exporter) must be registered
@@ -77,33 +59,29 @@ object SdkTraces {
     *   }}}
     *   and register the configurer manually:
     *   {{{
-    * import org.typelevel.otel4s.sdk.trace.SdkTraces
-    * import org.typelevel.otel4s.sdk.exporter.otlp.trace.autoconfigure.OtlpSpanExporterAutoConfigure
+    * import org.typelevel.otel4s.sdk.metrics.SdkMetrics
+    * import org.typelevel.otel4s.sdk.exporter.otlp.metrics.autoconfigure.OtlpMetricExporterAutoConfigure
     *
-    * SdkTraces.autoConfigured[IO](_.addExporterConfigurer(OtlpSpanExporterAutoConfigure[IO]))
+    * SdkMetrics.autoConfigured[IO](_.addExporterConfigurer(OtlpMetricExporterAutoConfigure[IO]))
     *   }}}
     *
     * @param customize
     *   a function for customizing the auto-configured SDK builder
     */
-  def autoConfigured[F[_]: Async: Parallel: Console: LocalContextProvider](
+  def autoConfigured[F[_]: Async: Console](
       customize: AutoConfigured.Builder[F] => AutoConfigured.Builder[F] =
         (a: AutoConfigured.Builder[F]) => a
-  ): Resource[F, SdkTraces[F]] =
+  ): Resource[F, SdkMetrics[F]] =
     customize(AutoConfigured.builder[F]).build
 
-  def noop[F[_]: Applicative: LocalContext]: SdkTraces[F] =
-    new Impl(
-      TracerProvider.noop,
-      ContextPropagators.noop,
-      Local[F, Context]
-    )
+  def noop[F[_]: Applicative]: SdkMetrics[F] =
+    new Impl(MeterProvider.noop)
 
   object AutoConfigured {
 
     type Customizer[A] = (A, Config) => A
 
-    /** A builder of [[SdkTraces]].
+    /** A builder of [[SdkMetrics]].
       */
     sealed trait Builder[F[_]] {
 
@@ -137,14 +115,14 @@ object SdkTraces {
           customizer: Config => Map[String, String]
       ): Builder[F]
 
-      /** Adds the tracer provider builder customizer. Multiple customizers can
+      /** Adds the meter provider builder customizer. Multiple customizers can
         * be added, and they will be applied in the order they were added.
         *
         * @param customizer
         *   the customizer to add
         */
-      def addTracerProviderCustomizer(
-          customizer: Customizer[SdkTracerProvider.Builder[F]]
+      def addMeterProviderCustomizer(
+          customizer: Customizer[SdkMeterProvider.Builder[F]]
       ): Builder[F]
 
       /** Adds the telemetry resource customizer. Multiple customizers can be
@@ -167,73 +145,43 @@ object SdkTraces {
         *   }}}
         *   and register the configurer manually:
         *   {{{
-        * import org.typelevel.otel4s.sdk.trace.SdkTraces
-        * import org.typelevel.otel4s.sdk.exporter.otlp.trace.autoconfigure.OtlpSpanExporterAutoConfigure
+        * import org.typelevel.otel4s.sdk.metrics.SdkMetrics
+        * import org.typelevel.otel4s.sdk.exporter.otlp.metric.autoconfigure.OtlpMetricExporterAutoConfigure
         *
-        * SdkTraces.autoConfigured[IO](_.addExporterConfigurer(OtlpSpanExporterAutoConfigure[IO]))
+        * SdkMetrics.autoConfigured[IO](_.addExporterConfigurer(OtlpSpanExporterAutoConfigure[IO]))
         *   }}}
         *
         * @param configurer
         *   the configurer to add
         */
       def addExporterConfigurer(
-          configurer: AutoConfigure.Named[F, SpanExporter[F]]
+          configurer: AutoConfigure.Named[F, MetricExporter[F]]
       ): Builder[F]
 
-      /** Adds the sampler configurer. Can be used to register samplers that
-        * aren't included in the SDK.
-        *
-        * @param configurer
-        *   the configurer to add
+      /** Creates [[SdkMetrics]] using the configuration of this builder.
         */
-      def addSamplerConfigurer(
-          configurer: AutoConfigure.Named[F, Sampler]
-      ): Builder[F]
-
-      /** Adds the text map propagator configurer. Can be used to register
-        * propagators that aren't included in the SDK.
-        *
-        * @param configurer
-        *   the configurer to add
-        */
-      def addTextMapPropagatorConfigurer(
-          configurer: AutoConfigure.Named[F, TextMapPropagator[Context]]
-      ): Builder[F]
-
-      /** Creates [[SdkTraces]] using the configuration of this builder.
-        */
-      def build: Resource[F, SdkTraces[F]]
+      def build: Resource[F, SdkMetrics[F]]
     }
 
     /** Creates a [[Builder]].
       */
-    def builder[
-        F[_]: Async: Parallel: Console: LocalContextProvider
-    ]: Builder[F] =
+    def builder[F[_]: Async: Console]: Builder[F] =
       BuilderImpl(
         customConfig = None,
         propertiesLoader = Async[F].pure(Map.empty),
         propertiesCustomizers = Nil,
         resourceCustomizer = (a, _) => a,
-        tracerProviderCustomizer = (a: SdkTracerProvider.Builder[F], _) => a,
-        exporterConfigurers = Set.empty,
-        samplerConfigurers = Set.empty,
-        textMapPropagatorConfigurers = Set.empty
+        meterProviderCustomizer = (a: SdkMeterProvider.Builder[F], _) => a,
+        exporterConfigurers = Set.empty
       )
 
-    private final case class BuilderImpl[
-        F[_]: Async: Parallel: Console: LocalContextProvider
-    ](
+    private final case class BuilderImpl[F[_]: Async: Console](
         customConfig: Option[Config],
         propertiesLoader: F[Map[String, String]],
         propertiesCustomizers: List[Config => Map[String, String]],
         resourceCustomizer: Customizer[TelemetryResource],
-        tracerProviderCustomizer: Customizer[SdkTracerProvider.Builder[F]],
-        exporterConfigurers: Set[AutoConfigure.Named[F, SpanExporter[F]]],
-        samplerConfigurers: Set[AutoConfigure.Named[F, Sampler]],
-        textMapPropagatorConfigurers: Set[
-          AutoConfigure.Named[F, TextMapPropagator[Context]]
-        ]
+        meterProviderCustomizer: Customizer[SdkMeterProvider.Builder[F]],
+        exporterConfigurers: Set[AutoConfigure.Named[F, MetricExporter[F]]]
     ) extends Builder[F] {
 
       def withConfig(config: Config): Builder[F] =
@@ -254,31 +202,19 @@ object SdkTraces {
       ): Builder[F] =
         copy(resourceCustomizer = merge(this.resourceCustomizer, customizer))
 
-      def addTracerProviderCustomizer(
-          customizer: Customizer[SdkTracerProvider.Builder[F]]
+      def addMeterProviderCustomizer(
+          customizer: Customizer[SdkMeterProvider.Builder[F]]
       ): Builder[F] =
-        copy(tracerProviderCustomizer =
-          merge(this.tracerProviderCustomizer, customizer)
+        copy(meterProviderCustomizer =
+          merge(this.meterProviderCustomizer, customizer)
         )
 
       def addExporterConfigurer(
-          configurer: AutoConfigure.Named[F, SpanExporter[F]]
+          configurer: AutoConfigure.Named[F, MetricExporter[F]]
       ): Builder[F] =
         copy(exporterConfigurers = exporterConfigurers + configurer)
 
-      def addSamplerConfigurer(
-          configurer: AutoConfigure.Named[F, Sampler]
-      ): Builder[F] =
-        copy(samplerConfigurers = samplerConfigurers + configurer)
-
-      def addTextMapPropagatorConfigurer(
-          configurer: AutoConfigure.Named[F, TextMapPropagator[Context]]
-      ): Builder[F] =
-        copy(textMapPropagatorConfigurers =
-          textMapPropagatorConfigurers + configurer
-        )
-
-      def build: Resource[F, SdkTraces[F]] = {
+      def build: Resource[F, SdkMetrics[F]] = {
         def loadConfig: F[Config] =
           for {
             props <- propertiesLoader
@@ -287,45 +223,33 @@ object SdkTraces {
             cfg.withOverrides(c(cfg))
           )
 
-        def loadNoop: Resource[F, SdkTraces[F]] =
+        def loadNoop: Resource[F, SdkMetrics[F]] =
           Resource.eval(
-            for {
-              _ <- Console[F].println(
-                s"SdkTraces: the '${CommonConfigKeys.SdkDisabled}' set to 'true'. Using no-op implementation"
+            Console[F]
+              .println(
+                s"SdkMetrics: the '${CommonConfigKeys.SdkDisabled}' set to 'true'. Using no-op implementation"
               )
-              local <- LocalProvider[F, Context].local
-            } yield SdkTraces.noop[F](Async[F], local)
+              .as(SdkMetrics.noop[F](Async[F]))
           )
 
-        def loadTraces(
+        def loadMetrics(
             config: Config,
             resource: TelemetryResource
-        ): Resource[F, SdkTraces[F]] = {
-          def makeLocalContext = LocalProvider[F, Context].local
+        ): Resource[F, SdkMetrics[F]] =
+          Resource.eval(Random.scalaUtilRandom).flatMap { implicit random =>
+            implicit val askContext: Ask[F, Context] = Ask.const(Context.root)
 
-          Resource.eval(makeLocalContext).flatMap { implicit local =>
-            Resource.eval(Random.scalaUtilRandom).flatMap { implicit random =>
-              val propagatorsConfigure = ContextPropagatorsAutoConfigure[F](
-                textMapPropagatorConfigurers
+            val meterProviderConfigure =
+              MeterProviderAutoConfigure[F](
+                resource,
+                meterProviderCustomizer,
+                exporterConfigurers
               )
 
-              propagatorsConfigure.configure(config).flatMap { propagators =>
-                val tracerProviderConfigure =
-                  TracerProviderAutoConfigure[F](
-                    resource,
-                    propagators,
-                    tracerProviderCustomizer,
-                    samplerConfigurers,
-                    exporterConfigurers
-                  )
-
-                for {
-                  tracerProvider <- tracerProviderConfigure.configure(config)
-                } yield new Impl[F](tracerProvider, propagators, local)
-              }
-            }
+            for {
+              meterProvider <- meterProviderConfigure.configure(config)
+            } yield new Impl[F](meterProvider)
           }
-        }
 
         for {
           config <- Resource.eval(customConfig.fold(loadConfig)(Async[F].pure))
@@ -340,8 +264,8 @@ object SdkTraces {
             )
           )
 
-          traces <- if (isDisabled) loadNoop else loadTraces(config, resource)
-        } yield traces
+          metrics <- if (isDisabled) loadNoop else loadMetrics(config, resource)
+        } yield metrics
       }
 
       private def merge[A](
@@ -354,12 +278,10 @@ object SdkTraces {
   }
 
   private final class Impl[F[_]](
-      val tracerProvider: TracerProvider[F],
-      val propagators: ContextPropagators[Context],
-      val localContext: LocalContext[F]
-  ) extends SdkTraces[F] {
+      val meterProvider: MeterProvider[F]
+  ) extends SdkMetrics[F] {
     override def toString: String =
-      s"SdkTraces{tracerProvider=$tracerProvider, propagators=$propagators}"
+      s"SdkMetrics{meterProvider=$meterProvider}"
   }
 
 }

@@ -30,6 +30,7 @@ import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -78,10 +79,15 @@ private[metrics] object Aggregator {
   def create[F[_]: Temporal: Random, A: MeasurementValue: Numeric](
       aggregation: Aggregation.HasAggregator,
       descriptor: InstrumentDescriptor,
-      filter: ExemplarFilter
+      filter: ExemplarFilter,
+      traceContextLookup: TraceContextLookup
   ): Aggregator[F, A] = {
     def sum: Aggregator[F, A] =
-      SumAggregator(Runtime.getRuntime.availableProcessors, filter)
+      SumAggregator(
+        Runtime.getRuntime.availableProcessors,
+        filter,
+        traceContextLookup
+      )
 
     def lastValue: Aggregator[F, A] =
       LastValueAggregator[F, A]
@@ -89,7 +95,7 @@ private[metrics] object Aggregator {
     def histogram: Aggregator[F, A] = {
       val boundaries =
         descriptor.advice.explicitBoundaries.getOrElse(BucketBoundaries.default)
-      ExplicitBucketHistogramAggregator(boundaries, filter)
+      ExplicitBucketHistogramAggregator(boundaries, filter, traceContextLookup)
     }
 
     aggregation match {
@@ -107,7 +113,11 @@ private[metrics] object Aggregator {
       case Aggregation.LastValue => lastValue
 
       case Aggregation.ExplicitBucketHistogram(boundaries) =>
-        ExplicitBucketHistogramAggregator(boundaries, filter)
+        ExplicitBucketHistogramAggregator(
+          boundaries,
+          filter,
+          traceContextLookup
+        )
 
       case Aggregation.Base2ExponentialHistogram(_, _) =>
         ???

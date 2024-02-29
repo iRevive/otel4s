@@ -18,6 +18,7 @@ package org.typelevel.otel4s
 package sdk
 package exporter.otlp.metrics
 
+import com.google.protobuf.ByteString
 import io.opentelemetry.proto.collector.metrics.v1.metrics_service.ExportMetricsServiceRequest
 import io.opentelemetry.proto.metrics.v1.{metrics => Proto}
 import io.opentelemetry.proto.metrics.v1.metrics.ResourceMetrics
@@ -29,6 +30,7 @@ import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
 import scalapb_circe.Printer
+import scodec.bits.ByteVector
 
 /** @see
   *   [[https://github.com/open-telemetry/opentelemetry-proto/blob/v1.0.0/opentelemetry/proto/common/v1/common.proto]]
@@ -51,16 +53,30 @@ private object MetricsProtoEncoder {
     Proto.Exemplar
   ] = { exemplar =>
     val value = exemplar match {
-      case ExemplarData.LongExemplar(_, _, value) =>
+      case ExemplarData.LongExemplar(_, _, _, value) =>
         Proto.Exemplar.Value.AsInt(value)
-      case ExemplarData.DoubleExemplar(_, _, value) =>
+      case ExemplarData.DoubleExemplar(_, _, _, value) =>
         Proto.Exemplar.Value.AsDouble(value)
     }
 
+    val traceId =
+      exemplar.traceContext
+        .flatMap(v => ByteVector.fromHex(v.traceIdHex))
+        .map(v => ByteString.copyFrom(v.toArray))
+        .getOrElse(ByteString.EMPTY)
+
+    val spanId =
+      exemplar.traceContext
+        .flatMap(v => ByteVector.fromHex(v.spanIdHex))
+        .map(v => ByteString.copyFrom(v.toArray))
+        .getOrElse(ByteString.EMPTY)
+
     Proto.Exemplar(
-      ProtoEncoder.encode(exemplar.filteredAttributes),
-      exemplar.timestamp.toNanos,
-      value
+      filteredAttributes = ProtoEncoder.encode(exemplar.filteredAttributes),
+      timeUnixNano = exemplar.timestamp.toNanos,
+      value = value,
+      spanId = spanId,
+      traceId = traceId
     )
   }
 

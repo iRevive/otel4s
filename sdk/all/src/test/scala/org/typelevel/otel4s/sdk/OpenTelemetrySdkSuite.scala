@@ -147,7 +147,7 @@ class OpenTelemetrySdkSuite extends CatsEffectSuite {
       }
   }
 
-  test("addExporterConfigurer - support external configurers") {
+  test("addSpanExporterConfigurer - support external configurers") {
     val config = Config.ofProps(
       Map("otel.traces.exporter" -> "custom-1,custom-2")
     )
@@ -165,10 +165,10 @@ class OpenTelemetrySdkSuite extends CatsEffectSuite {
     OpenTelemetrySdk
       .autoConfigured[IO](
         _.withConfig(config)
-          .addExporterConfigurer(
+          .addSpanExporterConfigurer(
             AutoConfigure.Named.const("custom-1", exporter1)
           )
-          .addExporterConfigurer(
+          .addSpanExporterConfigurer(
             AutoConfigure.Named.const("custom-2", exporter2)
           )
       )

@@ -34,6 +34,7 @@ import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarReservoir
+import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.utils.Adder
 
 import scala.concurrent.duration.FiniteDuration
@@ -46,6 +47,7 @@ private final class SumAggregator[
 ](
     reservoirSize: Int,
     filter: ExemplarFilter,
+    traceContextLookup: TraceContextLookup,
     makeNumberPoint: PointData.NumberPoint.Make[A, P, E],
     makeExemplar: ExemplarData.Make[A, E]
 ) extends Aggregator[F, A] {
@@ -109,7 +111,7 @@ private final class SumAggregator[
 
   private def makeReservoir: F[ExemplarReservoir[F, A, E]] =
     ExemplarReservoir
-      .fixedSize[F, A, E](size = reservoirSize)
+      .fixedSize[F, A, E](size = reservoirSize, traceContextLookup)
       .map(r => ExemplarReservoir.filtered(filter, r))
 
 }
@@ -118,13 +120,15 @@ private object SumAggregator {
 
   def apply[F[_]: Temporal: Random, A: MeasurementValue: Numeric](
       reservoirSize: Int,
-      filter: ExemplarFilter
+      filter: ExemplarFilter,
+      lookup: TraceContextLookup
   ): Aggregator[F, A] = {
     MeasurementValue[A] match {
       case MeasurementValue.LongMeasurementValue(_) =>
         new SumAggregator(
           reservoirSize,
           filter,
+          lookup,
           PointData.NumberPoint.Make.makeLong,
           ExemplarData.Make.makeLong
         )
@@ -133,6 +137,7 @@ private object SumAggregator {
         new SumAggregator(
           reservoirSize,
           filter,
+          lookup,
           PointData.NumberPoint.Make.makeDouble,
           ExemplarData.Make.makeDouble
         )

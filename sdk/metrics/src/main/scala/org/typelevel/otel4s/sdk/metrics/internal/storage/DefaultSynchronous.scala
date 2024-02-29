@@ -38,6 +38,7 @@ import org.typelevel.otel4s.sdk.metrics.internal.AttributesProcessor
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.aggregation.Aggregator
+import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage.Synchronous
 import org.typelevel.otel4s.sdk.metrics.internal.view.RegisteredView
@@ -143,6 +144,7 @@ object DefaultSynchronous {
       registeredView: RegisteredView,
       instrumentDescriptor: InstrumentDescriptor,
       exemplarFilter: ExemplarFilter,
+      traceContextLookup: TraceContextLookup,
       aggregation: Aggregation.HasAggregator
   ): F[Synchronous[F, A]] = {
     val view = registeredView.view
@@ -152,7 +154,8 @@ object DefaultSynchronous {
       Aggregator.create(
         aggregation,
         instrumentDescriptor,
-        exemplarFilter
+        exemplarFilter,
+        traceContextLookup
       )
 
     AtomicCell[F]

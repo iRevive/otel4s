@@ -14,22 +14,19 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics.data
+package org.typelevel.otel4s.sdk.metrics.internal.exemplar
 
-/** The time period over which the measurements are aggregated.
-  *
-  * @see
-  *   [[https://opentelemetry.io/docs/specs/otel/metrics/data-model/#temporality]]
-  */
-sealed trait AggregationTemporality
+import org.typelevel.otel4s.sdk.context.Context
+import org.typelevel.otel4s.sdk.metrics.data.ExemplarData.TraceContext
 
-object AggregationTemporality {
+// todo: package may be different
+trait TraceContextLookup {
+  def get(context: Context): Option[TraceContext]
+}
 
-  /** Measurements are aggregated since the previous collection.
-    */
-  case object Delta extends AggregationTemporality
-
-  /** Measurements are aggregated over the lifetime of the instrument.
-    */
-  case object Cumulative extends AggregationTemporality
+object TraceContextLookup {
+  def noop[F[_]]: TraceContextLookup =
+    new TraceContextLookup {
+      def get(context: Context): Option[TraceContext] = None
+    }
 }

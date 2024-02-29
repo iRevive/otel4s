@@ -40,6 +40,7 @@ import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.Measurement
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.aggregation.Aggregator
+import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage.Asynchronous
 import org.typelevel.otel4s.sdk.metrics.internal.view.RegisteredView
@@ -124,6 +125,7 @@ private object DefaultAsynchronous {
       reader: RegisteredReader[F],
       registeredView: RegisteredView,
       instrumentDescriptor: InstrumentDescriptor,
+      traceContextLookup: TraceContextLookup,
       aggregation: Aggregation.HasAggregator
   ): F[Asynchronous[F, A]] = {
     val view = registeredView.view
@@ -132,7 +134,8 @@ private object DefaultAsynchronous {
     val aggregator: Aggregator[F, A] = Aggregator.create(
       aggregation,
       instrumentDescriptor,
-      ExemplarFilter.alwaysOff
+      ExemplarFilter.alwaysOff,
+      traceContextLookup
     )
 
     val aggregationTemporality =

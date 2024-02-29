@@ -16,6 +16,7 @@
 
 package org.typelevel.otel4s.sdk.metrics.exporter
 
+import cats.Applicative
 import cats.Foldable
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 
@@ -36,4 +37,19 @@ trait MetricExporter[F[_]] {
 
 }
 
-object MetricExporter {}
+object MetricExporter {
+
+  def noop[F[_]: Applicative]: MetricExporter[F] =
+    new MetricExporter[F] {
+      def name: String = "Noop"
+      def defaultAggregationSelector: DefaultAggregationSelector =
+        DefaultAggregationSelector.default
+      def aggregationTemporalitySelector: AggregationTemporalitySelector =
+        AggregationTemporalitySelector.alwaysCumulative
+      def exportMetrics[G[_]: Foldable](metrics: G[MetricData]): F[Unit] =
+        Applicative[F].unit
+      def flush: F[Unit] =
+        Applicative[F].unit
+    }
+
+}
