@@ -37,7 +37,7 @@ import org.typelevel.otel4s.sdk.trace.processor.SpanProcessor
 import org.typelevel.otel4s.trace.Span
 import org.typelevel.otel4s.trace.SpanContext
 import org.typelevel.otel4s.trace.SpanKind
-import org.typelevel.otel4s.trace.Status
+import org.typelevel.otel4s.trace.StatusCode
 
 import scala.collection.immutable
 import scala.concurrent.duration.FiniteDuration
@@ -103,7 +103,7 @@ private final class SdkSpanBackend[F[_]: Monad: Clock: Console] private (
       attributes: immutable.Iterable[Attribute[_]]
   ): F[Unit] =
     addTimedEvent(
-      EventData(name, timestamp, Attributes.fromSpecific(attributes))
+      EventData(name, timestamp, attributes.to(Attributes))
     )
 
   def recordException(
@@ -116,18 +116,18 @@ private final class SdkSpanBackend[F[_]: Monad: Clock: Console] private (
         EventData.fromException(
           now,
           exception,
-          Attributes.fromSpecific(attributes),
+          attributes.to(Attributes),
           escaped = false
         )
       )
     } yield ()
 
-  def setStatus(status: Status): F[Unit] =
+  def setStatus(status: StatusCode): F[Unit] =
     updateState("setStatus") { s =>
       s.copy(status = StatusData(status))
     }.void
 
-  def setStatus(status: Status, description: String): F[Unit] =
+  def setStatus(status: StatusCode, description: String): F[Unit] =
     updateState("setStatus") { s =>
       s.copy(status = StatusData(status, description))
     }.void
