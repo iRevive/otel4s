@@ -16,8 +16,6 @@
 
 package org.typelevel.otel4s.sdk.metrics.internal.view
 
-import java.util.regex.Pattern
-
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.metrics.CardinalityLimitSelector
 import org.typelevel.otel4s.sdk.metrics.InstrumentSelector
@@ -27,6 +25,8 @@ import org.typelevel.otel4s.sdk.metrics.exporter.DefaultAggregationSelector
 import org.typelevel.otel4s.sdk.metrics.internal.AttributesProcessor
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.view
+
+import java.util.regex.Pattern
 
 trait ViewRegistry {
   def findViews(
