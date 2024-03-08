@@ -30,7 +30,7 @@ private[exemplar] final class ReservoirCell[
     F[_]: Temporal,
     A,
     E <: ExemplarData
-](
+] private (
     stateRef: Ref[F, Option[ReservoirCell.State[A]]],
     lookup: TraceContextLookup
 )(implicit make: ExemplarData.Make[A, E]) {

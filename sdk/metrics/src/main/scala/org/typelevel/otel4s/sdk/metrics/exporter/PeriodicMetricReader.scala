@@ -33,7 +33,7 @@ import cats.syntax.functor._
 
 import scala.concurrent.duration.FiniteDuration
 
-class PeriodicMetricReader[F[_]: Temporal: Console](
+private class PeriodicMetricReader[F[_]: Temporal: Console] private (
     stateRef: AtomicCell[F, PeriodicMetricReader.State[F]],
     exporter: MetricExporter[F],
     interval: FiniteDuration
@@ -88,7 +88,7 @@ object PeriodicMetricReader {
   def create[F[_]: Temporal: Console](
       exporter: MetricExporter[F],
       interval: FiniteDuration
-  ): Resource[F, PeriodicMetricReader[F]] =
+  ): Resource[F, MetricReader[F]] =
     for {
       ref <- Resource.eval(AtomicCell[F].of[State[F]](State.Idle()))
       _ <- Resource.make(Concurrent[F].unit)(_ =>

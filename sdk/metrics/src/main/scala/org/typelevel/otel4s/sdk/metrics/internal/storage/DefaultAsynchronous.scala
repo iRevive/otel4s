@@ -47,7 +47,10 @@ import org.typelevel.otel4s.sdk.metrics.internal.view.RegisteredView
 
 import scala.concurrent.duration.FiniteDuration
 
-private final class DefaultAsynchronous[F[_]: Monad: Console: AskContext, A](
+private final class DefaultAsynchronous[
+    F[_]: Monad: Console: AskContext,
+    A
+] private (
     val reader: RegisteredReader[F],
     val metricDescriptor: MetricDescriptor,
     aggregationTemporality: AggregationTemporality,
