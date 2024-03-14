@@ -222,7 +222,6 @@ lazy val `sdk-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .settings(
     name := "otel4s-sdk-metrics",
     startYear := Some(2024),
-    run / fork := true,
     libraryDependencies ++= Seq(
       "org.typelevel" %%% "cats-effect" % CatsEffectVersion,
       "org.typelevel" %%% "cats-laws" % CatsVersion % Test,
@@ -230,22 +229,6 @@ lazy val `sdk-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "org.typelevel" %%% "discipline-munit" % MUnitDisciplineVersion % Test,
       "org.typelevel" %%% "scalacheck-effect-munit" % MUnitScalaCheckEffectVersion % Test
     ),
-  )
-  .settings(munitDependencies)
-
-lazy val `sdk-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
-  .crossType(CrossType.Pure)
-  .enablePlugins(NoPublishPlugin)
-  .in(file("sdk/metrics"))
-  .dependsOn(`sdk-common`, `core-metrics`)
-  .settings(
-    name := "otel4s-sdk-metrics",
-    startYear := Some(2024),
-    libraryDependencies ++= Seq(
-      "org.typelevel" %%% "cats-effect" % CatsEffectVersion,
-      "org.typelevel" %%% "cats-laws" % CatsVersion % Test,
-      "org.typelevel" %%% "discipline-munit" % MUnitDisciplineVersion % Test,
-    )
   )
   .settings(munitDependencies)
   .settings(scalafixSettings)
