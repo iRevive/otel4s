@@ -35,8 +35,8 @@ lazy val scalaNativeSettings = Def.settings(
 )
 
 val Scala212 = "2.12.18"
-val Scala213 = "2.13.12"
-ThisBuild / crossScalaVersions := Seq(Scala213, "3.3.1")
+val Scala213 = "2.13.13"
+ThisBuild / crossScalaVersions := Seq(Scala213, "3.3.3")
 ThisBuild / scalaVersion := Scala213 // the default Scala
 
 ThisBuild / githubWorkflowBuildPreamble ++= nativeBrewInstallWorkflowSteps.value
@@ -49,7 +49,7 @@ val MUnitVersion = "1.0.0-M11"
 val MUnitCatsEffectVersion = "2.0.0-M4"
 val MUnitDisciplineVersion = "2.0.0-M3"
 val MUnitScalaCheckEffectVersion = "2.0.0-M2"
-val OpenTelemetryVersion = "1.35.0"
+val OpenTelemetryVersion = "1.36.0"
 val OpenTelemetryInstrumentationVersion = "2.1.0"
 val OpenTelemetrySemConvVersion = "1.23.1-alpha"
 val OpenTelemetryProtoVersion = "1.1.0-alpha"
@@ -194,7 +194,6 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
 lazy val `sdk-common` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
   .enablePlugins(BuildInfoPlugin)
-  .enablePlugins(NoPublishPlugin)
   .in(file("sdk/common"))
   .dependsOn(`core-common` % "compile->compile;test->test", semconv)
   .settings(
@@ -234,9 +233,25 @@ lazy val `sdk-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   )
   .settings(munitDependencies)
 
-lazy val `sdk-trace` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
+lazy val `sdk-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
   .enablePlugins(NoPublishPlugin)
+  .in(file("sdk/metrics"))
+  .dependsOn(`sdk-common`, `core-metrics`)
+  .settings(
+    name := "otel4s-sdk-metrics",
+    startYear := Some(2024),
+    libraryDependencies ++= Seq(
+      "org.typelevel" %%% "cats-effect" % CatsEffectVersion,
+      "org.typelevel" %%% "cats-laws" % CatsVersion % Test,
+      "org.typelevel" %%% "discipline-munit" % MUnitDisciplineVersion % Test,
+    )
+  )
+  .settings(munitDependencies)
+  .settings(scalafixSettings)
+
+lazy val `sdk-trace` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
+  .crossType(CrossType.Pure)
   .in(file("sdk/trace"))
   .dependsOn(
     `sdk-common` % "compile->compile;test->test",
@@ -259,7 +274,6 @@ lazy val `sdk-trace` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
 lazy val `sdk-trace-testkit` =
   crossProject(JVMPlatform, JSPlatform, NativePlatform)
     .crossType(CrossType.Pure)
-    .enablePlugins(NoPublishPlugin)
     .in(file("sdk/trace-testkit"))
     .dependsOn(`sdk-trace`)
     .settings(
@@ -270,7 +284,6 @@ lazy val `sdk-trace-testkit` =
 
 lazy val sdk = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
-  .enablePlugins(NoPublishPlugin)
   .in(file("sdk/all"))
   .dependsOn(
     core,
@@ -292,7 +305,6 @@ lazy val sdk = crossProject(JVMPlatform, JSPlatform, NativePlatform)
 lazy val `sdk-exporter-proto` =
   crossProject(JVMPlatform, JSPlatform, NativePlatform)
     .crossType(CrossType.Pure)
-    .enablePlugins(NoPublishPlugin)
     .in(file("sdk-exporter/proto"))
     .settings(
       name := "otel4s-sdk-exporter-proto",
@@ -316,7 +328,6 @@ lazy val `sdk-exporter-common` =
   crossProject(JVMPlatform, JSPlatform, NativePlatform)
     .crossType(CrossType.Pure)
     .in(file("sdk-exporter/common"))
-    .enablePlugins(NoPublishPlugin)
     .dependsOn(
       `sdk-common` % "compile->compile;test->test",
       `sdk-exporter-proto`
@@ -363,7 +374,7 @@ lazy val `sdk-exporter-trace` =
   crossProject(JVMPlatform, JSPlatform, NativePlatform)
     .crossType(CrossType.Pure)
     .in(file("sdk-exporter/trace"))
-    .enablePlugins(NoPublishPlugin, DockerComposeEnvPlugin)
+    .enablePlugins(DockerComposeEnvPlugin)
     .dependsOn(
       `sdk-exporter-common` % "compile->compile;test->test",
       `sdk-trace` % "compile->compile;test->test"
@@ -382,7 +393,6 @@ lazy val `sdk-exporter-trace` =
 lazy val `sdk-exporter` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
   .in(file("sdk-exporter/all"))
-  .enablePlugins(NoPublishPlugin)
   .dependsOn(
     `sdk-exporter-common`,
     `sdk-exporter-metrics`,
@@ -592,7 +602,7 @@ lazy val examples = project
 lazy val docs = project
   .in(file("site"))
   .enablePlugins(TypelevelSitePlugin)
-  .dependsOn(oteljava)
+  .dependsOn(oteljava, sdk.jvm, `sdk-exporter`.jvm)
   .settings(
     libraryDependencies ++= Seq(
       "org.apache.pekko" %% "pekko-http" % PekkoHttpVersion,
@@ -611,6 +621,12 @@ lazy val docs = project
             "build-tool",
             ChoiceConfig("sbt", "sbt"),
             ChoiceConfig("scala-cli", "Scala CLI")
+          ).withSeparateEbooks,
+          SelectionConfig(
+            "sdk-options-source",
+            ChoiceConfig("sbt", "sbt"),
+            ChoiceConfig("scala-cli", "Scala CLI"),
+            ChoiceConfig("shell", "Shell")
           ).withSeparateEbooks
         )
       )

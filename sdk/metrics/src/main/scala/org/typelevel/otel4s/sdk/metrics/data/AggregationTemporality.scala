@@ -16,6 +16,9 @@
 
 package org.typelevel.otel4s.sdk.metrics.data
 
+import cats.Hash
+import cats.Show
+
 /** The time period over which the measurements are aggregated.
   *
   * @see
@@ -32,4 +35,10 @@ object AggregationTemporality {
   /** Measurements are aggregated over the lifetime of the instrument.
     */
   case object Cumulative extends AggregationTemporality
+
+  implicit val aggregationTemporalityHash: Hash[AggregationTemporality] =
+    Hash.fromUniversalHashCode
+
+  implicit val aggregationTemporalityShow: Show[AggregationTemporality] =
+    Show.fromToString
 }
