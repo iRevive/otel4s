@@ -29,7 +29,7 @@ import org.typelevel.otel4s.sdk.metrics.data.Data
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
-import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.{Measurement, MetricDescriptor}
 import org.typelevel.otel4s.sdk.metrics.internal.utils.Current
 
 import scala.concurrent.duration.FiniteDuration
@@ -43,14 +43,14 @@ private final class LastValueAggregator[
     make: PointData.NumberPoint.Make[A, P, E],
 ) extends Aggregator[F, A] {
 
-  import LastValueAggregator.Handle
+  import LastValueAggregator.Accumulator
 
   type Point = P
 
-  def createHandle: F[Aggregator.Handle[F, A, Point]] =
+  def createAccumulator: F[Aggregator.Accumulator[F, A, Point]] =
     for {
       current <- Current.create[F, A]
-    } yield new Handle[F, A, Point, E](current, make)
+    } yield new Accumulator[F, A, Point, E](current, make)
 
   def toPointData(
       startTimestamp: FiniteDuration,
@@ -67,6 +67,9 @@ private final class LastValueAggregator[
         value
       )
     )
+
+  def diff(previous: Measurement[A], current: Measurement[A]): Measurement[A] =
+    current
 
   def toMetricData(
       resource: TelemetryResource,
@@ -98,7 +101,7 @@ private object LastValueAggregator {
         new LastValueAggregator(PointData.NumberPoint.Make.makeDouble)
     }
 
-  private class Handle[
+  private class Accumulator[
       F[_]: Monad,
       A,
       P <: PointData.NumberPoint,
@@ -106,7 +109,7 @@ private object LastValueAggregator {
   ](
       current: Current[F, A],
       make: PointData.NumberPoint.Make[A, P, E]
-  ) extends Aggregator.Handle[F, A, P] {
+  ) extends Aggregator.Accumulator[F, A, P] {
 
     def aggregate(
         startTimestamp: FiniteDuration,

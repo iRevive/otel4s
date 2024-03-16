@@ -51,9 +51,9 @@ private final class DefaultSynchronous[F[_]: Monad: Console, A](
     aggregator: Aggregator.Aux[F, A, PointData],
     attributesProcessor: AttributesProcessor,
     maxCardinality: Int,
-    handlers: AtomicCell[
+    accumulators: AtomicCell[
       F,
-      Map[Attributes, Aggregator.Handle[F, A, PointData]]
+      Map[Attributes, Aggregator.Accumulator[F, A, PointData]]
     ]
 ) extends Synchronous[F, A] {
 
@@ -85,7 +85,7 @@ private final class DefaultSynchronous[F[_]: Monad: Console, A](
       else Monad[F].pure(startTimestamp)
 
     val getHandlers =
-      if (reset) handlers.getAndSet(Map.empty) else handlers.get
+      if (reset) accumulators.getAndSet(Map.empty) else accumulators.get
 
     for {
       start <- getStart
@@ -106,14 +106,14 @@ private final class DefaultSynchronous[F[_]: Monad: Console, A](
   private def getHandle(
       attributes: Attributes,
       context: Context
-  ): F[Aggregator.Handle[F, A, PointData]] =
-    handlers.evalModify { map =>
+  ): F[Aggregator.Accumulator[F, A, PointData]] =
+    accumulators.evalModify { map =>
       val attrs = attributesProcessor.process(attributes, context)
 
-      def createHandle =
+      def createAccumulator =
         for {
-          handle <- aggregator.createHandle
-        } yield (map.updated(attrs, handle), handle)
+          accumulator <- aggregator.createAccumulator
+        } yield (map.updated(attrs, accumulator), accumulator)
 
       map.get(attrs) match {
         case Some(handle) =>
@@ -122,10 +122,10 @@ private final class DefaultSynchronous[F[_]: Monad: Console, A](
         case None =>
           if (map.sizeIs >= maxCardinality) {
             cardinalityWarning >> map
-              .get(attributes.updated(MetricStorage.OverflowAttribute))
-              .fold(createHandle)(v => Monad[F].pure((map, v)))
+              .get(attributes.added(MetricStorage.OverflowAttribute))
+              .fold(createAccumulator)(v => Monad[F].pure((map, v)))
           } else {
-            createHandle
+            createAccumulator
           }
       }
     }
@@ -159,15 +159,15 @@ object DefaultSynchronous {
       )
 
     AtomicCell[F]
-      .of(Map.empty[Attributes, Aggregator.Handle[F, A, PointData]])
-      .map { handlers =>
+      .of(Map.empty[Attributes, Aggregator.Accumulator[F, A, PointData]])
+      .map { accumulators =>
         new DefaultSynchronous(
           reader,
           descriptor,
           aggregator.asInstanceOf[Aggregator.Aux[F, A, PointData]],
           registeredView.viewAttributesProcessor,
           registeredView.cardinalityLimit - 1,
-          handlers
+          accumulators
         )
       }
   }

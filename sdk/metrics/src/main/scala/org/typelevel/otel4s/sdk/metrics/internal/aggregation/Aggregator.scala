@@ -20,16 +20,14 @@ package internal.aggregation
 import cats.effect.Temporal
 import cats.effect.std.Random
 import org.typelevel.otel4s.Attributes
-import org.typelevel.otel4s.metrics.BucketBoundaries
-import org.typelevel.otel4s.metrics.MeasurementValue
+import org.typelevel.otel4s.metrics.{BucketBoundaries, MeasurementValue}
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
-import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
-import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.{InstrumentDescriptor, Measurement, MetricDescriptor}
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 
 import scala.concurrent.duration.FiniteDuration
@@ -37,7 +35,7 @@ import scala.concurrent.duration.FiniteDuration
 private[metrics] trait Aggregator[F[_], A] {
   type Point <: PointData
 
-  def createHandle: F[Aggregator.Handle[F, A, Point]]
+  def createAccumulator: F[Aggregator.Accumulator[F, A, Point]]
 
   def toPointData(
       startTimestamp: FiniteDuration,
@@ -45,6 +43,8 @@ private[metrics] trait Aggregator[F[_], A] {
       attributes: Attributes,
       value: A
   ): Option[Point]
+
+  def diff(previous: Measurement[A], current: Measurement[A]): Measurement[A]
 
   def toMetricData(
       resource: TelemetryResource,
@@ -61,7 +61,7 @@ private[metrics] object Aggregator {
     type Point = P
   }
 
-  trait Handle[F[_], A, P <: PointData] {
+  trait Accumulator[F[_], A, P <: PointData] {
     def aggregate(
         startTimestamp: FiniteDuration,
         collectTimestamp: FiniteDuration,

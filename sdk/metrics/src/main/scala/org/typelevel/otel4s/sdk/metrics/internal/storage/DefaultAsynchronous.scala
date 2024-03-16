@@ -76,7 +76,7 @@ private final class DefaultAsynchronous[
           if (points.sizeIs >= maxCardinality) {
             cardinalityWarning >> collector.record(
               measurement.withAttributes(
-                attributes.updated(MetricStorage.OverflowAttribute)
+                attributes.added(MetricStorage.OverflowAttribute)
               )
             )
           } else {
@@ -147,7 +147,11 @@ private object DefaultAsynchronous {
       )
 
     for {
-      collector <- Collector.create[F, A](aggregationTemporality, reader)
+      collector <- Collector.create[F, A](
+        aggregationTemporality,
+        reader,
+        aggregator
+      )
     } yield new DefaultAsynchronous[F, A](
       reader,
       descriptor,
@@ -168,17 +172,19 @@ private object DefaultAsynchronous {
 
   private object Collector {
 
-    def create[F[_]: Concurrent, A: Numeric](
+    def create[F[_]: Concurrent, A](
         aggregationTemporality: AggregationTemporality,
-        reader: RegisteredReader[F]
+        reader: RegisteredReader[F],
+        aggregator: Aggregator[F, A]
     ): F[Collector[F, A]] =
       aggregationTemporality match {
-        case AggregationTemporality.Delta      => delta[F, A](reader)
+        case AggregationTemporality.Delta => delta[F, A](reader, aggregator)
         case AggregationTemporality.Cumulative => cumulative[F, A]
       }
 
-    private def delta[F[_]: Concurrent, A: Numeric](
-        reader: RegisteredReader[F]
+    private def delta[F[_]: Concurrent, A](
+        reader: RegisteredReader[F],
+        aggregator: Aggregator[F, A]
     ): F[Collector[F, A]] =
       Ref.of(Map.empty[Attributes, Measurement[A]]).flatMap { pointsRef =>
         Ref.of(Map.empty[Attributes, Measurement[A]]).map { lastPointsRef =>
@@ -199,7 +205,7 @@ private object DefaultAsynchronous {
               } yield points.toVector.map { case (k, v) =>
                 lastPoints.get(k) match {
                   case Some(lastPoint) =>
-                    v.withValue(Numeric[A].minus(lastPoint.value, v.value))
+                    aggregator.diff(lastPoint, v)
                   case None =>
                     v
                 }

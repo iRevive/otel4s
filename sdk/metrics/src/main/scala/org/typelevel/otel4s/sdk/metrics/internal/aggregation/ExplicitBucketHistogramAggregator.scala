@@ -34,7 +34,7 @@ import org.typelevel.otel4s.sdk.metrics.data.Data
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
-import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.{Measurement, MetricDescriptor}
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarReservoir
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 
@@ -51,11 +51,11 @@ private final class ExplicitBucketHistogramAggregator[
 
   type Point = PointData.Histogram
 
-  def createHandle: F[Aggregator.Handle[F, A, PointData.Histogram]] =
+  def createAccumulator: F[Aggregator.Accumulator[F, A, PointData.Histogram]] =
     for {
       state <- Concurrent[F].ref(emptyState(boundaries.length))
       reservoir <- makeReservoir
-    } yield new Handle(state, boundaries, reservoir)
+    } yield new Accumulator(state, boundaries, reservoir)
 
   def toPointData(
       startTimestamp: FiniteDuration,
@@ -64,6 +64,9 @@ private final class ExplicitBucketHistogramAggregator[
       value: A
   ): Option[PointData.Histogram] =
     None
+
+  def diff(previous: Measurement[A], current: Measurement[A]): Measurement[A] =
+    current
 
   def toMetricData(
       resource: TelemetryResource,
@@ -109,11 +112,11 @@ private object ExplicitBucketHistogramAggregator {
   private def emptyState(counts: Int): State =
     State(0, Double.MaxValue, -1, 0L, Vector.fill(counts)(0))
 
-  private class Handle[F[_]: FlatMap, A: MeasurementValue](
+  private class Accumulator[F[_]: FlatMap, A: MeasurementValue](
       stateRef: Ref[F, State],
       boundaries: BucketBoundaries,
       reservoir: ExemplarReservoir[F, A, ExemplarData.DoubleExemplar]
-  ) extends Aggregator.Handle[F, A, PointData.Histogram] {
+  ) extends Aggregator.Accumulator[F, A, PointData.Histogram] {
 
     def aggregate(
         startTimestamp: FiniteDuration,

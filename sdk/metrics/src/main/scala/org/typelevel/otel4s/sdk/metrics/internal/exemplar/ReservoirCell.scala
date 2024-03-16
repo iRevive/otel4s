@@ -55,7 +55,7 @@ private[exemplar] final class ReservoirCell[
       metricPoint: Attributes
   ): Attributes =
     if (metricPoint.isEmpty) original
-    else original.filterNot(a => metricPoint.contains(a.key))
+    else original.filterNot(a => metricPoint.get(a.key).isDefined)
 }
 
 private[exemplar] object ReservoirCell {

@@ -32,7 +32,7 @@ import org.typelevel.otel4s.sdk.metrics.data.Data
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
-import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.{Measurement, MetricDescriptor}
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarReservoir
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.utils.Adder
@@ -53,19 +53,22 @@ private final class SumAggregator[
 ) extends Aggregator[F, A] {
   private implicit val make: ExemplarData.Make[A, E] = makeExemplar
 
-  import SumAggregator.Handle
+  import SumAggregator.Accumulator
 
   type Point = P
 
-  def createHandle: F[Aggregator.Handle[F, A, Point]] =
+  def createAccumulator: F[Aggregator.Accumulator[F, A, Point]] =
     for {
       adder <- Adder.create[F, A]
       reservoir <- makeReservoir
-    } yield new Handle[F, A, Point, E](
+    } yield new Accumulator[F, A, Point, E](
       adder,
       reservoir,
       makeNumberPoint
     )
+
+  def diff(previous: Measurement[A], current: Measurement[A]): Measurement[A] =
+    current.withValue(Numeric[A].minus(previous.value, current.value))
 
   def toPointData(
       startTimestamp: FiniteDuration,
@@ -144,7 +147,7 @@ private object SumAggregator {
     }
   }
 
-  private class Handle[
+  private class Accumulator[
       F[_]: Monad,
       A,
       P <: PointData.NumberPoint,
@@ -153,7 +156,7 @@ private object SumAggregator {
       adder: Adder[F, A],
       reservoir: ExemplarReservoir[F, A, E],
       make: PointData.NumberPoint.Make[A, P, E]
-  ) extends Aggregator.Handle[F, A, P] {
+  ) extends Aggregator.Accumulator[F, A, P] {
 
     def aggregate(
         startTimestamp: FiniteDuration,
