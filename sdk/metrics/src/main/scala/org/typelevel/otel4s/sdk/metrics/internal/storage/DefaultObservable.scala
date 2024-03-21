@@ -42,12 +42,12 @@ import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.aggregation.Aggregator
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
-import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage.Asynchronous
+import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage.Observable
 import org.typelevel.otel4s.sdk.metrics.internal.view.RegisteredView
 
 import scala.concurrent.duration.FiniteDuration
 
-private final class DefaultAsynchronous[
+private final class DefaultObservable[
     F[_]: Monad: Console: AskContext,
     A
 ] private (
@@ -57,8 +57,8 @@ private final class DefaultAsynchronous[
     aggregator: Aggregator[F, A],
     attributesProcessor: AttributesProcessor,
     maxCardinality: Int,
-    collector: DefaultAsynchronous.Collector[F, A]
-) extends Asynchronous[F, A] {
+    collector: DefaultObservable.Collector[F, A]
+) extends Observable[F, A] {
 
   def record(m: Measurement[A]): F[Unit] =
     for {
@@ -119,7 +119,7 @@ private final class DefaultAsynchronous[
     )
 }
 
-private object DefaultAsynchronous {
+private object DefaultObservable {
 
   def create[
       F[_]: Temporal: Random: Console: AskContext,
@@ -130,7 +130,7 @@ private object DefaultAsynchronous {
       instrumentDescriptor: InstrumentDescriptor,
       traceContextLookup: TraceContextLookup,
       aggregation: Aggregation.HasAggregator
-  ): F[Asynchronous[F, A]] = {
+  ): F[Observable[F, A]] = {
     val view = registeredView.view
     val descriptor = MetricDescriptor(view, instrumentDescriptor)
 
@@ -152,7 +152,7 @@ private object DefaultAsynchronous {
         reader,
         aggregator
       )
-    } yield new DefaultAsynchronous[F, A](
+    } yield new DefaultObservable[F, A](
       reader,
       descriptor,
       aggregationTemporality,

@@ -94,11 +94,11 @@ private[metrics] final class MeterSharedState[
           .flatTraverse { registeredView =>
             registeredView.view.aggregation match {
               case Aggregation.Drop =>
-                Temporal[F].pure(Vector.empty[MetricStorage.Asynchronous[F, A]])
+                Temporal[F].pure(Vector.empty[MetricStorage.Observable[F, A]])
 
               case aggregation: Aggregation.HasAggregator =>
                 for {
-                  storage <- MetricStorage.asynchronous(
+                  storage <- MetricStorage.observable(
                     reader,
                     registeredView,
                     descriptor,

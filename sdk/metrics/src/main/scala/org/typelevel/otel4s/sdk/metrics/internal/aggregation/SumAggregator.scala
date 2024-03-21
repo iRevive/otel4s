@@ -68,7 +68,7 @@ private final class SumAggregator[
     )
 
   def diff(previous: Measurement[A], current: Measurement[A]): Measurement[A] =
-    current.withValue(Numeric[A].minus(previous.value, current.value))
+    current.withValue(Numeric[A].minus(current.value, previous.value))
 
   def toPointData(
       startTimestamp: FiniteDuration,

@@ -77,7 +77,7 @@ private[metrics] object MetricStorage {
 
   trait Synchronous[F[_], A] extends MetricStorage[F] with Writeable[F, A]
 
-  trait Asynchronous[F[_], A] extends MetricStorage[F] {
+  trait Observable[F[_], A] extends MetricStorage[F] {
     def record(measurement: Measurement[A]): F[Unit]
     def reader: RegisteredReader[F]
   }
@@ -102,7 +102,7 @@ private[metrics] object MetricStorage {
       aggregation
     )
 
-  def asynchronous[
+  def observable[
       F[_]: Temporal: Random: Console: AskContext,
       A: MeasurementValue: Numeric
   ](
@@ -111,8 +111,8 @@ private[metrics] object MetricStorage {
       instrumentDescriptor: InstrumentDescriptor,
       traceContextLookup: TraceContextLookup,
       aggregation: Aggregation.HasAggregator
-  ): F[Asynchronous[F, A]] = {
-    DefaultAsynchronous.create(
+  ): F[Observable[F, A]] = {
+    DefaultObservable.create(
       reader,
       registeredView,
       instrumentDescriptor,
