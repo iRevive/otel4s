@@ -23,12 +23,15 @@ sealed trait InstrumentType extends Product with Serializable
 
 object InstrumentType {
 
-  case object Counter extends InstrumentType
-  case object UpDownCounter extends InstrumentType
-  case object Histogram extends InstrumentType
-  case object ObservableCounter extends InstrumentType
-  case object ObservableUpDownCounter extends InstrumentType
-  case object ObservableGauge extends InstrumentType
+  private[metrics] sealed trait Synchronous extends InstrumentType
+  private[metrics] sealed trait Observable extends InstrumentType
+
+  case object Counter extends Synchronous
+  case object UpDownCounter extends Synchronous
+  case object Histogram extends Synchronous
+  case object ObservableCounter extends Observable
+  case object ObservableUpDownCounter extends Observable
+  case object ObservableGauge extends Observable
 
   val values: Set[InstrumentType] = Set(
     Counter,

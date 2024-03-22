@@ -88,10 +88,10 @@ private[metrics] object MetricStorage {
   ](
       reader: RegisteredReader[F],
       registeredView: RegisteredView,
-      instrumentDescriptor: InstrumentDescriptor,
+      instrumentDescriptor: InstrumentDescriptor.Synchronous,
       exemplarFilter: ExemplarFilter,
       traceContextLookup: TraceContextLookup,
-      aggregation: Aggregation.HasAggregator
+      aggregation: Aggregation.Synchronous
   ): F[Synchronous[F, A]] =
     DefaultSynchronous.create(
       reader,
@@ -108,17 +108,14 @@ private[metrics] object MetricStorage {
   ](
       reader: RegisteredReader[F],
       registeredView: RegisteredView,
-      instrumentDescriptor: InstrumentDescriptor,
-      traceContextLookup: TraceContextLookup,
-      aggregation: Aggregation.HasAggregator
-  ): F[Observable[F, A]] = {
+      instrumentDescriptor: InstrumentDescriptor.Observable,
+      aggregation: Aggregation.Observable
+  ): F[Observable[F, A]] =
     DefaultObservable.create(
       reader,
       registeredView,
       instrumentDescriptor,
-      traceContextLookup,
       aggregation
     )
-  }
 
 }

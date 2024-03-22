@@ -54,7 +54,7 @@ private[metrics] final class MeterSharedState[
 ) {
 
   def registerMetricStorage[A: MeasurementValue: Numeric](
-      descriptor: InstrumentDescriptor
+      descriptor: InstrumentDescriptor.Synchronous
   ): F[MetricStorage.Writeable[F, A]] =
     registries.toVector
       .flatTraverse { case (reader, registry) =>
@@ -62,10 +62,7 @@ private[metrics] final class MeterSharedState[
           .findViews(descriptor, scope)
           .flatTraverse { registeredView =>
             registeredView.view.aggregation match {
-              case Aggregation.Drop =>
-                Temporal[F].pure(Vector.empty[MetricStorage.Synchronous[F, A]])
-
-              case aggregation: Aggregation.HasAggregator =>
+              case aggregation: Aggregation.Synchronous =>
                 for {
                   storage <- MetricStorage.synchronous(
                     reader,
@@ -77,6 +74,9 @@ private[metrics] final class MeterSharedState[
                   )
                   _ <- registry.register(storage)
                 } yield Vector(storage)
+
+              case _ =>
+                Temporal[F].pure(Vector.empty[MetricStorage.Synchronous[F, A]])
             }
           }
       }
@@ -85,7 +85,7 @@ private[metrics] final class MeterSharedState[
       }
 
   def registerObservableMeasurement[A: MeasurementValue: Numeric](
-      descriptor: InstrumentDescriptor
+      descriptor: InstrumentDescriptor.Observable
   ): F[SdkObservableMeasurement[F, A]] =
     registries.toVector
       .flatTraverse { case (reader, registry) =>
@@ -93,20 +93,19 @@ private[metrics] final class MeterSharedState[
           .findViews(descriptor, scope)
           .flatTraverse { registeredView =>
             registeredView.view.aggregation match {
-              case Aggregation.Drop =>
-                Temporal[F].pure(Vector.empty[MetricStorage.Observable[F, A]])
-
-              case aggregation: Aggregation.HasAggregator =>
+              case aggregation: Aggregation.Observable =>
                 for {
                   storage <- MetricStorage.observable(
                     reader,
                     registeredView,
                     descriptor,
-                    traceContextLookup,
                     aggregation
                   )
                   _ <- registry.register(storage)
                 } yield Vector(storage)
+
+              case _ =>
+                Temporal[F].pure(Vector.empty[MetricStorage.Observable[F, A]])
             }
           }
       }

@@ -48,15 +48,47 @@ sealed trait InstrumentDescriptor {
 
 object InstrumentDescriptor {
 
-  def apply(
+  sealed trait Synchronous extends InstrumentDescriptor {
+    def instrumentType: InstrumentType.Synchronous
+  }
+
+  sealed trait Observable extends InstrumentDescriptor {
+    def instrumentType: InstrumentType.Observable
+  }
+
+  def synchronous(
       name: String,
       description: Option[String],
       unit: Option[String],
-      instrumentType: InstrumentType,
+      instrumentType: InstrumentType.Synchronous,
       instrumentValueType: InstrumentValueType,
       advice: Advice
-  ): InstrumentDescriptor =
-    Impl(name, description, unit, instrumentType, instrumentValueType, advice)
+  ): InstrumentDescriptor.Synchronous =
+    SyncImpl(
+      name,
+      description,
+      unit,
+      instrumentType,
+      instrumentValueType,
+      advice
+    )
+
+  def observable(
+      name: String,
+      description: Option[String],
+      unit: Option[String],
+      instrumentType: InstrumentType.Observable,
+      instrumentValueType: InstrumentValueType,
+      advice: Advice
+  ): InstrumentDescriptor.Observable =
+    ObservableImpl(
+      name,
+      description,
+      unit,
+      instrumentType,
+      instrumentValueType,
+      advice
+    )
 
   // advice is not a part of the hash, it's intended
   implicit val instrumentDescriptorHash: Hash[InstrumentDescriptor] =
@@ -80,13 +112,22 @@ object InstrumentDescriptor {
         s"advice=${descriptor.advice}}"
     }
 
-  private final case class Impl(
+  private final case class SyncImpl(
       name: String,
       description: Option[String],
       unit: Option[String],
-      instrumentType: InstrumentType,
+      instrumentType: InstrumentType.Synchronous,
       instrumentValueType: InstrumentValueType,
       advice: Advice
-  ) extends InstrumentDescriptor
+  ) extends InstrumentDescriptor.Synchronous
+
+  private final case class ObservableImpl(
+      name: String,
+      description: Option[String],
+      unit: Option[String],
+      instrumentType: InstrumentType.Observable,
+      instrumentValueType: InstrumentValueType,
+      advice: Advice
+  ) extends InstrumentDescriptor.Observable
 
 }

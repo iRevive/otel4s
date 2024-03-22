@@ -112,7 +112,7 @@ private object SdkHistogram {
       copy(boundaries = Some(boundaries))
 
     def create: F[Histogram[F, A]] = {
-      val descriptor = InstrumentDescriptor(
+      val descriptor = InstrumentDescriptor.synchronous(
         name,
         unit,
         description,

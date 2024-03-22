@@ -145,32 +145,36 @@ object Aggregation {
         show"Aggregation.Base2ExponentialHistogram{maxBuckets=$maxBuckets, maxScale=$maxScale}"
     }
 
-  private[metrics] sealed trait HasAggregator
+  private[metrics] sealed trait Synchronous { self: Aggregation => }
+  private[metrics] sealed trait Observable { self: Aggregation => }
 
   private[metrics] case object Drop extends Aggregation(Compatability.Drop)
 
   private[metrics] case object Default
       extends Aggregation(Compatability.Default)
-      with HasAggregator
+      with Synchronous
+      with Observable
 
   private[metrics] case object Sum
       extends Aggregation(Compatability.Sum)
-      with HasAggregator
+      with Synchronous
+      with Observable
 
   private[metrics] case object LastValue
       extends Aggregation(Compatability.LastValue)
-      with HasAggregator
+      with Synchronous
+      with Observable
 
   private[metrics] final case class ExplicitBucketHistogram(
       boundaries: BucketBoundaries
   ) extends Aggregation(Compatability.ExplicitBucketHistogram)
-      with HasAggregator
+      with Synchronous
 
   private[metrics] final case class Base2ExponentialHistogram(
       maxBuckets: Int,
       maxScale: Int
   ) extends Aggregation(Compatability.Base2ExponentialHistogram)
-      with HasAggregator
+      with Synchronous
 
   private object Compatability {
     val Drop: Set[InstrumentType] =

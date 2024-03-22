@@ -76,12 +76,12 @@ private[metrics] object Aggregator {
     ): F[Unit]
   }
 
-  def create[F[_]: Temporal: Random, A: MeasurementValue: Numeric](
-      aggregation: Aggregation.HasAggregator,
-      descriptor: InstrumentDescriptor,
-      filter: ExemplarFilter,
-      traceContextLookup: TraceContextLookup
-  ): Aggregator[F, A] = {
+  def synchronous[F[_]: Temporal: Random, A: MeasurementValue: Numeric](
+                                                                    aggregation: Aggregation.Synchronous,
+                                                                    descriptor: InstrumentDescriptor.Synchronous,
+                                                                    filter: ExemplarFilter,
+                                                                    traceContextLookup: TraceContextLookup
+                                                                  ): Aggregator[F, A] = {
     def sum: Aggregator[F, A] =
       SumAggregator(
         Runtime.getRuntime.availableProcessors,
@@ -103,10 +103,7 @@ private[metrics] object Aggregator {
         descriptor.instrumentType match {
           case InstrumentType.Counter                 => sum
           case InstrumentType.UpDownCounter           => sum
-          case InstrumentType.ObservableCounter       => sum
-          case InstrumentType.ObservableUpDownCounter => sum
           case InstrumentType.Histogram               => histogram
-          case InstrumentType.ObservableGauge         => lastValue
         }
 
       case Aggregation.Sum       => sum
@@ -121,6 +118,35 @@ private[metrics] object Aggregator {
 
       case Aggregation.Base2ExponentialHistogram(_, _) =>
         ???
+    }
+  }
+
+
+
+  def observable[F[_]: Temporal: Random, A: MeasurementValue: Numeric](
+      aggregation: Aggregation.Observable,
+      descriptor: InstrumentDescriptor.Observable
+  ): Aggregator[F, A] = {
+    def sum: Aggregator[F, A] =
+      SumAggregator(
+        Runtime.getRuntime.availableProcessors,
+        ExemplarFilter.alwaysOff,
+        TraceContextLookup.noop
+      )
+
+    def lastValue: Aggregator[F, A] =
+      LastValueAggregator[F, A]
+
+    aggregation match {
+      case Aggregation.Default =>
+        descriptor.instrumentType match {
+          case InstrumentType.ObservableCounter       => sum
+          case InstrumentType.ObservableUpDownCounter => sum
+          case InstrumentType.ObservableGauge         => lastValue
+        }
+
+      case Aggregation.Sum       => sum
+      case Aggregation.LastValue => lastValue
     }
   }
 

@@ -87,7 +87,7 @@ private object SdkCounter {
       copy(description = Some(description))
 
     def create: F[Counter[F, A]] = {
-      val descriptor = InstrumentDescriptor(
+      val descriptor = InstrumentDescriptor.synchronous(
         name,
         unit,
         description,

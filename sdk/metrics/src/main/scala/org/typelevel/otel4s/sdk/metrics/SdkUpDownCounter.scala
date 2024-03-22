@@ -91,7 +91,7 @@ private object SdkUpDownCounter {
       copy(description = Some(description))
 
     def create: F[UpDownCounter[F, A]] = {
-      val descriptor = InstrumentDescriptor(
+      val descriptor = InstrumentDescriptor.synchronous(
         name,
         unit,
         description,
