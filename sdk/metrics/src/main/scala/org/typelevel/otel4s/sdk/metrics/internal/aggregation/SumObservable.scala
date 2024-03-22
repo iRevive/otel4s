@@ -18,6 +18,9 @@ final class SumObservable[
     A: MeasurementValue: Numeric
 ] extends Aggregator.Observable[F, A] {
 
+  private val toPointData: Measurement[A] => PointData.NumberPoint =
+    Utils.measurementToNumberPoint
+
   def diff(previous: Measurement[A], current: Measurement[A]): Measurement[A] =
     current.withValue(Numeric[A].minus(current.value, previous.value))
 
@@ -41,29 +44,6 @@ final class SumObservable[
       )
     )
   }
-
-  private val toPointData: Measurement[A] => PointData.NumberPoint =
-    MeasurementValue[A] match {
-      case MeasurementValue.LongMeasurementValue(cast) =>
-        m =>
-          PointData.LongNumber(
-            m.startTimestamp,
-            m.collectTimestamp,
-            m.attributes,
-            Vector.empty,
-            cast(m.value)
-          )
-
-      case MeasurementValue.DoubleMeasurementValue(cast) =>
-        m =>
-          PointData.DoubleNumber(
-            m.startTimestamp,
-            m.collectTimestamp,
-            m.attributes,
-            Vector.empty,
-            cast(m.value)
-          )
-    }
 
   private def isMonotonic(descriptor: MetricDescriptor): Boolean =
     descriptor.sourceInstrument.instrumentType match {

@@ -5,12 +5,20 @@ import cats.Applicative
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
-import org.typelevel.otel4s.sdk.metrics.data.{AggregationTemporality, Data, MetricData, PointData}
+import org.typelevel.otel4s.sdk.metrics.data.{
+  AggregationTemporality,
+  Data,
+  MetricData,
+  PointData
+}
 
 final class LastValueObservable[
     F[_]: Applicative,
     A: MeasurementValue
 ] extends Aggregator.Observable[F, A] {
+
+  private val toPointData: Measurement[A] => PointData.NumberPoint =
+    Utils.measurementToNumberPoint
 
   def diff(previous: Measurement[A], current: Measurement[A]): Measurement[A] =
     current
@@ -35,29 +43,6 @@ final class LastValueObservable[
       )
     )
   }
-
-  private val toPointData: Measurement[A] => PointData.NumberPoint =
-    MeasurementValue[A] match {
-      case MeasurementValue.LongMeasurementValue(cast) =>
-        m =>
-          PointData.LongNumber(
-            m.startTimestamp,
-            m.collectTimestamp,
-            m.attributes,
-            Vector.empty,
-            cast(m.value)
-          )
-
-      case MeasurementValue.DoubleMeasurementValue(cast) =>
-        m =>
-          PointData.DoubleNumber(
-            m.startTimestamp,
-            m.collectTimestamp,
-            m.attributes,
-            Vector.empty,
-            cast(m.value)
-          )
-    }
 
 }
 
