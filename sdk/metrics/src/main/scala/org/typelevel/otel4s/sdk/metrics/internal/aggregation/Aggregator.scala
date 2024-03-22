@@ -17,6 +17,7 @@
 package org.typelevel.otel4s.sdk.metrics
 package internal.aggregation
 
+import cats.Applicative
 import cats.effect.Temporal
 import cats.effect.std.Random
 import org.typelevel.otel4s.Attributes
@@ -27,37 +28,44 @@ import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
-import org.typelevel.otel4s.sdk.metrics.internal.{InstrumentDescriptor, Measurement, MetricDescriptor}
+import org.typelevel.otel4s.sdk.metrics.internal.{
+  InstrumentDescriptor,
+  Measurement,
+  MetricDescriptor
+}
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 
 import scala.concurrent.duration.FiniteDuration
 
-private[metrics] trait Aggregator[F[_], A] {
-  type Point <: PointData
-
-  def createAccumulator: F[Aggregator.Accumulator[F, A, Point]]
-
-  def toPointData(
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration,
-      attributes: Attributes,
-      value: A
-  ): Option[Point]
-
-  def diff(previous: Measurement[A], current: Measurement[A]): Measurement[A]
-
-  def toMetricData(
-      resource: TelemetryResource,
-      scope: InstrumentationScope,
-      descriptor: MetricDescriptor,
-      points: Vector[Point],
-      temporality: AggregationTemporality
-  ): F[MetricData]
-}
-
 private[metrics] object Aggregator {
 
-  type Aux[F[_], A, P <: PointData] = Aggregator[F, A] {
+  trait Synchronous[F[_], A] {
+    type Point <: PointData
+
+    def createAccumulator: F[Aggregator.Accumulator[F, A, Point]]
+
+    def toMetricData(
+        resource: TelemetryResource,
+        scope: InstrumentationScope,
+        descriptor: MetricDescriptor,
+        points: Vector[Point],
+        temporality: AggregationTemporality
+    ): F[MetricData]
+  }
+
+  trait Observable[F[_], A] {
+    def diff(previous: Measurement[A], current: Measurement[A]): Measurement[A]
+
+    def toMetricData(
+        measurements: Vector[Measurement[A]],
+        resource: TelemetryResource,
+        scope: InstrumentationScope,
+        descriptor: MetricDescriptor,
+        temporality: AggregationTemporality
+    ): F[MetricData]
+  }
+
+  type Aux[F[_], A, P <: PointData] = Aggregator.Synchronous[F, A] {
     type Point = P
   }
 
@@ -77,40 +85,40 @@ private[metrics] object Aggregator {
   }
 
   def synchronous[F[_]: Temporal: Random, A: MeasurementValue: Numeric](
-                                                                    aggregation: Aggregation.Synchronous,
-                                                                    descriptor: InstrumentDescriptor.Synchronous,
-                                                                    filter: ExemplarFilter,
-                                                                    traceContextLookup: TraceContextLookup
-                                                                  ): Aggregator[F, A] = {
-    def sum: Aggregator[F, A] =
-      SumAggregator(
+      aggregation: Aggregation.Synchronous,
+      descriptor: InstrumentDescriptor.Synchronous,
+      filter: ExemplarFilter,
+      traceContextLookup: TraceContextLookup
+  ): Aggregator.Synchronous[F, A] = {
+    def sum: Aggregator.Synchronous[F, A] =
+      SumSynchronous(
         Runtime.getRuntime.availableProcessors,
         filter,
         traceContextLookup
       )
 
-    def lastValue: Aggregator[F, A] =
-      LastValueAggregator[F, A]
+    def lastValue: Aggregator.Synchronous[F, A] =
+      LastValueSynchronous[F, A]
 
-    def histogram: Aggregator[F, A] = {
+    def histogram: Aggregator.Synchronous[F, A] = {
       val boundaries =
         descriptor.advice.explicitBoundaries.getOrElse(BucketBoundaries.default)
-      ExplicitBucketHistogramAggregator(boundaries, filter, traceContextLookup)
+      ExplicitBucketHistogram(boundaries, filter, traceContextLookup)
     }
 
     aggregation match {
       case Aggregation.Default =>
         descriptor.instrumentType match {
-          case InstrumentType.Counter                 => sum
-          case InstrumentType.UpDownCounter           => sum
-          case InstrumentType.Histogram               => histogram
+          case InstrumentType.Counter       => sum
+          case InstrumentType.UpDownCounter => sum
+          case InstrumentType.Histogram     => histogram
         }
 
       case Aggregation.Sum       => sum
       case Aggregation.LastValue => lastValue
 
       case Aggregation.ExplicitBucketHistogram(boundaries) =>
-        ExplicitBucketHistogramAggregator(
+        ExplicitBucketHistogram(
           boundaries,
           filter,
           traceContextLookup
@@ -121,21 +129,15 @@ private[metrics] object Aggregator {
     }
   }
 
-
-
-  def observable[F[_]: Temporal: Random, A: MeasurementValue: Numeric](
+  def observable[F[_]: Applicative, A: MeasurementValue: Numeric](
       aggregation: Aggregation.Observable,
       descriptor: InstrumentDescriptor.Observable
-  ): Aggregator[F, A] = {
-    def sum: Aggregator[F, A] =
-      SumAggregator(
-        Runtime.getRuntime.availableProcessors,
-        ExemplarFilter.alwaysOff,
-        TraceContextLookup.noop
-      )
+  ): Aggregator.Observable[F, A] = {
+    def sum: Aggregator.Observable[F, A] =
+      SumObservable[F, A]
 
-    def lastValue: Aggregator[F, A] =
-      LastValueAggregator[F, A]
+    def lastValue: Aggregator.Observable[F, A] =
+      LastValueObservable[F, A]
 
     aggregation match {
       case Aggregation.Default =>

@@ -34,20 +34,20 @@ import org.typelevel.otel4s.sdk.metrics.data.Data
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
-import org.typelevel.otel4s.sdk.metrics.internal.{Measurement, MetricDescriptor}
+import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarReservoir
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 
 import scala.concurrent.duration.FiniteDuration
 
-private final class ExplicitBucketHistogramAggregator[
+private final class ExplicitBucketHistogram[
     F[_]: Concurrent,
     A: MeasurementValue
 ](
     boundaries: BucketBoundaries,
     makeReservoir: F[ExemplarReservoir[F, A, ExemplarData.DoubleExemplar]]
-) extends Aggregator[F, A] {
-  import ExplicitBucketHistogramAggregator._
+) extends Aggregator.Synchronous[F, A] {
+  import ExplicitBucketHistogram._
 
   type Point = PointData.Histogram
 
@@ -56,17 +56,6 @@ private final class ExplicitBucketHistogramAggregator[
       state <- Concurrent[F].ref(emptyState(boundaries.length))
       reservoir <- makeReservoir
     } yield new Accumulator(state, boundaries, reservoir)
-
-  def toPointData(
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration,
-      attributes: Attributes,
-      value: A
-  ): Option[PointData.Histogram] =
-    None
-
-  def diff(previous: Measurement[A], current: Measurement[A]): Measurement[A] =
-    current
 
   def toMetricData(
       resource: TelemetryResource,
@@ -87,18 +76,18 @@ private final class ExplicitBucketHistogramAggregator[
     )
 }
 
-private object ExplicitBucketHistogramAggregator {
+private object ExplicitBucketHistogram {
 
   def apply[F[_]: Temporal, A: MeasurementValue: Numeric](
       boundaries: BucketBoundaries,
       filter: ExemplarFilter,
       lookup: TraceContextLookup
-  ): ExplicitBucketHistogramAggregator[F, A] = {
+  ): ExplicitBucketHistogram[F, A] = {
     val reservoir = ExemplarReservoir
       .histogramBucket[F, A, ExemplarData.DoubleExemplar](boundaries, lookup)
       .map(r => ExemplarReservoir.filtered(filter, r))
 
-    new ExplicitBucketHistogramAggregator[F, A](boundaries, reservoir)
+    new ExplicitBucketHistogram[F, A](boundaries, reservoir)
   }
 
   private final case class State(

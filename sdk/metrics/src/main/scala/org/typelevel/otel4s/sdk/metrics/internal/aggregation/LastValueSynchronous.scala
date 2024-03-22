@@ -29,21 +29,21 @@ import org.typelevel.otel4s.sdk.metrics.data.Data
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
-import org.typelevel.otel4s.sdk.metrics.internal.{Measurement, MetricDescriptor}
+import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.utils.Current
 
 import scala.concurrent.duration.FiniteDuration
 
-private final class LastValueAggregator[
+private final class LastValueSynchronous[
     F[_]: Concurrent,
     A,
     P <: PointData.NumberPoint,
     E <: ExemplarData
 ](
     make: PointData.NumberPoint.Make[A, P, E],
-) extends Aggregator[F, A] {
+) extends Aggregator.Synchronous[F, A] {
 
-  import LastValueAggregator.Accumulator
+  import LastValueSynchronous.Accumulator
 
   type Point = P
 
@@ -51,25 +51,6 @@ private final class LastValueAggregator[
     for {
       current <- Current.create[F, A]
     } yield new Accumulator[F, A, Point, E](current, make)
-
-  def toPointData(
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration,
-      attributes: Attributes,
-      value: A
-  ): Option[P] =
-    Some(
-      make.make(
-        startTimestamp,
-        collectTimestamp,
-        attributes,
-        Vector.empty,
-        value
-      )
-    )
-
-  def diff(previous: Measurement[A], current: Measurement[A]): Measurement[A] =
-    current
 
   def toMetricData(
       resource: TelemetryResource,
@@ -91,14 +72,17 @@ private final class LastValueAggregator[
 
 }
 
-private object LastValueAggregator {
+private object LastValueSynchronous {
 
-  def apply[F[_]: Concurrent, A: MeasurementValue]: Aggregator[F, A] =
+  def apply[
+      F[_]: Concurrent,
+      A: MeasurementValue
+  ]: Aggregator.Synchronous[F, A] =
     MeasurementValue[A] match {
       case MeasurementValue.LongMeasurementValue(_) =>
-        new LastValueAggregator(PointData.NumberPoint.Make.makeLong)
+        new LastValueSynchronous(PointData.NumberPoint.Make.makeLong)
       case MeasurementValue.DoubleMeasurementValue(_) =>
-        new LastValueAggregator(PointData.NumberPoint.Make.makeDouble)
+        new LastValueSynchronous(PointData.NumberPoint.Make.makeDouble)
     }
 
   private class Accumulator[

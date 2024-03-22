@@ -140,17 +140,17 @@ private final class DefaultSynchronous[F[_]: Monad: Console, A](
 object DefaultSynchronous {
 
   def create[F[_]: Temporal: Console: Random, A: MeasurementValue: Numeric](
-                                                                             reader: RegisteredReader[F],
-                                                                             registeredView: RegisteredView,
-                                                                             instrumentDescriptor: InstrumentDescriptor.Synchronous,
-                                                                             exemplarFilter: ExemplarFilter,
-                                                                             traceContextLookup: TraceContextLookup,
-                                                                             aggregation: Aggregation.Synchronous
+      reader: RegisteredReader[F],
+      registeredView: RegisteredView,
+      instrumentDescriptor: InstrumentDescriptor.Synchronous,
+      exemplarFilter: ExemplarFilter,
+      traceContextLookup: TraceContextLookup,
+      aggregation: Aggregation.Synchronous
   ): F[Synchronous[F, A]] = {
     val view = registeredView.view
     val descriptor = MetricDescriptor(view, instrumentDescriptor)
 
-    val aggregator: Aggregator[F, A] =
+    val aggregator: Aggregator.Synchronous[F, A] =
       Aggregator.synchronous(
         aggregation,
         instrumentDescriptor,

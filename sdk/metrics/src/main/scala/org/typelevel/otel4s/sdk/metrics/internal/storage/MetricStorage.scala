@@ -103,7 +103,7 @@ private[metrics] object MetricStorage {
     )
 
   def observable[
-      F[_]: Temporal: Random: Console: AskContext,
+      F[_]: Temporal: Console: AskContext,
       A: MeasurementValue: Numeric
   ](
       reader: RegisteredReader[F],

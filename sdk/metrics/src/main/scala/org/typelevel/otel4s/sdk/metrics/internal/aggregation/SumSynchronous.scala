@@ -32,14 +32,14 @@ import org.typelevel.otel4s.sdk.metrics.data.Data
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
-import org.typelevel.otel4s.sdk.metrics.internal.{Measurement, MetricDescriptor}
+import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarReservoir
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.utils.Adder
 
 import scala.concurrent.duration.FiniteDuration
 
-private final class SumAggregator[
+private final class SumSynchronous[
     F[_]: Temporal: Random,
     A: MeasurementValue: Numeric,
     P <: PointData.NumberPoint,
@@ -50,10 +50,10 @@ private final class SumAggregator[
     traceContextLookup: TraceContextLookup,
     makeNumberPoint: PointData.NumberPoint.Make[A, P, E],
     makeExemplar: ExemplarData.Make[A, E]
-) extends Aggregator[F, A] {
+) extends Aggregator.Synchronous[F, A] {
   private implicit val make: ExemplarData.Make[A, E] = makeExemplar
 
-  import SumAggregator.Accumulator
+  import SumSynchronous.Accumulator
 
   type Point = P
 
@@ -65,25 +65,6 @@ private final class SumAggregator[
       adder,
       reservoir,
       makeNumberPoint
-    )
-
-  def diff(previous: Measurement[A], current: Measurement[A]): Measurement[A] =
-    current.withValue(Numeric[A].minus(current.value, previous.value))
-
-  def toPointData(
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration,
-      attributes: Attributes,
-      value: A
-  ): Option[P] =
-    Some(
-      makeNumberPoint.make(
-        startTimestamp,
-        collectTimestamp,
-        attributes,
-        Vector.empty,
-        value
-      )
     )
 
   def toMetricData(
@@ -119,16 +100,16 @@ private final class SumAggregator[
 
 }
 
-private object SumAggregator {
+private object SumSynchronous {
 
   def apply[F[_]: Temporal: Random, A: MeasurementValue: Numeric](
       reservoirSize: Int,
       filter: ExemplarFilter,
       lookup: TraceContextLookup
-  ): Aggregator[F, A] = {
+  ): Aggregator.Synchronous[F, A] = {
     MeasurementValue[A] match {
       case MeasurementValue.LongMeasurementValue(_) =>
-        new SumAggregator(
+        new SumSynchronous(
           reservoirSize,
           filter,
           lookup,
@@ -137,7 +118,7 @@ private object SumAggregator {
         )
 
       case MeasurementValue.DoubleMeasurementValue(_) =>
-        new SumAggregator(
+        new SumSynchronous(
           reservoirSize,
           filter,
           lookup,

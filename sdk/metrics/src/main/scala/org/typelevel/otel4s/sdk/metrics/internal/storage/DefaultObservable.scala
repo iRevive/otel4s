@@ -21,7 +21,6 @@ import cats.effect.Concurrent
 import cats.effect.Ref
 import cats.effect.Temporal
 import cats.effect.std.Console
-import cats.effect.std.Random
 import cats.mtl.Ask
 import cats.syntax.flatMap._
 import cats.syntax.functor._
@@ -52,7 +51,7 @@ private final class DefaultObservable[
     val reader: RegisteredReader[F],
     val metricDescriptor: MetricDescriptor,
     aggregationTemporality: AggregationTemporality,
-    aggregator: Aggregator[F, A],
+    aggregator: Aggregator.Observable[F, A],
     attributesProcessor: AttributesProcessor,
     maxCardinality: Int,
     collector: DefaultObservable.Collector[F, A]
@@ -91,21 +90,12 @@ private final class DefaultObservable[
       collectTimestamp: FiniteDuration
   ): F[Option[MetricData]] =
     collector.collectPoints.flatMap { measurements =>
-      val points = measurements.flatMap { measurement =>
-        aggregator.toPointData(
-          measurement.startTimestamp,
-          measurement.collectTimestamp,
-          measurement.attributes,
-          measurement.value
-        )
-      }
-
       aggregator
         .toMetricData(
+          measurements,
           resource,
           scope,
           metricDescriptor,
-          points,
           aggregationTemporality
         )
         .map(Some(_))
@@ -120,7 +110,7 @@ private final class DefaultObservable[
 private object DefaultObservable {
 
   def create[
-      F[_]: Temporal: Random: Console: AskContext,
+      F[_]: Temporal: Console: AskContext,
       A: MeasurementValue: Numeric
   ](
       reader: RegisteredReader[F],
@@ -131,7 +121,7 @@ private object DefaultObservable {
     val view = registeredView.view
     val descriptor = MetricDescriptor(view, instrumentDescriptor)
 
-    val aggregator: Aggregator[F, A] =
+    val aggregator: Aggregator.Observable[F, A] =
       Aggregator.observable(aggregation, instrumentDescriptor)
 
     val aggregationTemporality =
@@ -168,7 +158,7 @@ private object DefaultObservable {
     def create[F[_]: Concurrent, A](
         aggregationTemporality: AggregationTemporality,
         reader: RegisteredReader[F],
-        aggregator: Aggregator[F, A]
+        aggregator: Aggregator.Observable[F, A]
     ): F[Collector[F, A]] =
       aggregationTemporality match {
         case AggregationTemporality.Delta => delta[F, A](reader, aggregator)
@@ -177,7 +167,7 @@ private object DefaultObservable {
 
     private def delta[F[_]: Concurrent, A](
         reader: RegisteredReader[F],
-        aggregator: Aggregator[F, A]
+        aggregator: Aggregator.Observable[F, A]
     ): F[Collector[F, A]] =
       Ref.of(Map.empty[Attributes, Measurement[A]]).flatMap { pointsRef =>
         Ref.of(Map.empty[Attributes, Measurement[A]]).map { lastPointsRef =>
