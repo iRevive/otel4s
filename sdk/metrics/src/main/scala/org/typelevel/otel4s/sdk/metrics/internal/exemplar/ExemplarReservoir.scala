@@ -9,7 +9,7 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KINDither express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -30,40 +30,39 @@ import org.typelevel.otel4s.metrics.BucketBoundaries
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.ExemplarFilter
-import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 
-private[internal] trait ExemplarReservoir[F[_], A, E <: ExemplarData] {
+private[internal] trait ExemplarReservoir[F[_], A] {
   def offer(value: A, attributes: Attributes, context: Context): F[Unit]
-  def collectAndReset(attributes: Attributes): F[Vector[E]]
+  def collectAndReset(attributes: Attributes): F[Vector[Exemplar[A]]]
 }
 
 private[internal] object ExemplarReservoir {
 
   // size = availableProcessors
-  def fixedSize[F[_]: Temporal: Random, A: Numeric, E <: ExemplarData](
+  def fixedSize[F[_]: Temporal: Random, A: Numeric](
       size: Int,
       lookup: TraceContextLookup
-  )(implicit make: ExemplarData.Make[A, E]): F[ExemplarReservoir[F, A, E]] =
+  ): F[ExemplarReservoir[F, A]] =
     for {
-      selector <- CellSelector.random[F, A, E]
+      selector <- CellSelector.random[F, A]
       reservoir <- create(size, selector, lookup)
     } yield reservoir
 
-  def histogramBucket[F[_]: Temporal, A: Numeric, E <: ExemplarData](
+  def histogramBucket[F[_]: Temporal, A: Numeric](
       boundaries: BucketBoundaries,
       lookup: TraceContextLookup
-  )(implicit make: ExemplarData.Make[A, E]): F[ExemplarReservoir[F, A, E]] =
+  ): F[ExemplarReservoir[F, A]] =
     create(
       boundaries.length + 1,
       CellSelector.histogramBucket(boundaries),
       lookup
     )
 
-  def filtered[F[_]: Applicative, A: MeasurementValue, E <: ExemplarData](
+  def filtered[F[_]: Applicative, A: MeasurementValue](
       filter: ExemplarFilter,
-      original: ExemplarReservoir[F, A, E]
-  ): ExemplarReservoir[F, A, E] =
-    new ExemplarReservoir[F, A, E] {
+      original: ExemplarReservoir[F, A]
+  ): ExemplarReservoir[F, A] =
+    new ExemplarReservoir[F, A] {
       def offer(value: A, attributes: Attributes, context: Context): F[Unit] =
         original
           .offer(value, attributes, context)
@@ -71,25 +70,25 @@ private[internal] object ExemplarReservoir {
             filter.shouldSample(value, attributes, context)
           )
 
-      def collectAndReset(attributes: Attributes): F[Vector[E]] =
+      def collectAndReset(attributes: Attributes): F[Vector[Exemplar[A]]] =
         original.collectAndReset(attributes)
     }
 
-  private def create[F[_]: Temporal, A, E <: ExemplarData](
+  private def create[F[_]: Temporal, A](
       size: Int,
-      cellSelector: CellSelector[F, A, E],
+      cellSelector: CellSelector[F, A],
       lookup: TraceContextLookup
-  )(implicit make: ExemplarData.Make[A, E]): F[ExemplarReservoir[F, A, E]] =
+  ): F[ExemplarReservoir[F, A]] =
     for {
-      cells <- ReservoirCell.create[F, A, E](lookup).replicateA(size)
+      cells <- ReservoirCell.create[F, A](lookup).replicateA(size)
       hasMeasurement <- Temporal[F].ref(false)
     } yield new FixedSize(cells.toVector, cellSelector, hasMeasurement)
 
-  private final class FixedSize[F[_]: Monad, A, E <: ExemplarData](
-      cells: Vector[ReservoirCell[F, A, E]],
-      selector: CellSelector[F, A, E],
+  private final class FixedSize[F[_]: Monad, A](
+      cells: Vector[ReservoirCell[F, A]],
+      selector: CellSelector[F, A],
       hasMeasurement: Ref[F, Boolean],
-  ) extends ExemplarReservoir[F, A, E] {
+  ) extends ExemplarReservoir[F, A] {
 
     def offer(value: A, attributes: Attributes, context: Context): F[Unit] =
       selector.select(cells, value).flatMap {
@@ -103,8 +102,8 @@ private[internal] object ExemplarReservoir {
           Monad[F].unit
       }
 
-    def collectAndReset(attributes: Attributes): F[Vector[E]] = {
-      def collect: F[Vector[E]] =
+    def collectAndReset(attributes: Attributes): F[Vector[Exemplar[A]]] = {
+      def collect: F[Vector[Exemplar[A]]] =
         for {
           results <- cells.traverse(cell => cell.getAndReset(attributes))
           _ <- selector.reset

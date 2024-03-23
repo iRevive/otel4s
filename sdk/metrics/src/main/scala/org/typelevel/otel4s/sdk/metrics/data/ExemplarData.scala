@@ -17,15 +17,17 @@
 package org.typelevel.otel4s.sdk.metrics.data
 
 import org.typelevel.otel4s.Attributes
-import org.typelevel.otel4s.metrics.MeasurementValue
 import scodec.bits.ByteVector
 
 import scala.concurrent.duration.FiniteDuration
 
 sealed trait ExemplarData {
+  type Value
+
   def filteredAttributes: Attributes
   def timestamp: FiniteDuration
   def traceContext: Option[ExemplarData.TraceContext]
+  def value: Value
 }
 
 object ExemplarData {
@@ -46,63 +48,38 @@ object ExemplarData {
     ) extends TraceContext
   }
 
-  final case class LongExemplar(
+  sealed trait LongExemplar extends ExemplarData { type Value = Long }
+
+  sealed trait DoubleExemplar extends ExemplarData { type Value = Double }
+
+  def long(
       filteredAttributes: Attributes,
       timestamp: FiniteDuration,
       traceContext: Option[TraceContext],
       value: Long
-  ) extends ExemplarData
+  ): LongExemplar =
+    LongExemplarImpl(filteredAttributes, timestamp, traceContext, value)
 
-  final case class DoubleExemplar(
+  def double(
       filteredAttributes: Attributes,
       timestamp: FiniteDuration,
       traceContext: Option[TraceContext],
       value: Double
-  ) extends ExemplarData
+  ): DoubleExemplar =
+    DoubleExemplarImpl(filteredAttributes, timestamp, traceContext, value)
 
-  private[metrics] sealed trait Make[A, E <: ExemplarData] {
-    def make(
-        attributes: Attributes,
-        timestamp: FiniteDuration,
-        traceContext: Option[TraceContext],
-        value: A
-    ): E
-  }
+  private final case class LongExemplarImpl(
+      filteredAttributes: Attributes,
+      timestamp: FiniteDuration,
+      traceContext: Option[TraceContext],
+      value: Long
+  ) extends LongExemplar
 
-  private[metrics] object Make {
-
-    implicit def makeLong[A: MeasurementValue]: Make[A, LongExemplar] =
-      new Make[A, LongExemplar] {
-        def make(
-            attributes: Attributes,
-            timestamp: FiniteDuration,
-            traceContext: Option[TraceContext],
-            value: A
-        ): LongExemplar =
-          ExemplarData.LongExemplar(
-            attributes,
-            timestamp,
-            traceContext,
-            MeasurementValue[A].toLong(value)
-          )
-      }
-
-    implicit def makeDouble[A: MeasurementValue]: Make[A, DoubleExemplar] =
-      new Make[A, DoubleExemplar] {
-        def make(
-            attributes: Attributes,
-            timestamp: FiniteDuration,
-            traceContext: Option[TraceContext],
-            value: A
-        ): DoubleExemplar =
-          ExemplarData.DoubleExemplar(
-            attributes,
-            timestamp,
-            traceContext,
-            MeasurementValue[A].toDouble(value)
-          )
-      }
-
-  }
+  private final case class DoubleExemplarImpl(
+      filteredAttributes: Attributes,
+      timestamp: FiniteDuration,
+      traceContext: Option[TraceContext],
+      value: Double
+  ) extends DoubleExemplar
 
 }

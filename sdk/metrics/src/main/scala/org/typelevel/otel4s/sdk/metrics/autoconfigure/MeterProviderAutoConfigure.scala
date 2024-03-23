@@ -71,6 +71,7 @@ private final class MeterProviderAutoConfigure[
       config: Config,
       exporters: Map[String, MetricExporter[F]]
   ): Resource[F, List[MetricReader[F]]] = {
+    val _ = config
     /*val loggingExporter = MetricExportersAutoConfigure.Const.LoggingExporter
 
     val logging = exporters.get(loggingExporter) match {

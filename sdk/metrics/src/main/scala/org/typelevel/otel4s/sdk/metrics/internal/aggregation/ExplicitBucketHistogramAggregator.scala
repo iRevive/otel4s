@@ -45,7 +45,7 @@ private final class ExplicitBucketHistogramAggregator[
     A: MeasurementValue
 ](
     boundaries: BucketBoundaries,
-    makeReservoir: F[ExemplarReservoir[F, A, ExemplarData.DoubleExemplar]]
+    makeReservoir: F[ExemplarReservoir[F, A]]
 ) extends Aggregator.Synchronous[F, A] {
   import ExplicitBucketHistogramAggregator._
 
@@ -84,7 +84,7 @@ private object ExplicitBucketHistogramAggregator {
       lookup: TraceContextLookup
   ): Aggregator.Synchronous[F, A] = {
     val reservoir = ExemplarReservoir
-      .histogramBucket[F, A, ExemplarData.DoubleExemplar](boundaries, lookup)
+      .histogramBucket[F, A](boundaries, lookup)
       .map(r => ExemplarReservoir.filtered(filter, r))
 
     new ExplicitBucketHistogramAggregator[F, A](boundaries, reservoir)
@@ -104,7 +104,7 @@ private object ExplicitBucketHistogramAggregator {
   private class Accumulator[F[_]: FlatMap, A: MeasurementValue](
       stateRef: Ref[F, State],
       boundaries: BucketBoundaries,
-      reservoir: ExemplarReservoir[F, A, ExemplarData.DoubleExemplar]
+      reservoir: ExemplarReservoir[F, A]
   ) extends Aggregator.Accumulator[F, A, PointData.Histogram] {
 
     def aggregate(
@@ -115,12 +115,21 @@ private object ExplicitBucketHistogramAggregator {
     ): F[Option[PointData.Histogram]] =
       reservoir.collectAndReset(attributes).flatMap { exemplars =>
         stateRef.modify { state =>
+          val e = exemplars.map { e =>
+            ExemplarData.double(
+              e.filteredAttributes,
+              e.timestamp,
+              e.traceContext,
+              MeasurementValue[A].toDouble(e.value)
+            )
+          }
+
           val nonEmpty = state.count > 0
           val histogram = PointData.Histogram(
             startTimestamp = startTimestamp,
             collectTimestamp = collectTimestamp,
             attributes = attributes,
-            exemplars = exemplars,
+            exemplars = e,
             sum = Option.when(nonEmpty)(state.sum),
             min = Option.when(nonEmpty)(state.min),
             max = Option.when(nonEmpty)(state.max),

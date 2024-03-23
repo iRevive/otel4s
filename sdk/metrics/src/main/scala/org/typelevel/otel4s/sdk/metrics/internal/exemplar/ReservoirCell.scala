@@ -26,14 +26,10 @@ import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 
 import scala.concurrent.duration.FiniteDuration
 
-private[exemplar] final class ReservoirCell[
-    F[_]: Temporal,
-    A,
-    E <: ExemplarData
-] private (
+private[exemplar] final class ReservoirCell[F[_]: Temporal, A] private (
     stateRef: Ref[F, Option[ReservoirCell.State[A]]],
     lookup: TraceContextLookup
-)(implicit make: ExemplarData.Make[A, E]) {
+) {
 
   def record(value: A, attributes: Attributes, context: Context): F[Unit] =
     for {
@@ -42,11 +38,11 @@ private[exemplar] final class ReservoirCell[
       _ <- stateRef.set(Some(ReservoirCell.State(value, attributes, ctx, now)))
     } yield ()
 
-  def getAndReset(pointAttributes: Attributes): F[Option[E]] =
+  def getAndReset(pointAttributes: Attributes): F[Option[Exemplar[A]]] =
     stateRef.getAndSet(None).map { state =>
       state.map { s =>
         val attrs = filtered(s.attributes, pointAttributes)
-        make.make(attrs, s.recordTime, s.traceContext, s.value)
+        Exemplar(attrs, s.recordTime, s.traceContext, s.value)
       }
     }
 
@@ -67,9 +63,9 @@ private[exemplar] object ReservoirCell {
       recordTime: FiniteDuration
   )
 
-  def create[F[_]: Temporal, A, E <: ExemplarData](
+  def create[F[_]: Temporal, A](
       lookup: TraceContextLookup
-  )(implicit make: ExemplarData.Make[A, E]): F[ReservoirCell[F, A, E]] =
+  ): F[ReservoirCell[F, A]] =
     for {
       stateRef <- Temporal[F].ref(Option.empty[State[A]])
     } yield new ReservoirCell(stateRef, lookup)

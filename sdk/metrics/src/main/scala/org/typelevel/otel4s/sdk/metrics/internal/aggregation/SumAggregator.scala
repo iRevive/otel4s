@@ -31,7 +31,6 @@ import org.typelevel.otel4s.sdk.metrics.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.InstrumentType
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 import org.typelevel.otel4s.sdk.metrics.data.Data
-import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarReservoir
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
@@ -65,9 +64,6 @@ object SumAggregator {
 
     val target: Target[A] = Target[A]
 
-    private implicit val makeExemplar: ExemplarData.Make[A, target.Exemplar] =
-      target.makeExemplar
-
     type Point = target.Point
 
     def createAccumulator: F[Aggregator.Accumulator[F, A, Point]] =
@@ -94,9 +90,9 @@ object SumAggregator {
         )
       )
 
-    private def makeReservoir: F[ExemplarReservoir[F, A, target.Exemplar]] =
+    private def makeReservoir: F[ExemplarReservoir[F, A]] =
       ExemplarReservoir
-        .fixedSize[F, A, target.Exemplar](
+        .fixedSize[F, A](
           size = reservoirSize,
           traceContextLookup
         )
@@ -104,7 +100,7 @@ object SumAggregator {
 
     private class Accumulator(
         adder: Adder[F, A],
-        reservoir: ExemplarReservoir[F, A, target.Exemplar]
+        reservoir: ExemplarReservoir[F, A]
     ) extends Aggregator.Accumulator[F, A, Point] {
 
       def aggregate(
@@ -121,7 +117,14 @@ object SumAggregator {
             startTimestamp,
             collectTimestamp,
             attributes,
-            exemplars,
+            exemplars.map { e =>
+              target.makeExemplar(
+                e.filteredAttributes,
+                e.timestamp,
+                e.traceContext,
+                e.value
+              )
+            },
             value
           )
         )

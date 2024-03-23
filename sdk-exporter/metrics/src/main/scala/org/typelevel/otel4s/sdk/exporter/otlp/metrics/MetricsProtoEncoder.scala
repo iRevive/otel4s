@@ -52,10 +52,10 @@ private object MetricsProtoEncoder {
     Proto.Exemplar
   ] = { exemplar =>
     val value = exemplar match {
-      case ExemplarData.LongExemplar(_, _, _, value) =>
-        Proto.Exemplar.Value.AsInt(value)
-      case ExemplarData.DoubleExemplar(_, _, _, value) =>
-        Proto.Exemplar.Value.AsDouble(value)
+      case e: ExemplarData.LongExemplar =>
+        Proto.Exemplar.Value.AsInt(e.value)
+      case e: ExemplarData.DoubleExemplar =>
+        Proto.Exemplar.Value.AsDouble(e.value)
     }
 
     val traceId =

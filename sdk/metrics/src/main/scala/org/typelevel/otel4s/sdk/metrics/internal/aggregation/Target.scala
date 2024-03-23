@@ -19,6 +19,7 @@ package org.typelevel.otel4s.sdk.metrics.internal.aggregation
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
+import org.typelevel.otel4s.sdk.metrics.data.ExemplarData.TraceContext
 import org.typelevel.otel4s.sdk.metrics.data.PointData
 
 import scala.concurrent.duration.FiniteDuration
@@ -27,8 +28,6 @@ private sealed trait Target[A] { self =>
   type Exemplar <: ExemplarData
   type Point <: PointData.NumberPoint
 
-  def makeExemplar: ExemplarData.Make[A, Exemplar]
-
   def makePointData(
       startTimestamp: FiniteDuration,
       collectTimestamp: FiniteDuration,
@@ -36,6 +35,13 @@ private sealed trait Target[A] { self =>
       exemplars: Vector[Exemplar],
       value: A
   ): Point
+
+  def makeExemplar(
+      attributes: Attributes,
+      timestamp: FiniteDuration,
+      traceContext: Option[TraceContext],
+      value: A
+  ): Exemplar
 
 }
 
@@ -47,9 +53,6 @@ private object Target {
         new Target[A] {
           type Exemplar = ExemplarData.LongExemplar
           type Point = PointData.LongNumber
-
-          val makeExemplar: ExemplarData.Make[A, Exemplar] =
-            ExemplarData.Make.makeLong
 
           def makePointData(
               startTimestamp: FiniteDuration,
@@ -66,15 +69,19 @@ private object Target {
               cast(value)
             )
 
+          def makeExemplar(
+              attributes: Attributes,
+              timestamp: FiniteDuration,
+              traceContext: Option[TraceContext],
+              value: A
+          ): ExemplarData.LongExemplar =
+            ExemplarData.long(attributes, timestamp, traceContext, cast(value))
         }
 
       case MeasurementValue.DoubleMeasurementValue(cast) =>
         new Target[A] {
           type Exemplar = ExemplarData.DoubleExemplar
           type Point = PointData.DoubleNumber
-
-          val makeExemplar: ExemplarData.Make[A, Exemplar] =
-            ExemplarData.Make.makeDouble
 
           def makePointData(
               startTimestamp: FiniteDuration,
@@ -88,6 +95,19 @@ private object Target {
               collectTimestamp,
               attributes,
               exemplars,
+              cast(value)
+            )
+
+          def makeExemplar(
+              attributes: Attributes,
+              timestamp: FiniteDuration,
+              traceContext: Option[TraceContext],
+              value: A
+          ): ExemplarData.DoubleExemplar =
+            ExemplarData.double(
+              attributes,
+              timestamp,
+              traceContext,
               cast(value)
             )
 

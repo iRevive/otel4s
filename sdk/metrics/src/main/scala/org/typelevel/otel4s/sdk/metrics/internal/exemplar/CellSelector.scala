@@ -9,7 +9,7 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KINDither express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -22,30 +22,27 @@ import cats.effect.std.Random
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import org.typelevel.otel4s.metrics.BucketBoundaries
-import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.internal.utils.Adder
 
-private[exemplar] trait CellSelector[F[_], A, E <: ExemplarData] {
+private[exemplar] trait CellSelector[F[_], A] {
   def select(
-      cells: Vector[ReservoirCell[F, A, E]],
+      cells: Vector[ReservoirCell[F, A]],
       value: A,
-  ): F[Option[ReservoirCell[F, A, E]]]
+  ): F[Option[ReservoirCell[F, A]]]
 
   def reset: F[Unit]
 }
 
 private[exemplar] object CellSelector {
 
-  def histogramBucket[
-      F[_]: Applicative,
-      A: Numeric,
-      E <: ExemplarData
-  ](boundaries: BucketBoundaries): CellSelector[F, A, E] =
-    new CellSelector[F, A, E] {
+  def histogramBucket[F[_]: Applicative, A: Numeric](
+      boundaries: BucketBoundaries
+  ): CellSelector[F, A] =
+    new CellSelector[F, A] {
       def select(
-          cells: Vector[ReservoirCell[F, A, E]],
+          cells: Vector[ReservoirCell[F, A]],
           value: A
-      ): F[Option[ReservoirCell[F, A, E]]] =
+      ): F[Option[ReservoirCell[F, A]]] =
         Applicative[F].pure(
           cells.lift(
             boundaries.bucketIndex(Numeric[A].toDouble(value))
@@ -55,18 +52,14 @@ private[exemplar] object CellSelector {
       def reset: F[Unit] = Applicative[F].unit
     }
 
-  def random[
-      F[_]: Concurrent: Random,
-      A: Numeric,
-      E <: ExemplarData
-  ]: F[CellSelector[F, A, E]] =
+  def random[F[_]: Concurrent: Random, A: Numeric]: F[CellSelector[F, A]] =
     for {
       adder <- Adder.create[F, A]
-    } yield new CellSelector[F, A, E] {
+    } yield new CellSelector[F, A] {
       def select(
-          cells: Vector[ReservoirCell[F, A, E]],
+          cells: Vector[ReservoirCell[F, A]],
           value: A
-      ): F[Option[ReservoirCell[F, A, E]]] = {
+      ): F[Option[ReservoirCell[F, A]]] = {
         for {
           sum <- adder.sum(reset = false)
           count = Numeric[A].toInt(sum) + 1
