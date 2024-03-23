@@ -389,8 +389,7 @@ object OpenTelemetrySdk {
                         c.get(SdkContextKeys.SpanContextKey)
                           .filter(_.isValid)
                           .map(ctx =>
-                            ExemplarData
-                              .TraceContext(ctx.traceIdHex, ctx.spanIdHex)
+                            ExemplarData.TraceContext(ctx.traceId, ctx.spanId)
                           )
                       ),
                     meterProviderCustomizer

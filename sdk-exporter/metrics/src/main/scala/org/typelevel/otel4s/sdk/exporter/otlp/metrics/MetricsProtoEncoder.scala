@@ -30,7 +30,6 @@ import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
 import scalapb_circe.Printer
-import scodec.bits.ByteVector
 
 /** @see
   *   [[https://github.com/open-telemetry/opentelemetry-proto/blob/v1.0.0/opentelemetry/proto/common/v1/common.proto]]
@@ -61,14 +60,12 @@ private object MetricsProtoEncoder {
 
     val traceId =
       exemplar.traceContext
-        .flatMap(v => ByteVector.fromHex(v.traceIdHex))
-        .map(v => ByteString.copyFrom(v.toArray))
+        .map(v => ByteString.copyFrom(v.traceId.toArray))
         .getOrElse(ByteString.EMPTY)
 
     val spanId =
       exemplar.traceContext
-        .flatMap(v => ByteVector.fromHex(v.spanIdHex))
-        .map(v => ByteString.copyFrom(v.toArray))
+        .map(v => ByteString.copyFrom(v.spanId.toArray))
         .getOrElse(ByteString.EMPTY)
 
     Proto.Exemplar(

@@ -18,6 +18,7 @@ package org.typelevel.otel4s.sdk.metrics.data
 
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.metrics.MeasurementValue
+import scodec.bits.ByteVector
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -30,36 +31,20 @@ sealed trait ExemplarData {
 object ExemplarData {
 
   sealed trait TraceContext {
-    def traceIdHex: String
-    def spanIdHex: String
+    def traceId: ByteVector
+    def spanId: ByteVector
   }
 
   object TraceContext {
 
-    def apply(traceIdHex: String, spanIdHex: String): TraceContext =
-      Impl(traceIdHex, spanIdHex)
+    def apply(traceId: ByteVector, spanId: ByteVector): TraceContext =
+      Impl(traceId, spanId)
 
     private final case class Impl(
-        traceIdHex: String,
-        spanIdHex: String
+        traceId: ByteVector,
+        spanId: ByteVector
     ) extends TraceContext
   }
-
-  /*type Aux[A] = ExemplarData { type Value = A }
-
-  def apply[A: MeasurementValue, E: MeasurementValue](
-      attributes: Attributes,
-      timestamp: FiniteDuration,
-      spanContext: Option[SpanContext],
-      value: A
-  ): ExemplarData.Aux[E] =
-    MeasurementValue[E] match {
-      case MeasurementValue.LongMeasurementValue(_)   =>
-        LongExemplar(attributes, timestamp, spanContext, MeasurementValue[A].toLong(value))
-
-      case MeasurementValue.DoubleMeasurementValue(_) =>
-        DoubleExemplar(attributes, timestamp, spanContext, MeasurementValue[A].toDouble(value))
-    }*/
 
   final case class LongExemplar(
       filteredAttributes: Attributes,

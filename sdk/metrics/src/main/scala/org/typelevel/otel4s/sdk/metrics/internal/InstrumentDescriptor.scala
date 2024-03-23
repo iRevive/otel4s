@@ -64,7 +64,7 @@ object InstrumentDescriptor {
       instrumentValueType: InstrumentValueType,
       advice: Advice
   ): InstrumentDescriptor.Synchronous =
-    SyncImpl(
+    SynchronousImpl(
       name,
       description,
       unit,
@@ -112,7 +112,7 @@ object InstrumentDescriptor {
         s"advice=${descriptor.advice}}"
     }
 
-  private final case class SyncImpl(
+  private final case class SynchronousImpl(
       name: String,
       description: Option[String],
       unit: Option[String],
