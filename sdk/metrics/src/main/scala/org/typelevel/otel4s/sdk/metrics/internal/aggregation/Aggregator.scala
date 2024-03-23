@@ -21,18 +21,17 @@ import cats.Applicative
 import cats.effect.Temporal
 import cats.effect.std.Random
 import org.typelevel.otel4s.Attributes
-import org.typelevel.otel4s.metrics.{BucketBoundaries, MeasurementValue}
+import org.typelevel.otel4s.metrics.BucketBoundaries
+import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
-import org.typelevel.otel4s.sdk.metrics.internal.{
-  InstrumentDescriptor,
-  Measurement,
-  MetricDescriptor
-}
+import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.Measurement
+import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 
 import scala.concurrent.duration.FiniteDuration
@@ -91,19 +90,19 @@ private[metrics] object Aggregator {
       traceContextLookup: TraceContextLookup
   ): Aggregator.Synchronous[F, A] = {
     def sum: Aggregator.Synchronous[F, A] =
-      SumSynchronous(
+      SumAggregator.synchronous(
         Runtime.getRuntime.availableProcessors,
         filter,
         traceContextLookup
       )
 
     def lastValue: Aggregator.Synchronous[F, A] =
-      LastValueSynchronous[F, A]
+      LastValueAggregator.synchronous[F, A]
 
     def histogram: Aggregator.Synchronous[F, A] = {
       val boundaries =
         descriptor.advice.explicitBoundaries.getOrElse(BucketBoundaries.default)
-      ExplicitBucketHistogram(boundaries, filter, traceContextLookup)
+      ExplicitBucketHistogramAggregator(boundaries, filter, traceContextLookup)
     }
 
     aggregation match {
@@ -118,7 +117,7 @@ private[metrics] object Aggregator {
       case Aggregation.LastValue => lastValue
 
       case Aggregation.ExplicitBucketHistogram(boundaries) =>
-        ExplicitBucketHistogram(
+        ExplicitBucketHistogramAggregator(
           boundaries,
           filter,
           traceContextLookup
@@ -134,10 +133,10 @@ private[metrics] object Aggregator {
       descriptor: InstrumentDescriptor.Observable
   ): Aggregator.Observable[F, A] = {
     def sum: Aggregator.Observable[F, A] =
-      SumObservable[F, A]
+      SumAggregator.observable[F, A]
 
     def lastValue: Aggregator.Observable[F, A] =
-      LastValueObservable[F, A]
+      LastValueAggregator.observable[F, A]
 
     aggregation match {
       case Aggregation.Default =>

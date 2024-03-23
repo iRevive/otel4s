@@ -40,14 +40,14 @@ import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 
 import scala.concurrent.duration.FiniteDuration
 
-private final class ExplicitBucketHistogram[
+private final class ExplicitBucketHistogramAggregator[
     F[_]: Concurrent,
     A: MeasurementValue
 ](
     boundaries: BucketBoundaries,
     makeReservoir: F[ExemplarReservoir[F, A, ExemplarData.DoubleExemplar]]
 ) extends Aggregator.Synchronous[F, A] {
-  import ExplicitBucketHistogram._
+  import ExplicitBucketHistogramAggregator._
 
   type Point = PointData.Histogram
 
@@ -76,18 +76,18 @@ private final class ExplicitBucketHistogram[
     )
 }
 
-private object ExplicitBucketHistogram {
+private object ExplicitBucketHistogramAggregator {
 
   def apply[F[_]: Temporal, A: MeasurementValue: Numeric](
       boundaries: BucketBoundaries,
       filter: ExemplarFilter,
       lookup: TraceContextLookup
-  ): ExplicitBucketHistogram[F, A] = {
+  ): Aggregator.Synchronous[F, A] = {
     val reservoir = ExemplarReservoir
       .histogramBucket[F, A, ExemplarData.DoubleExemplar](boundaries, lookup)
       .map(r => ExemplarReservoir.filtered(filter, r))
 
-    new ExplicitBucketHistogram[F, A](boundaries, reservoir)
+    new ExplicitBucketHistogramAggregator[F, A](boundaries, reservoir)
   }
 
   private final case class State(
