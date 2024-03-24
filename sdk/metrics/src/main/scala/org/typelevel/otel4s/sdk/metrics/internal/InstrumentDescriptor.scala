@@ -29,7 +29,6 @@ sealed trait InstrumentDescriptor {
   def description: Option[String]
   def unit: Option[String]
   def instrumentType: InstrumentType
-  def instrumentValueType: InstrumentValueType
   def advice: Advice
 
   override final def hashCode(): Int =
@@ -52,8 +51,8 @@ object InstrumentDescriptor {
     def instrumentType: InstrumentType.Synchronous
   }
 
-  sealed trait Observable extends InstrumentDescriptor {
-    def instrumentType: InstrumentType.Observable
+  sealed trait Asynchronous extends InstrumentDescriptor {
+    def instrumentType: InstrumentType.Asynchronous
   }
 
   def synchronous(
@@ -61,7 +60,6 @@ object InstrumentDescriptor {
       description: Option[String],
       unit: Option[String],
       instrumentType: InstrumentType.Synchronous,
-      instrumentValueType: InstrumentValueType,
       advice: Advice
   ): InstrumentDescriptor.Synchronous =
     SynchronousImpl(
@@ -69,24 +67,21 @@ object InstrumentDescriptor {
       description,
       unit,
       instrumentType,
-      instrumentValueType,
       advice
     )
 
-  def observable(
+  def asynchronous(
       name: String,
       description: Option[String],
       unit: Option[String],
-      instrumentType: InstrumentType.Observable,
-      instrumentValueType: InstrumentValueType,
+      instrumentType: InstrumentType.Asynchronous,
       advice: Advice
-  ): InstrumentDescriptor.Observable =
-    ObservableImpl(
+  ): InstrumentDescriptor.Asynchronous =
+    AsynchronousImpl(
       name,
       description,
       unit,
       instrumentType,
-      instrumentValueType,
       advice
     )
 
@@ -98,7 +93,6 @@ object InstrumentDescriptor {
         descriptor.description,
         descriptor.unit,
         descriptor.instrumentType,
-        descriptor.instrumentValueType
       )
     }
 
@@ -108,7 +102,6 @@ object InstrumentDescriptor {
       val unit = descriptor.unit.foldMap(d => s"unit=$d, ")
       s"InstrumentDescriptor{name=${descriptor.name}, $description$unit" +
         s"type=${descriptor.instrumentType}, " +
-        s"valueType=${descriptor.instrumentValueType}, " +
         s"advice=${descriptor.advice}}"
     }
 
@@ -117,17 +110,15 @@ object InstrumentDescriptor {
       description: Option[String],
       unit: Option[String],
       instrumentType: InstrumentType.Synchronous,
-      instrumentValueType: InstrumentValueType,
       advice: Advice
   ) extends InstrumentDescriptor.Synchronous
 
-  private final case class ObservableImpl(
+  private final case class AsynchronousImpl(
       name: String,
       description: Option[String],
       unit: Option[String],
-      instrumentType: InstrumentType.Observable,
-      instrumentValueType: InstrumentValueType,
+      instrumentType: InstrumentType.Asynchronous,
       advice: Advice
-  ) extends InstrumentDescriptor.Observable
+  ) extends InstrumentDescriptor.Asynchronous
 
 }

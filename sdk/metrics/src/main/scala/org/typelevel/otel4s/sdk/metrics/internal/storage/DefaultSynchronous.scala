@@ -41,9 +41,8 @@ import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.aggregation.Aggregator
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
-import org.typelevel.otel4s.sdk.metrics.internal.view.RegisteredView
-
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage.Synchronous
+import org.typelevel.otel4s.sdk.metrics.internal.view.RegisteredView
 
 private final class DefaultSynchronous[F[_]: Monad: Console, A](
     reader: RegisteredReader[F],

@@ -86,7 +86,7 @@ private[metrics] final class MeterSharedState[
       }
 
   def registerObservableMeasurement[A: MeasurementValue: Numeric](
-      descriptor: InstrumentDescriptor.Observable
+      descriptor: InstrumentDescriptor.Asynchronous
   ): F[SdkObservableMeasurement[F, A]] =
     registries.toVector
       .flatTraverse { case (reader, registry) =>
@@ -94,9 +94,9 @@ private[metrics] final class MeterSharedState[
           .findViews(descriptor, scope)
           .flatTraverse { registeredView =>
             registeredView.view.aggregation match {
-              case aggregation: Aggregation.Observable =>
+              case aggregation: Aggregation.Asynchronous =>
                 for {
-                  storage <- MetricStorage.observable(
+                  storage <- MetricStorage.asynchronous(
                     reader,
                     registeredView,
                     descriptor,
@@ -106,7 +106,7 @@ private[metrics] final class MeterSharedState[
                 } yield Vector(storage)
 
               case _ =>
-                Temporal[F].pure(Vector.empty[MetricStorage.Observable[F, A]])
+                Temporal[F].pure(Vector.empty[MetricStorage.Asynchronous[F, A]])
             }
           }
       }

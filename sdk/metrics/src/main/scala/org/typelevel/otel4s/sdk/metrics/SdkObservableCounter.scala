@@ -124,13 +124,12 @@ private object SdkObservableCounter {
       }
     }
 
-    private def makeDescriptor: InstrumentDescriptor.Observable =
-      InstrumentDescriptor.observable(
+    private def makeDescriptor: InstrumentDescriptor.Asynchronous =
+      InstrumentDescriptor.asynchronous(
         name,
         unit,
         description,
         InstrumentType.ObservableCounter,
-        InstrumentValueType.of[A],
         Advice.empty
       )
   }

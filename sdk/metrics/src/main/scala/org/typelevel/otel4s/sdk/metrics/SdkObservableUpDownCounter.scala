@@ -126,13 +126,12 @@ private object SdkObservableUpDownCounter {
       }
     }
 
-    private def makeDescriptor: InstrumentDescriptor.Observable =
-      InstrumentDescriptor.observable(
+    private def makeDescriptor: InstrumentDescriptor.Asynchronous =
+      InstrumentDescriptor.asynchronous(
         name,
         unit,
         description,
         InstrumentType.ObservableUpDownCounter,
-        InstrumentValueType.of[A],
         Advice.empty
       )
   }

@@ -34,7 +34,7 @@ private[metrics] final class SdkObservableMeasurement[F[_]: Monad, A](
     stateRef: Ref[F, SdkObservableMeasurement.State[F]],
     val scope: InstrumentationScope,
     val descriptor: InstrumentDescriptor,
-    val storages: Vector[MetricStorage.Observable[F, A]]
+    val storages: Vector[MetricStorage.Asynchronous[F, A]]
 ) extends ObservableMeasurement[F, A] {
   import SdkObservableMeasurement._
 
@@ -76,7 +76,7 @@ object SdkObservableMeasurement {
   }
 
   def create[F[_]: Concurrent, A](
-      storages: Vector[MetricStorage.Observable[F, A]],
+      storages: Vector[MetricStorage.Asynchronous[F, A]],
       scope: InstrumentationScope,
       descriptor: InstrumentDescriptor
   ): F[SdkObservableMeasurement[F, A]] =

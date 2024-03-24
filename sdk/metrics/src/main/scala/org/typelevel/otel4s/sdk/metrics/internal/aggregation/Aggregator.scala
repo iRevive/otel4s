@@ -27,14 +27,13 @@ import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
+import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.Measurement
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
-
-import org.typelevel.otel4s.sdk.metrics.data.MetricData
 
 private[metrics] object Aggregator {
 
@@ -52,7 +51,7 @@ private[metrics] object Aggregator {
     ): F[MetricData]
   }
 
-  trait Observable[F[_], A] {
+  trait Asynchronous[F[_], A] {
     def diff(previous: Measurement[A], current: Measurement[A]): Measurement[A]
 
     def toMetricData(
@@ -127,15 +126,15 @@ private[metrics] object Aggregator {
     }
   }
 
-  def observable[F[_]: Applicative, A: MeasurementValue: Numeric](
-      aggregation: Aggregation.Observable,
-      descriptor: InstrumentDescriptor.Observable
-  ): Aggregator.Observable[F, A] = {
-    def sum: Aggregator.Observable[F, A] =
-      SumAggregator.observable[F, A]
+  def asynchronous[F[_]: Applicative, A: MeasurementValue: Numeric](
+      aggregation: Aggregation.Asynchronous,
+      descriptor: InstrumentDescriptor.Asynchronous
+  ): Aggregator.Asynchronous[F, A] = {
+    def sum: Aggregator.Asynchronous[F, A] =
+      SumAggregator.asynchronous[F, A]
 
-    def lastValue: Aggregator.Observable[F, A] =
-      LastValueAggregator.observable[F, A]
+    def lastValue: Aggregator.Asynchronous[F, A] =
+      LastValueAggregator.asynchronous[F, A]
 
     aggregation match {
       case Aggregation.Default =>

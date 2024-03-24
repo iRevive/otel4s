@@ -30,13 +30,12 @@ import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.InstrumentType
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
+import org.typelevel.otel4s.sdk.metrics.data.Data
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarReservoir
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.utils.Adder
-
-import org.typelevel.otel4s.sdk.metrics.data.Data
 
 object SumAggregator {
 
@@ -47,11 +46,11 @@ object SumAggregator {
   ): Aggregator.Synchronous[F, A] =
     new Synchronous(reservoirSize, filter, lookup)
 
-  def observable[
+  def asynchronous[
       F[_]: Applicative,
       A: MeasurementValue: Numeric
-  ]: Aggregator.Observable[F, A] =
-    new Observable[F, A]
+  ]: Aggregator.Asynchronous[F, A] =
+    new Asynchronous[F, A]
 
   private final class Synchronous[
       F[_]: Temporal: Random,
@@ -134,10 +133,10 @@ object SumAggregator {
 
   }
 
-  private final class Observable[
+  private final class Asynchronous[
       F[_]: Applicative,
       A: MeasurementValue: Numeric
-  ] extends Aggregator.Observable[F, A] {
+  ] extends Aggregator.Asynchronous[F, A] {
 
     private val target: Target[A] = Target[A]
 

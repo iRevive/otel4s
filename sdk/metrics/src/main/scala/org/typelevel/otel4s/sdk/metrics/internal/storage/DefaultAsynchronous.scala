@@ -36,28 +36,27 @@ import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 import org.typelevel.otel4s.sdk.metrics.internal.AttributesProcessor
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.Measurement
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.aggregation.Aggregator
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
+import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage.Asynchronous
 import org.typelevel.otel4s.sdk.metrics.internal.view.RegisteredView
 
 import scala.concurrent.duration.FiniteDuration
 
-import org.typelevel.otel4s.sdk.metrics.internal.Measurement
-import org.typelevel.otel4s.sdk.metrics.internal.aggregation.Aggregator
-import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage.Observable
-
-private final class DefaultObservable[
+private final class DefaultAsynchronous[
     F[_]: Monad: Console: AskContext,
     A
 ] private (
     val reader: RegisteredReader[F],
     val metricDescriptor: MetricDescriptor,
     aggregationTemporality: AggregationTemporality,
-    aggregator: Aggregator.Observable[F, A],
+    aggregator: Aggregator.Asynchronous[F, A],
     attributesProcessor: AttributesProcessor,
     maxCardinality: Int,
-    collector: DefaultObservable.Collector[F, A]
-) extends Observable[F, A] {
+    collector: DefaultAsynchronous.Collector[F, A]
+) extends Asynchronous[F, A] {
 
   def record(m: Measurement[A]): F[Unit] =
     for {
@@ -108,7 +107,7 @@ private final class DefaultObservable[
     )
 }
 
-private object DefaultObservable {
+private object DefaultAsynchronous {
 
   def create[
       F[_]: Temporal: Console: AskContext,
@@ -116,14 +115,14 @@ private object DefaultObservable {
   ](
       reader: RegisteredReader[F],
       registeredView: RegisteredView,
-      instrumentDescriptor: InstrumentDescriptor.Observable,
-      aggregation: Aggregation.Observable
-  ): F[Observable[F, A]] = {
+      instrumentDescriptor: InstrumentDescriptor.Asynchronous,
+      aggregation: Aggregation.Asynchronous
+  ): F[Asynchronous[F, A]] = {
     val view = registeredView.view
     val descriptor = MetricDescriptor(view, instrumentDescriptor)
 
-    val aggregator: Aggregator.Observable[F, A] =
-      Aggregator.observable(aggregation, instrumentDescriptor)
+    val aggregator: Aggregator.Asynchronous[F, A] =
+      Aggregator.asynchronous(aggregation, instrumentDescriptor)
 
     val aggregationTemporality =
       reader.reader.aggregationTemporalitySelector.select(
@@ -136,7 +135,7 @@ private object DefaultObservable {
         reader,
         aggregator
       )
-    } yield new DefaultObservable[F, A](
+    } yield new DefaultAsynchronous[F, A](
       reader,
       descriptor,
       aggregationTemporality,
@@ -159,7 +158,7 @@ private object DefaultObservable {
     def create[F[_]: Concurrent, A](
         aggregationTemporality: AggregationTemporality,
         reader: RegisteredReader[F],
-        aggregator: Aggregator.Observable[F, A]
+        aggregator: Aggregator.Asynchronous[F, A]
     ): F[Collector[F, A]] =
       aggregationTemporality match {
         case AggregationTemporality.Delta => delta[F, A](reader, aggregator)
@@ -168,7 +167,7 @@ private object DefaultObservable {
 
     private def delta[F[_]: Concurrent, A](
         reader: RegisteredReader[F],
-        aggregator: Aggregator.Observable[F, A]
+        aggregator: Aggregator.Asynchronous[F, A]
     ): F[Collector[F, A]] =
       Ref.of(Map.empty[Attributes, Measurement[A]]).flatMap { pointsRef =>
         Ref.of(Map.empty[Attributes, Measurement[A]]).map { lastPointsRef =>

@@ -30,7 +30,6 @@ import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.internal.Advice
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
-import org.typelevel.otel4s.sdk.metrics.internal.InstrumentValueType
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
 
 import scala.collection.immutable
@@ -96,7 +95,6 @@ private object SdkUpDownCounter {
         unit,
         description,
         InstrumentType.UpDownCounter,
-        InstrumentValueType.of[A],
         Advice.empty
       )
 

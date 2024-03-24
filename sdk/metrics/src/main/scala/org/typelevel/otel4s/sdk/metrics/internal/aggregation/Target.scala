@@ -19,12 +19,11 @@ package org.typelevel.otel4s.sdk.metrics.internal.aggregation
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
+import org.typelevel.otel4s.sdk.metrics.data.ExemplarData.TraceContext
+import org.typelevel.otel4s.sdk.metrics.data.PointData
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 
 import scala.concurrent.duration.FiniteDuration
-
-import org.typelevel.otel4s.sdk.metrics.data.ExemplarData.TraceContext
-import org.typelevel.otel4s.sdk.metrics.data.PointData
 
 private sealed trait Target[A] { self =>
   type Exemplar <: ExemplarData

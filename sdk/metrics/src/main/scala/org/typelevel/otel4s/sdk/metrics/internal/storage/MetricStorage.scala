@@ -32,7 +32,6 @@ import org.typelevel.otel4s.sdk.metrics.Aggregation
 import org.typelevel.otel4s.sdk.metrics.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
-
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.Measurement
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
@@ -76,7 +75,7 @@ private[metrics] object MetricStorage {
 
   trait Synchronous[F[_], A] extends MetricStorage[F] with Writeable[F, A]
 
-  trait Observable[F[_], A] extends MetricStorage[F] {
+  trait Asynchronous[F[_], A] extends MetricStorage[F] {
     def record(measurement: Measurement[A]): F[Unit]
     def reader: RegisteredReader[F]
   }
@@ -101,16 +100,16 @@ private[metrics] object MetricStorage {
       aggregation
     )
 
-  def observable[
+  def asynchronous[
       F[_]: Temporal: Console: AskContext,
       A: MeasurementValue: Numeric
   ](
       reader: RegisteredReader[F],
       registeredView: RegisteredView,
-      instrumentDescriptor: InstrumentDescriptor.Observable,
-      aggregation: Aggregation.Observable
-  ): F[Observable[F, A]] =
-    DefaultObservable.create(
+      instrumentDescriptor: InstrumentDescriptor.Asynchronous,
+      aggregation: Aggregation.Asynchronous
+  ): F[Asynchronous[F, A]] =
+    DefaultAsynchronous.create(
       reader,
       registeredView,
       instrumentDescriptor,

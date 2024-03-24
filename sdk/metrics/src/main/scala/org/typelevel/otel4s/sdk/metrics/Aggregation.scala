@@ -146,24 +146,24 @@ object Aggregation {
     }
 
   private[metrics] sealed trait Synchronous { self: Aggregation => }
-  private[metrics] sealed trait Observable { self: Aggregation => }
+  private[metrics] sealed trait Asynchronous { self: Aggregation => }
 
   private[metrics] case object Drop extends Aggregation(Compatability.Drop)
 
   private[metrics] case object Default
       extends Aggregation(Compatability.Default)
       with Synchronous
-      with Observable
+      with Asynchronous
 
   private[metrics] case object Sum
       extends Aggregation(Compatability.Sum)
       with Synchronous
-      with Observable
+      with Asynchronous
 
   private[metrics] case object LastValue
       extends Aggregation(Compatability.LastValue)
       with Synchronous
-      with Observable
+      with Asynchronous
 
   private[metrics] final case class ExplicitBucketHistogram(
       boundaries: BucketBoundaries

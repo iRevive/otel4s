@@ -32,7 +32,6 @@ import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.metrics.internal.Advice
 import org.typelevel.otel4s.sdk.metrics.internal.CallbackRegistration
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
-import org.typelevel.otel4s.sdk.metrics.internal.InstrumentValueType
 
 private object SdkObservableGauge {
 
@@ -127,13 +126,12 @@ private object SdkObservableGauge {
       }
     }
 
-    private def makeDescriptor: InstrumentDescriptor.Observable =
-      InstrumentDescriptor.observable(
+    private def makeDescriptor: InstrumentDescriptor.Asynchronous =
+      InstrumentDescriptor.asynchronous(
         name,
         unit,
         description,
         InstrumentType.ObservableGauge,
-        InstrumentValueType.of[A],
         Advice.empty
       )
   }

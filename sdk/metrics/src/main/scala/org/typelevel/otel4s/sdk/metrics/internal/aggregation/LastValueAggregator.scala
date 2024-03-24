@@ -26,11 +26,10 @@ import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
-import org.typelevel.otel4s.sdk.metrics.data.MetricData
-import org.typelevel.otel4s.sdk.metrics.internal.utils.Current
-
 import org.typelevel.otel4s.sdk.metrics.data.Data
+import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
+import org.typelevel.otel4s.sdk.metrics.internal.utils.Current
 
 object LastValueAggregator {
 
@@ -40,11 +39,11 @@ object LastValueAggregator {
   ]: Aggregator.Synchronous[F, A] =
     new Synchronous[F, A]
 
-  def observable[
+  def asynchronous[
       F[_]: Applicative,
       A: MeasurementValue
-  ]: Aggregator.Observable[F, A] =
-    new Observable[F, A]
+  ]: Aggregator.Asynchronous[F, A] =
+    new Asynchronous[F, A]
 
   private final class Synchronous[
       F[_]: Concurrent,
@@ -102,10 +101,10 @@ object LastValueAggregator {
     }
   }
 
-  private final class Observable[
+  private final class Asynchronous[
       F[_]: Applicative,
       A: MeasurementValue
-  ] extends Aggregator.Observable[F, A] {
+  ] extends Aggregator.Asynchronous[F, A] {
 
     private val target: Target[A] = Target[A]
 
