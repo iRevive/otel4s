@@ -14,13 +14,22 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics
+package org.typelevel.otel4s.sdk.metrics.internal.exemplar
 
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.context.Context
 
-trait ExemplarFilter {
+/** Exemplar filters are used to pre-filter measurements before attempting to
+  * store them in a reservoir.
+  *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/metrics/sdk/#exemplarfilter]]
+  */
+sealed trait ExemplarFilter {
+
+  /** Returns whether or not a reservoir should attempt to sample a measurement.
+    */
   def shouldSample[A: MeasurementValue](
       value: A,
       attributes: Attributes,
@@ -29,21 +38,40 @@ trait ExemplarFilter {
 }
 
 object ExemplarFilter {
-  def traceBased: ExemplarFilter = new ExemplarFilter {
+  private val AlwaysOn = new Const(decision = true)
+  private val AlwaysOff = new Const(decision = false)
+
+  /** A filter which makes all measurements eligible for being an exemplar.
+    */
+  def alwaysOn: ExemplarFilter = AlwaysOn
+
+  /** A filter which makes no measurements eligible for being an exemplar.
+    */
+  def alwaysOff: ExemplarFilter = AlwaysOff
+
+  /** A filter that only accepts measurements where there is a span in a context
+    * that is being sampled.
+    */
+  def traceBased(lookup: TraceContextLookup): ExemplarFilter =
+    new TraceBased(lookup)
+
+  private final class Const(decision: Boolean) extends ExemplarFilter {
     def shouldSample[A: MeasurementValue](
         value: A,
         attributes: Attributes,
         context: Context
     ): Boolean =
-      true
+      decision
   }
 
-  def alwaysOff: ExemplarFilter = new ExemplarFilter {
+  private final class TraceBased(
+      lookup: TraceContextLookup
+  ) extends ExemplarFilter {
     def shouldSample[A: MeasurementValue](
         value: A,
         attributes: Attributes,
         context: Context
     ): Boolean =
-      false
+      lookup.isSampled(context)
   }
 }

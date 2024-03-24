@@ -41,6 +41,7 @@ import org.typelevel.otel4s.sdk.metrics.SdkMeterProvider
 import org.typelevel.otel4s.sdk.metrics.autoconfigure.MeterProviderAutoConfigure
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricExporter
+import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.trace.SdkContextKeys
 import org.typelevel.otel4s.sdk.trace.SdkTracerProvider
 import org.typelevel.otel4s.sdk.trace.autoconfigure.ContextPropagatorsAutoConfigure
@@ -385,12 +386,23 @@ object OpenTelemetrySdk {
                   resource,
                   merge(
                     (a, _) =>
-                      a.withTraceContextLookup(c =>
-                        c.get(SdkContextKeys.SpanContextKey)
-                          .filter(_.isValid)
-                          .map(ctx =>
-                            ExemplarData.TraceContext(ctx.traceId, ctx.spanId)
-                          )
+                      a.withTraceContextLookup(
+                        new TraceContextLookup {
+                          def get(context: Context)
+                              : Option[ExemplarData.TraceContext] =
+                            context
+                              .get(SdkContextKeys.SpanContextKey)
+                              .filter(_.isValid)
+                              .map(ctx =>
+                                ExemplarData
+                                  .TraceContext(ctx.traceId, ctx.spanId)
+                              )
+
+                          def isSampled(context: Context): Boolean =
+                            context
+                              .get(SdkContextKeys.SpanContextKey)
+                              .exists(_.isSampled)
+                        }
                       ),
                     meterProviderCustomizer
                   ),

@@ -33,6 +33,7 @@ import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.Measurement
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 
 private[metrics] object Aggregator {

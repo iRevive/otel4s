@@ -29,7 +29,6 @@ import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.metrics.BucketBoundaries
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.context.Context
-import org.typelevel.otel4s.sdk.metrics.ExemplarFilter
 
 private[internal] trait ExemplarReservoir[F[_], A] {
   def offer(value: A, attributes: Attributes, context: Context): F[Unit]

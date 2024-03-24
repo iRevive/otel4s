@@ -22,11 +22,13 @@ import org.typelevel.otel4s.sdk.metrics.data.ExemplarData.TraceContext
 // todo: package may be different
 trait TraceContextLookup {
   def get(context: Context): Option[TraceContext]
+  def isSampled(context: Context): Boolean
 }
 
 object TraceContextLookup {
   def noop[F[_]]: TraceContextLookup =
     new TraceContextLookup {
       def get(context: Context): Option[TraceContext] = None
+      def isSampled(context: Context): Boolean = false
     }
 }

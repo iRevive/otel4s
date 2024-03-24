@@ -35,6 +35,7 @@ import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.exporter.CollectionRegistration
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricProducer
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricReader
+import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.internal.view.RegisteredView
@@ -168,7 +169,7 @@ object SdkMeterProvider {
   def builder[F[_]: Temporal: Random: Console: AskContext]: Builder[F] =
     BuilderImpl(
       resource = TelemetryResource.default,
-      exemplarFilter = ExemplarFilter.traceBased,
+      exemplarFilter = None,
       traceContextLookup = TraceContextLookup.noop,
       registeredViews = Vector.empty,
       metricReaders = Map.empty,
@@ -179,7 +180,7 @@ object SdkMeterProvider {
       F[_]: Temporal: Random: Console: AskContext
   ](
       resource: TelemetryResource,
-      exemplarFilter: ExemplarFilter,
+      exemplarFilter: Option[ExemplarFilter],
       traceContextLookup: TraceContextLookup,
       registeredViews: Vector[RegisteredView],
       metricReaders: Map[MetricReader[F], CardinalityLimitSelector],
@@ -193,7 +194,7 @@ object SdkMeterProvider {
       copy(resource = this.resource.mergeUnsafe(resource))
 
     def withExemplarFilter(filter: ExemplarFilter): Builder[F] =
-      copy(exemplarFilter = filter)
+      copy(exemplarFilter = Some(filter))
 
     def withTraceContextLookup(lookup: TraceContextLookup): Builder[F] =
       copy(traceContextLookup = lookup)
@@ -235,12 +236,16 @@ object SdkMeterProvider {
             .flatMap { readers =>
               ComponentRegistry
                 .create { scope =>
+                  val filter = exemplarFilter.getOrElse(
+                    ExemplarFilter.traceBased(traceContextLookup)
+                  )
+
                   for {
                     state <- MeterSharedState.create(
                       resource,
                       scope,
                       now,
-                      exemplarFilter,
+                      filter,
                       traceContextLookup,
                       readers
                     )
