@@ -69,7 +69,6 @@ object PointData {
     def stats: Option[Histogram.Stats]
     def boundaries: Vector[Double]
     def counts: Vector[Long]
-    def count: Long
   }
 
   object Histogram {
@@ -77,15 +76,17 @@ object PointData {
       def sum: Double
       def min: Double
       def max: Double
+      def count: Long
     }
 
-    def stats(sum: Double, min: Double, max: Double): Stats =
-      StatsImpl(sum, min, max)
+    def stats(sum: Double, min: Double, max: Double, count: Long): Stats =
+      StatsImpl(sum, min, max, count)
 
     private final case class StatsImpl(
         sum: Double,
         min: Double,
-        max: Double
+        max: Double,
+        count: Long
     ) extends Stats
   }
 
@@ -158,8 +159,7 @@ object PointData {
       exemplars: Vector[ExemplarData.DoubleExemplar],
       stats: Option[Histogram.Stats],
       boundaries: Vector[Double],
-      counts: Vector[Long],
-      count: Long
+      counts: Vector[Long]
   ): Histogram = {
     require(counts.length == boundaries.size + 1)
     // todo require(isStrictlyIncreasing())
@@ -170,8 +170,7 @@ object PointData {
       exemplars,
       stats,
       boundaries,
-      counts,
-      count
+      counts
     )
   }
 
@@ -230,8 +229,7 @@ object PointData {
       exemplars: Vector[ExemplarData.DoubleExemplar],
       stats: Option[Histogram.Stats],
       boundaries: Vector[Double],
-      counts: Vector[Long],
-      count: Long
+      counts: Vector[Long]
   ) extends Histogram
 
   private final case class ExponentialHistogramImpl(

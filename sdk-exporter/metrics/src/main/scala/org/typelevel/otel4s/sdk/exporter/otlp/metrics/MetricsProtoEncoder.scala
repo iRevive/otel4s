@@ -139,7 +139,7 @@ private object MetricsProtoEncoder {
               attributes = ProtoEncoder.encode(p.attributes),
               startTimeUnixNano = p.timeWindow.start.toNanos,
               timeUnixNano = p.timeWindow.end.toNanos,
-              count = p.count,
+              count = p.stats.map(_.count).getOrElse(0L),
               sum = p.stats.map(_.sum),
               bucketCounts = p.counts,
               explicitBounds = p.boundaries,
