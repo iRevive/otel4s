@@ -61,7 +61,7 @@ private object Target {
               exemplars: Vector[ExemplarData.LongExemplar],
               value: A
           ): PointData.LongNumber =
-            PointData.LongNumber(
+            PointData.longNumber(
               startTimestamp,
               collectTimestamp,
               attributes,
@@ -90,7 +90,7 @@ private object Target {
               exemplars: Vector[ExemplarData.DoubleExemplar],
               value: A
           ): PointData.DoubleNumber =
-            PointData.DoubleNumber(
+            PointData.doubleNumber(
               startTimestamp,
               collectTimestamp,
               attributes,

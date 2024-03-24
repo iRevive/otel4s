@@ -71,7 +71,7 @@ private final class ExplicitBucketHistogramAggregator[
         descriptor.name,
         descriptor.description,
         descriptor.sourceInstrument.unit,
-        Data.Histogram(points, temporality)
+        Data.histogram(points, temporality)
       )
     )
 }
@@ -125,7 +125,7 @@ private object ExplicitBucketHistogramAggregator {
           }
 
           val nonEmpty = state.count > 0
-          val histogram = PointData.Histogram(
+          val histogram = PointData.histogram(
             startTimestamp = startTimestamp,
             collectTimestamp = collectTimestamp,
             attributes = attributes,

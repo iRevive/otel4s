@@ -73,7 +73,7 @@ object LastValueAggregator {
           descriptor.name,
           descriptor.description,
           descriptor.sourceInstrument.unit,
-          Data.Gauge(points)
+          Data.gauge(points)
         )
       )
 
@@ -141,7 +141,7 @@ object LastValueAggregator {
           descriptor.name,
           descriptor.description,
           descriptor.sourceInstrument.unit,
-          Data.Gauge(points)
+          Data.gauge(points)
         )
       )
     }

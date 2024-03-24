@@ -86,7 +86,7 @@ object SumAggregator {
           descriptor.name,
           descriptor.description,
           descriptor.sourceInstrument.unit,
-          Data.Sum(points, isMonotonic(descriptor), temporality)
+          Data.sum(points, isMonotonic(descriptor), temporality)
         )
       )
 
@@ -173,7 +173,7 @@ object SumAggregator {
           descriptor.name,
           descriptor.description,
           descriptor.sourceInstrument.unit,
-          Data.Sum(points, isMonotonic(descriptor), temporality)
+          Data.sum(points, isMonotonic(descriptor), temporality)
         )
       )
     }

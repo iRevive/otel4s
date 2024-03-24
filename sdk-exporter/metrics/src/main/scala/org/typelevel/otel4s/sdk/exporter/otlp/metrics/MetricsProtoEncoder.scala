@@ -82,10 +82,10 @@ private object MetricsProtoEncoder {
     Proto.NumberDataPoint
   ] = { point =>
     val value = point match {
-      case PointData.LongNumber(_, _, _, _, value) =>
-        Proto.NumberDataPoint.Value.AsInt(value)
-      case PointData.DoubleNumber(_, _, _, _, value) =>
-        Proto.NumberDataPoint.Value.AsDouble(value)
+      case long: PointData.LongNumber =>
+        Proto.NumberDataPoint.Value.AsInt(long.value)
+      case double: PointData.DoubleNumber =>
+        Proto.NumberDataPoint.Value.AsDouble(double.value)
     }
 
     Proto.NumberDataPoint(
@@ -98,24 +98,24 @@ private object MetricsProtoEncoder {
   }
 
   implicit val dataEncoder: ProtoEncoder[Data, Proto.Metric.Data] = {
-    case Data.Sum(points, isMonotonic, aggregationTemporality) =>
+    case sum: Data.Sum =>
       Proto.Metric.Data.Sum(
         Proto.Sum(
-          points.map(ProtoEncoder.encode(_)),
-          ProtoEncoder.encode(aggregationTemporality),
-          isMonotonic
+          sum.points.map(ProtoEncoder.encode(_)),
+          ProtoEncoder.encode(sum.aggregationTemporality),
+          sum.isMonotonic
         )
       )
 
-    case Data.Gauge(points) =>
+    case gauge: Data.Gauge =>
       Proto.Metric.Data.Gauge(
-        Proto.Gauge(points.map(ProtoEncoder.encode(_)))
+        Proto.Gauge(gauge.points.map(ProtoEncoder.encode(_)))
       )
 
-    case Data.Summary(points) =>
+    case summary: Data.Summary =>
       Proto.Metric.Data.Summary(
         Proto.Summary(
-          points.map(p =>
+          summary.points.map(p =>
             Proto.SummaryDataPoint(
               ProtoEncoder.encode(p.attributes),
               p.startTimestamp.toNanos,
@@ -131,10 +131,10 @@ private object MetricsProtoEncoder {
         )
       )
 
-    case Data.Histogram(points, aggregationTemporality) =>
+    case histogram: Data.Histogram =>
       Proto.Metric.Data.Histogram(
         Proto.Histogram(
-          points.map(p =>
+          histogram.points.map(p =>
             Proto.HistogramDataPoint(
               attributes = ProtoEncoder.encode(p.attributes),
               startTimeUnixNano = p.startTimestamp.toNanos,
@@ -148,14 +148,14 @@ private object MetricsProtoEncoder {
               max = p.max
             )
           ),
-          ProtoEncoder.encode(aggregationTemporality)
+          ProtoEncoder.encode(histogram.aggregationTemporality)
         )
       )
 
-    case Data.ExponentialHistogram(points, aggregationTemporality) =>
+    case exponentialHistogram: Data.ExponentialHistogram =>
       Proto.Metric.Data.ExponentialHistogram(
         Proto.ExponentialHistogram(
-          points.map(p =>
+          exponentialHistogram.points.map(p =>
             Proto
               .ExponentialHistogramDataPoint(
                 attributes = ProtoEncoder.encode(p.attributes),
@@ -183,7 +183,7 @@ private object MetricsProtoEncoder {
                 // zeroThreshold = , // todo?
               )
           ),
-          ProtoEncoder.encode(aggregationTemporality)
+          ProtoEncoder.encode(exponentialHistogram.aggregationTemporality)
         )
       )
   }

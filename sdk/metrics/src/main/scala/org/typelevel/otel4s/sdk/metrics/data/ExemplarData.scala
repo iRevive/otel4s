@@ -32,6 +32,10 @@ sealed trait ExemplarData {
 
 object ExemplarData {
 
+  sealed trait LongExemplar extends ExemplarData { type Value = Long }
+
+  sealed trait DoubleExemplar extends ExemplarData { type Value = Double }
+
   sealed trait TraceContext {
     def traceId: ByteVector
     def spanId: ByteVector
@@ -47,10 +51,6 @@ object ExemplarData {
         spanId: ByteVector
     ) extends TraceContext
   }
-
-  sealed trait LongExemplar extends ExemplarData { type Value = Long }
-
-  sealed trait DoubleExemplar extends ExemplarData { type Value = Double }
 
   def long(
       filteredAttributes: Attributes,
