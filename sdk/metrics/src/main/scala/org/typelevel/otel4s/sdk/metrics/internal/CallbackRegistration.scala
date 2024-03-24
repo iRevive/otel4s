@@ -22,9 +22,8 @@ import cats.effect.syntax.monadCancel._
 import cats.syntax.applicative._
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
+import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
-
-import scala.concurrent.duration.FiniteDuration
 
 private[metrics] final class CallbackRegistration[F[_]: MonadCancelThrow](
     measurements: NonEmptyList[SdkObservableMeasurement[F, _]],
@@ -36,11 +35,10 @@ private[metrics] final class CallbackRegistration[F[_]: MonadCancelThrow](
 
   def invokeCallback(
       reader: RegisteredReader[F],
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration
+      timeWindow: TimeWindow
   ): F[Unit] =
     measurements
-      .traverse_(_.setActiveReader(reader, startTimestamp, collectTimestamp))
+      .traverse_(_.setActiveReader(reader, timeWindow))
       .flatMap(_ => callback)
       .guarantee(measurements.traverse_(_.unsetActiveReader))
       .whenA(hasStorages)

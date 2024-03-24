@@ -18,16 +18,16 @@ package org.typelevel.otel4s.sdk.metrics.data
 
 import org.typelevel.otel4s.Attributes
 
-import scala.concurrent.duration.FiniteDuration
-
 /** A point in the metric data model.
   *
   * A point represents the aggregation of measurements recorded with a
   * particular set of [[Attributes]] over some time interval.
   */
 sealed trait PointData {
-  def startTimestamp: FiniteDuration
-  def collectTimestamp: FiniteDuration
+
+  /** A [[TimeWindow]] for which the point data was calculated.
+    */
+  def timeWindow: TimeWindow
   def attributes: Attributes
 }
 
@@ -112,46 +112,40 @@ object PointData {
   }
 
   def longNumber(
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration,
+      timeWindow: TimeWindow,
       attributes: Attributes,
       exemplars: Vector[ExemplarData.LongExemplar],
       value: Long
   ): LongNumber =
     LongNumberImpl(
-      startTimestamp,
-      collectTimestamp,
+      timeWindow,
       attributes,
       exemplars,
       value
     )
 
   def doubleNumber(
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration,
+      timeWindow: TimeWindow,
       attributes: Attributes,
       exemplars: Vector[ExemplarData.DoubleExemplar],
       value: Double
   ): DoubleNumber =
     DoubleNumberImpl(
-      startTimestamp,
-      collectTimestamp,
+      timeWindow,
       attributes,
       exemplars,
       value
     )
 
   def summary(
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration,
+      timeWindow: TimeWindow,
       attributes: Attributes,
       count: Long,
       sum: Double,
       percentileValues: Vector[Summary.ValueAtQuantile]
   ): Summary =
     SummaryImpl(
-      startTimestamp,
-      collectTimestamp,
+      timeWindow,
       attributes,
       count,
       sum,
@@ -159,8 +153,7 @@ object PointData {
     )
 
   def histogram(
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration,
+      timeWindow: TimeWindow,
       attributes: Attributes,
       exemplars: Vector[ExemplarData.DoubleExemplar],
       stats: Option[Histogram.Stats],
@@ -172,8 +165,7 @@ object PointData {
     // todo require(isStrictlyIncreasing())
 
     HistogramImpl(
-      startTimestamp,
-      collectTimestamp,
+      timeWindow,
       attributes,
       exemplars,
       stats,
@@ -184,8 +176,7 @@ object PointData {
   }
 
   def exponentialHistogram(
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration,
+      timeWindow: TimeWindow,
       attributes: Attributes,
       exemplars: Vector[ExemplarData.DoubleExemplar],
       sum: Double,
@@ -198,8 +189,7 @@ object PointData {
       negativeBuckets: ExponentialHistogram.Buckets
   ): ExponentialHistogram =
     ExponentialHistogramImpl(
-      startTimestamp,
-      collectTimestamp,
+      timeWindow,
       attributes,
       exemplars,
       sum,
@@ -213,24 +203,21 @@ object PointData {
     )
 
   private final case class LongNumberImpl(
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration,
+      timeWindow: TimeWindow,
       attributes: Attributes,
       exemplars: Vector[ExemplarData.LongExemplar],
       value: Long
   ) extends LongNumber
 
   private final case class DoubleNumberImpl(
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration,
+      timeWindow: TimeWindow,
       attributes: Attributes,
       exemplars: Vector[ExemplarData.DoubleExemplar],
       value: Double
   ) extends DoubleNumber
 
   private final case class SummaryImpl(
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration,
+      timeWindow: TimeWindow,
       attributes: Attributes,
       count: Long,
       sum: Double,
@@ -238,8 +225,7 @@ object PointData {
   ) extends Summary
 
   private final case class HistogramImpl(
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration,
+      timeWindow: TimeWindow,
       attributes: Attributes,
       exemplars: Vector[ExemplarData.DoubleExemplar],
       stats: Option[Histogram.Stats],
@@ -249,8 +235,7 @@ object PointData {
   ) extends Histogram
 
   private final case class ExponentialHistogramImpl(
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration,
+      timeWindow: TimeWindow,
       attributes: Attributes,
       exemplars: Vector[ExemplarData.DoubleExemplar],
       sum: Double,

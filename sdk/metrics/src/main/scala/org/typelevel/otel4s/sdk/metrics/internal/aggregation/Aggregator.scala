@@ -27,14 +27,14 @@ import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
-import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
+import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.Measurement
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 
-import scala.concurrent.duration.FiniteDuration
+import org.typelevel.otel4s.sdk.metrics.data.MetricData
 
 private[metrics] object Aggregator {
 
@@ -70,8 +70,7 @@ private[metrics] object Aggregator {
 
   trait Accumulator[F[_], A, P <: PointData] {
     def aggregate(
-        startTimestamp: FiniteDuration,
-        collectTimestamp: FiniteDuration,
+        timeWindow: TimeWindow,
         attributes: Attributes,
         reset: Boolean
     ): F[Option[P]]

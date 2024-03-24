@@ -34,16 +34,16 @@ import org.typelevel.otel4s.sdk.metrics.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
+import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 import org.typelevel.otel4s.sdk.metrics.internal.AttributesProcessor
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.aggregation.Aggregator
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
-import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage.Synchronous
 import org.typelevel.otel4s.sdk.metrics.internal.view.RegisteredView
 
-import scala.concurrent.duration.FiniteDuration
+import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage.Synchronous
 
 private final class DefaultSynchronous[F[_]: Monad: Console, A](
     reader: RegisteredReader[F],
@@ -75,14 +75,13 @@ private final class DefaultSynchronous[F[_]: Monad: Console, A](
   def collect(
       resource: TelemetryResource,
       scope: InstrumentationScope,
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration
+      timeWindow: TimeWindow
   ): F[Option[MetricData]] = {
     val isDelta = aggregationTemporality == AggregationTemporality.Delta
     val reset = isDelta
     val getStart =
       if (isDelta) reader.getLastCollectTimestamp
-      else Monad[F].pure(startTimestamp)
+      else Monad[F].pure(timeWindow.start)
 
     val getHandlers =
       if (reset) accumulators.getAndSet(Map.empty) else accumulators.get
@@ -90,8 +89,9 @@ private final class DefaultSynchronous[F[_]: Monad: Console, A](
     for {
       start <- getStart
       handlers <- getHandlers
+      window = TimeWindow(start, timeWindow.end)
       points <- handlers.toVector.traverse { case (attributes, handle) =>
-        handle.aggregate(start, collectTimestamp, attributes, reset)
+        handle.aggregate(window, attributes, reset)
       }
       data <- aggregator.toMetricData(
         resource,

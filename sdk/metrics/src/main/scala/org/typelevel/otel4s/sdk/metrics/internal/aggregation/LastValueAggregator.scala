@@ -26,11 +26,11 @@ import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
-import org.typelevel.otel4s.sdk.metrics.data.Data
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.internal.utils.Current
 
-import scala.concurrent.duration.FiniteDuration
+import org.typelevel.otel4s.sdk.metrics.data.Data
+import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 
 object LastValueAggregator {
 
@@ -82,16 +82,14 @@ object LastValueAggregator {
     ) extends Aggregator.Accumulator[F, A, Point] {
 
       def aggregate(
-          startTimestamp: FiniteDuration,
-          collectTimestamp: FiniteDuration,
+          timeWindow: TimeWindow,
           attributes: Attributes,
           reset: Boolean
       ): F[Option[Point]] =
         current.get(reset).map { value =>
           value.map { v =>
             target.makePointData(
-              startTimestamp,
-              collectTimestamp,
+              timeWindow,
               attributes,
               Vector.empty,
               v
@@ -125,13 +123,7 @@ object LastValueAggregator {
         temporality: AggregationTemporality
     ): F[MetricData] = {
       val points = measurements.map { m =>
-        target.makePointData(
-          m.startTimestamp,
-          m.collectTimestamp,
-          m.attributes,
-          Vector.empty,
-          m.value
-        )
+        target.makePointData(m.timeWindow, m.attributes, Vector.empty, m.value)
       }
 
       Applicative[F].pure(

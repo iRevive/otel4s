@@ -17,12 +17,12 @@
 package org.typelevel.otel4s.sdk.metrics.internal
 
 import org.typelevel.otel4s.Attributes
+import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 
 import scala.concurrent.duration.FiniteDuration
 
 sealed trait Measurement[A] {
-  def startTimestamp: FiniteDuration
-  def collectTimestamp: FiniteDuration
+  def timeWindow: TimeWindow
   def attributes: Attributes
   def value: A
 
@@ -36,16 +36,14 @@ sealed trait Measurement[A] {
 object Measurement {
 
   def apply[A](
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration,
+      timeWindow: TimeWindow,
       attributes: Attributes,
       value: A
   ): Measurement[A] =
-    Impl(startTimestamp, collectTimestamp, attributes, value)
+    Impl(timeWindow, attributes, value)
 
   private final case class Impl[A](
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration,
+      timeWindow: TimeWindow,
       attributes: Attributes,
       value: A
   ) extends Measurement[A] {
@@ -53,7 +51,7 @@ object Measurement {
       copy(attributes = attributes)
 
     def withStartTimestamp(start: FiniteDuration): Measurement[A] =
-      copy(startTimestamp = start)
+      copy(timeWindow = TimeWindow(start, timeWindow.end))
 
     def withValue(a: A): Measurement[A] =
       copy(value = a)

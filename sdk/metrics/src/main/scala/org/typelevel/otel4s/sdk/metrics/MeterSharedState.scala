@@ -30,6 +30,7 @@ import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
+import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 import org.typelevel.otel4s.sdk.metrics.internal.CallbackRegistration
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.MetricStorageRegistry
@@ -119,20 +120,16 @@ private[metrics] final class MeterSharedState[
   ): F[Vector[MetricData]] =
     callbacks.get.flatMap { currentCallbacks =>
       mutex.lock.surround {
+        val timeWindow = TimeWindow(startTimestamp, collectTimestamp)
         currentCallbacks
           .traverse_ { callback =>
-            callback.invokeCallback(reader, startTimestamp, collectTimestamp)
+            callback.invokeCallback(reader, timeWindow)
           }
           .flatMap { _ =>
             for {
               storages <- registries.get(reader).foldMapA(_.allStorages)
               result <- storages.traverse { storage =>
-                storage.collect(
-                  resource,
-                  scope,
-                  startTimestamp,
-                  collectTimestamp
-                )
+                storage.collect(resource, scope, timeWindow)
               }
             } yield result.flatten.filter(_.nonEmpty)
           }

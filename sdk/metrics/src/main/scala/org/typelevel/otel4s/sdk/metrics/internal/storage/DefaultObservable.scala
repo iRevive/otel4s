@@ -33,16 +33,18 @@ import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.Aggregation
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
+import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 import org.typelevel.otel4s.sdk.metrics.internal.AttributesProcessor
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
-import org.typelevel.otel4s.sdk.metrics.internal.Measurement
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
-import org.typelevel.otel4s.sdk.metrics.internal.aggregation.Aggregator
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
-import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage.Observable
 import org.typelevel.otel4s.sdk.metrics.internal.view.RegisteredView
 
 import scala.concurrent.duration.FiniteDuration
+
+import org.typelevel.otel4s.sdk.metrics.internal.Measurement
+import org.typelevel.otel4s.sdk.metrics.internal.aggregation.Aggregator
+import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage.Observable
 
 private final class DefaultObservable[
     F[_]: Monad: Console: AskContext,
@@ -86,8 +88,7 @@ private final class DefaultObservable[
   def collect(
       resource: TelemetryResource,
       scope: InstrumentationScope,
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration
+      timeWindow: TimeWindow
   ): F[Option[MetricData]] =
     collector.collectPoints.flatMap { measurements =>
       aggregator
@@ -201,7 +202,7 @@ private object DefaultObservable {
       Ref.of(Map.empty[Attributes, Measurement[A]]).map { pointsRef =>
         new Collector[F, A] {
           def startTimestamp(measurement: Measurement[A]): F[FiniteDuration] =
-            Monad[F].pure(measurement.startTimestamp)
+            Monad[F].pure(measurement.timeWindow.start)
 
           def record(measurement: Measurement[A]): F[Unit] =
             pointsRef.update(_.updated(measurement.attributes, measurement))

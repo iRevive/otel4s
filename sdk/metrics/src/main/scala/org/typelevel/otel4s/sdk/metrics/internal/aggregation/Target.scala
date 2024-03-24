@@ -19,18 +19,19 @@ package org.typelevel.otel4s.sdk.metrics.internal.aggregation
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
-import org.typelevel.otel4s.sdk.metrics.data.ExemplarData.TraceContext
-import org.typelevel.otel4s.sdk.metrics.data.PointData
+import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 
 import scala.concurrent.duration.FiniteDuration
+
+import org.typelevel.otel4s.sdk.metrics.data.ExemplarData.TraceContext
+import org.typelevel.otel4s.sdk.metrics.data.PointData
 
 private sealed trait Target[A] { self =>
   type Exemplar <: ExemplarData
   type Point <: PointData.NumberPoint
 
   def makePointData(
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration,
+      timeWindow: TimeWindow,
       attributes: Attributes,
       exemplars: Vector[Exemplar],
       value: A
@@ -55,15 +56,13 @@ private object Target {
           type Point = PointData.LongNumber
 
           def makePointData(
-              startTimestamp: FiniteDuration,
-              collectTimestamp: FiniteDuration,
+              timeWindow: TimeWindow,
               attributes: Attributes,
               exemplars: Vector[ExemplarData.LongExemplar],
               value: A
           ): PointData.LongNumber =
             PointData.longNumber(
-              startTimestamp,
-              collectTimestamp,
+              timeWindow,
               attributes,
               exemplars,
               cast(value)
@@ -84,15 +83,13 @@ private object Target {
           type Point = PointData.DoubleNumber
 
           def makePointData(
-              startTimestamp: FiniteDuration,
-              collectTimestamp: FiniteDuration,
+              timeWindow: TimeWindow,
               attributes: Attributes,
               exemplars: Vector[ExemplarData.DoubleExemplar],
               value: A
           ): PointData.DoubleNumber =
             PointData.doubleNumber(
-              startTimestamp,
-              collectTimestamp,
+              timeWindow,
               attributes,
               exemplars,
               cast(value)

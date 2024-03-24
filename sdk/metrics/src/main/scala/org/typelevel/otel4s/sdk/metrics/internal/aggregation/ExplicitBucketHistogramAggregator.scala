@@ -30,15 +30,15 @@ import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
-import org.typelevel.otel4s.sdk.metrics.data.Data
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
+import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarReservoir
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 
-import scala.concurrent.duration.FiniteDuration
+import org.typelevel.otel4s.sdk.metrics.data.Data
 
 private final class ExplicitBucketHistogramAggregator[
     F[_]: Concurrent,
@@ -108,8 +108,7 @@ private object ExplicitBucketHistogramAggregator {
   ) extends Aggregator.Accumulator[F, A, PointData.Histogram] {
 
     def aggregate(
-        startTimestamp: FiniteDuration,
-        collectTimestamp: FiniteDuration,
+        timeWindow: TimeWindow,
         attributes: Attributes,
         reset: Boolean
     ): F[Option[PointData.Histogram]] =
@@ -128,8 +127,7 @@ private object ExplicitBucketHistogramAggregator {
             PointData.Histogram.stats(state.sum, state.min, state.max)
           }
           val histogram = PointData.histogram(
-            startTimestamp = startTimestamp,
-            collectTimestamp = collectTimestamp,
+            timeWindow = timeWindow,
             attributes = attributes,
             exemplars = e,
             stats = stats,

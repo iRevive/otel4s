@@ -30,13 +30,13 @@ import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.InstrumentType
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
-import org.typelevel.otel4s.sdk.metrics.data.Data
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
+import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarReservoir
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.utils.Adder
 
-import scala.concurrent.duration.FiniteDuration
+import org.typelevel.otel4s.sdk.metrics.data.Data
 
 object SumAggregator {
 
@@ -104,8 +104,7 @@ object SumAggregator {
     ) extends Aggregator.Accumulator[F, A, Point] {
 
       def aggregate(
-          startTimestamp: FiniteDuration,
-          collectTimestamp: FiniteDuration,
+          timeWindow: TimeWindow,
           attributes: Attributes,
           reset: Boolean
       ): F[Option[Point]] =
@@ -114,8 +113,7 @@ object SumAggregator {
           exemplars <- reservoir.collectAndReset(attributes)
         } yield Some(
           target.makePointData(
-            startTimestamp,
-            collectTimestamp,
+            timeWindow,
             attributes,
             exemplars.map { e =>
               target.makeExemplar(
@@ -157,13 +155,7 @@ object SumAggregator {
         temporality: AggregationTemporality
     ): F[MetricData] = {
       val points = measurements.map { m =>
-        target.makePointData(
-          m.startTimestamp,
-          m.collectTimestamp,
-          m.attributes,
-          Vector.empty,
-          m.value
-        )
+        target.makePointData(m.timeWindow, m.attributes, Vector.empty, m.value)
       }
 
       Applicative[F].pure(

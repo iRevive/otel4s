@@ -26,10 +26,9 @@ import cats.syntax.functor._
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.metrics.ObservableMeasurement
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
+import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
-
-import scala.concurrent.duration.FiniteDuration
 
 private[metrics] final class SdkObservableMeasurement[F[_]: Monad, A](
     stateRef: Ref[F, SdkObservableMeasurement.State[F]],
@@ -41,10 +40,9 @@ private[metrics] final class SdkObservableMeasurement[F[_]: Monad, A](
 
   def setActiveReader(
       reader: RegisteredReader[F],
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration
+      timeWindow: TimeWindow
   ): F[Unit] =
-    stateRef.set(State.WithReader(reader, startTimestamp, collectTimestamp))
+    stateRef.set(State.WithReader(reader, timeWindow))
 
   def unsetActiveReader: F[Unit] =
     stateRef.set(State.Empty())
@@ -54,8 +52,8 @@ private[metrics] final class SdkObservableMeasurement[F[_]: Monad, A](
       case State.Empty() =>
         Monad[F].unit // todo: log warning
 
-      case State.WithReader(reader, start, collect) =>
-        val measurement = Measurement(start, collect, attributes, value)
+      case State.WithReader(reader, timeWindow) =>
+        val measurement = Measurement(timeWindow, attributes, value)
 
         storages.traverse_ { storage =>
           storage.record(measurement).whenA(storage.reader == reader)
@@ -73,8 +71,7 @@ object SdkObservableMeasurement {
 
     final case class WithReader[F[_]](
         reader: RegisteredReader[F],
-        startTimestamp: FiniteDuration,
-        collectTimestamp: FiniteDuration
+        timeWindow: TimeWindow
     ) extends State[F]
   }
 
