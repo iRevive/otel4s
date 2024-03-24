@@ -140,12 +140,12 @@ private object MetricsProtoEncoder {
               startTimeUnixNano = p.startTimestamp.toNanos,
               timeUnixNano = p.collectTimestamp.toNanos,
               count = p.count,
-              sum = p.sum,
+              sum = p.stats.map(_.sum),
               bucketCounts = p.counts,
               explicitBounds = p.boundaries,
               exemplars = p.exemplars.map(ProtoEncoder.encode(_)),
-              min = p.min,
-              max = p.max
+              min = p.stats.map(_.min),
+              max = p.stats.map(_.max)
             )
           ),
           ProtoEncoder.encode(histogram.aggregationTemporality)

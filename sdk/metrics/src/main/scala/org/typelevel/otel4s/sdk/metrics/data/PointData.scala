@@ -66,12 +66,27 @@ object PointData {
 
   sealed trait Histogram extends PointData {
     def exemplars: Vector[ExemplarData.DoubleExemplar]
-    def sum: Option[Double]
-    def min: Option[Double]
-    def max: Option[Double]
+    def stats: Option[Histogram.Stats]
     def boundaries: Vector[Double]
     def counts: Vector[Long]
     def count: Long
+  }
+
+  object Histogram {
+    sealed trait Stats {
+      def sum: Double
+      def min: Double
+      def max: Double
+    }
+
+    def stats(sum: Double, min: Double, max: Double): Stats =
+      StatsImpl(sum, min, max)
+
+    private final case class StatsImpl(
+        sum: Double,
+        min: Double,
+        max: Double
+    ) extends Stats
   }
 
   sealed trait ExponentialHistogram extends PointData {
@@ -148,11 +163,10 @@ object PointData {
       collectTimestamp: FiniteDuration,
       attributes: Attributes,
       exemplars: Vector[ExemplarData.DoubleExemplar],
-      sum: Option[Double],
-      min: Option[Double],
-      max: Option[Double],
+      stats: Option[Histogram.Stats],
       boundaries: Vector[Double],
-      counts: Vector[Long]
+      counts: Vector[Long],
+      count: Long
   ): Histogram = {
     require(counts.length == boundaries.size + 1)
     // todo require(isStrictlyIncreasing())
@@ -162,11 +176,10 @@ object PointData {
       collectTimestamp,
       attributes,
       exemplars,
-      sum,
-      min,
-      max,
+      stats,
       boundaries,
-      counts
+      counts,
+      count
     )
   }
 
@@ -229,14 +242,11 @@ object PointData {
       collectTimestamp: FiniteDuration,
       attributes: Attributes,
       exemplars: Vector[ExemplarData.DoubleExemplar],
-      sum: Option[Double],
-      min: Option[Double],
-      max: Option[Double],
+      stats: Option[Histogram.Stats],
       boundaries: Vector[Double],
-      counts: Vector[Long]
-  ) extends Histogram {
-    val count: Long = counts.sum
-  }
+      counts: Vector[Long],
+      count: Long
+  ) extends Histogram
 
   private final case class ExponentialHistogramImpl(
       startTimestamp: FiniteDuration,

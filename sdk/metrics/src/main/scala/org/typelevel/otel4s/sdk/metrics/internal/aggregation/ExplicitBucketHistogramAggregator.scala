@@ -124,17 +124,18 @@ private object ExplicitBucketHistogramAggregator {
             )
           }
 
-          val nonEmpty = state.count > 0
+          val stats = Option.when(state.count > 0) {
+            PointData.Histogram.stats(state.sum, state.min, state.max)
+          }
           val histogram = PointData.histogram(
             startTimestamp = startTimestamp,
             collectTimestamp = collectTimestamp,
             attributes = attributes,
             exemplars = e,
-            sum = Option.when(nonEmpty)(state.sum),
-            min = Option.when(nonEmpty)(state.min),
-            max = Option.when(nonEmpty)(state.max),
+            stats = stats,
             boundaries = boundaries.boundaries,
-            counts = state.counts
+            counts = state.counts,
+            count = state.count
           )
 
           val next = if (reset) emptyState(boundaries.length) else state
