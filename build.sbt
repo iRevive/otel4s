@@ -44,13 +44,13 @@ ThisBuild / githubWorkflowBuildPreamble ++= nativeBrewInstallWorkflowSteps.value
 val CatsVersion = "2.10.0"
 val CatsEffectVersion = "3.5.4"
 val CatsMtlVersion = "1.4.0"
-val FS2Version = "3.9.4"
+val FS2Version = "3.10.1"
 val MUnitVersion = "1.0.0-M11"
 val MUnitCatsEffectVersion = "2.0.0-M4"
 val MUnitDisciplineVersion = "2.0.0-M3"
 val MUnitScalaCheckEffectVersion = "2.0.0-M2"
 val OpenTelemetryVersion = "1.36.0"
-val OpenTelemetryInstrumentationVersion = "2.1.0"
+val OpenTelemetryInstrumentationVersion = "2.2.0"
 val OpenTelemetrySemConvVersion = "1.23.1-alpha"
 val OpenTelemetryProtoVersion = "1.1.0-alpha"
 val PekkoStreamVersion = "1.0.2"
@@ -155,7 +155,9 @@ lazy val `core-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     name := "otel4s-core-metrics",
     libraryDependencies ++= Seq(
       "org.typelevel" %%% "cats-effect-kernel" % CatsEffectVersion,
-      "org.typelevel" %%% "cats-effect-testkit" % CatsEffectVersion % Test
+      "org.typelevel" %%% "cats-effect-testkit" % CatsEffectVersion % Test,
+      "org.typelevel" %%% "cats-laws" % CatsVersion % Test,
+      "org.typelevel" %%% "discipline-munit" % MUnitDisciplineVersion % Test
     )
   )
   .settings(scalafixSettings)
@@ -218,7 +220,7 @@ lazy val `sdk-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
   .enablePlugins(NoPublishPlugin)
   .in(file("sdk/metrics"))
-  .dependsOn(`sdk-common`, `core-metrics`)
+  .dependsOn(`sdk-common` % "compile->compile;test->test", `core-metrics`)
   .settings(
     name := "otel4s-sdk-metrics",
     startYear := Some(2024),
@@ -272,7 +274,6 @@ lazy val sdk = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .dependsOn(
     core,
     `sdk-common`,
-    `sdk-metrics`,
     `sdk-trace` % "compile->compile;test->test",
     `sdk-trace-testkit` % Test
   )

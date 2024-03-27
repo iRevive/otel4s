@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s
-package sdk.metrics
-package data
+package org.typelevel.otel4s.sdk.metrics.data
 
 import cats.Show
 import cats.kernel.laws.discipline.HashTests
@@ -26,21 +24,26 @@ import org.typelevel.otel4s.sdk.metrics.scalacheck.Arbitraries._
 import org.typelevel.otel4s.sdk.metrics.scalacheck.Cogens._
 import org.typelevel.otel4s.sdk.metrics.scalacheck.Gens
 
-class AggregationTemporalitySuite extends DisciplineSuite {
+class ExemplarDataSuite extends DisciplineSuite {
 
-  checkAll(
-    "AggregationTemporality.HashLaws",
-    HashTests[AggregationTemporality].hash
-  )
+  checkAll("ExemplarData.Hash", HashTests[ExemplarData].hash)
 
-  test("Show[AggregationTemporality]") {
-    Prop.forAll(Gens.aggregationTemporality) { temporality =>
-      val expected = temporality match {
-        case AggregationTemporality.Delta      => "Delta"
-        case AggregationTemporality.Cumulative => "Cumulative"
+  test("Show[ExemplarData]") {
+    Prop.forAll(Gens.exemplarData) { e =>
+      val prefix = e match {
+        case _: ExemplarData.LongExemplar   => "ExemplarData.Long"
+        case _: ExemplarData.DoubleExemplar => "ExemplarData.Double"
       }
 
-      assertEquals(Show[AggregationTemporality].show(temporality), expected)
+      val traceContext = e.traceContext match {
+        case Some(ctx) => s", traceContext=$ctx"
+        case None      => ""
+      }
+
+      val expected =
+        s"$prefix{filteredAttributes=${e.filteredAttributes}, timestamp=${e.timestamp}$traceContext, value=${e.value}}"
+
+      assertEquals(Show[ExemplarData].show(e), expected)
     }
   }
 

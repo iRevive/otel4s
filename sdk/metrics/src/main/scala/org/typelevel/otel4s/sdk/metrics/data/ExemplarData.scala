@@ -16,18 +16,54 @@
 
 package org.typelevel.otel4s.sdk.metrics.data
 
+import cats.Hash
+import cats.Show
+import cats.syntax.foldable._
 import org.typelevel.otel4s.Attributes
 import scodec.bits.ByteVector
 
 import scala.concurrent.duration.FiniteDuration
 
+/** An exemplar is a recorded value that associates
+  * [[ExemplarData.TraceContext]] (extracted from the
+  * [[org.typelevel.otel4s.sdk.context.Context Context]]) to a metric event.
+  *
+  * It allows linking trace details with metrics.
+  *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/metrics/data-model/#exemplars]]
+  */
 sealed trait ExemplarData {
   type Value
 
+  /** A set of filtered attributes that provide additional insight about the
+    * measurement.
+    */
   def filteredAttributes: Attributes
+
+  /** The time of the observation.
+    */
   def timestamp: FiniteDuration
+
+  /** The trace associated with a recording.
+    */
   def traceContext: Option[ExemplarData.TraceContext]
+
+  /** The recorded value.
+    */
   def value: Value
+
+  override final def hashCode(): Int =
+    Hash[ExemplarData].hash(this)
+
+  override final def equals(obj: Any): Boolean =
+    obj match {
+      case other: ExemplarData => Hash[ExemplarData].eqv(this, other)
+      case _                   => false
+    }
+
+  override final def toString: String =
+    Show[ExemplarData].show(this)
 }
 
 object ExemplarData {
@@ -36,15 +72,41 @@ object ExemplarData {
 
   sealed trait DoubleExemplar extends ExemplarData { type Value = Double }
 
+  /** The trace information.
+    */
   sealed trait TraceContext {
     def traceId: ByteVector
     def spanId: ByteVector
+
+    override final def hashCode(): Int =
+      Hash[TraceContext].hash(this)
+
+    override final def equals(obj: Any): Boolean =
+      obj match {
+        case other: TraceContext => Hash[TraceContext].eqv(this, other)
+        case _                   => false
+      }
+
+    override final def toString: String =
+      Show[TraceContext].show(this)
   }
 
   object TraceContext {
 
+    /** Creates a [[TraceContext]] with the given `traceId` and `spanId`.
+      */
     def apply(traceId: ByteVector, spanId: ByteVector): TraceContext =
       Impl(traceId, spanId)
+
+    implicit val traceContextShow: Show[TraceContext] =
+      Show.show { c =>
+        s"TraceContext{traceId=${c.traceId.toHex}, spanId=${c.spanId.toHex}}"
+      }
+
+    implicit val traceContextHash: Hash[TraceContext] = {
+      implicit val byteVectorHash: Hash[ByteVector] = Hash.fromUniversalHashCode
+      Hash.by(c => (c.traceId, c.spanId))
+    }
 
     private final case class Impl(
         traceId: ByteVector,
@@ -52,6 +114,8 @@ object ExemplarData {
     ) extends TraceContext
   }
 
+  /** Creates a [[LongExemplar]] with the given values.
+    */
   def long(
       filteredAttributes: Attributes,
       timestamp: FiniteDuration,
@@ -60,6 +124,8 @@ object ExemplarData {
   ): LongExemplar =
     LongExemplarImpl(filteredAttributes, timestamp, traceContext, value)
 
+  /** Creates a [[DoubleExemplar]] with the given values.
+    */
   def double(
       filteredAttributes: Attributes,
       timestamp: FiniteDuration,
@@ -67,6 +133,33 @@ object ExemplarData {
       value: Double
   ): DoubleExemplar =
     DoubleExemplarImpl(filteredAttributes, timestamp, traceContext, value)
+
+  implicit val exemplarDataHash: Hash[ExemplarData] = {
+    implicit val valueHash: Hash[ExemplarData#Value] =
+      Hash.fromUniversalHashCode
+
+    Hash.by { e =>
+      (
+        e.filteredAttributes,
+        e.timestamp,
+        e.traceContext,
+        e.value: ExemplarData#Value
+      )
+    }
+  }
+
+  implicit val exemplarDataShow: Show[ExemplarData] = {
+    Show.show { e =>
+      val prefix = e match {
+        case _: LongExemplar   => "ExemplarData.Long"
+        case _: DoubleExemplar => "ExemplarData.Double"
+      }
+
+      val traceContext = e.traceContext.foldMap(c => s", traceContext=$c")
+
+      s"$prefix{filteredAttributes=${e.filteredAttributes}, timestamp=${e.timestamp}$traceContext, value=${e.value}}"
+    }
+  }
 
   private final case class LongExemplarImpl(
       filteredAttributes: Attributes,
