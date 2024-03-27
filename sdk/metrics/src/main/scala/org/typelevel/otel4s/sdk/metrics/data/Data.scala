@@ -30,14 +30,32 @@ sealed trait Data {
 
 object Data {
 
+  /** Sum represents the type of a numeric double scalar metric that is
+    * calculated as a sum of all reported measurements over a time interval.
+    *
+    * @see
+    *   [[https://opentelemetry.io/docs/specs/otel/metrics/data-model/#sums]]
+    */
   sealed trait Sum extends Data {
     type Point <: PointData.NumberPoint
 
     def points: Vector[Point]
+
+    /** Whether the points are monotonic. If true, it means the data points are
+      * nominally increasing.
+      */
     def isMonotonic: Boolean
+
+    /** The aggregation temporality of this aggregation.
+      */
     def aggregationTemporality: AggregationTemporality
   }
 
+  /** Gauge represents a sampled value at a given type.
+    *
+    * @see
+    *   [[https://opentelemetry.io/docs/specs/otel/metrics/data-model/#gauge]]
+    */
   sealed trait Gauge extends Data {
     type Point <: PointData.NumberPoint
 
@@ -48,6 +66,13 @@ object Data {
     def points: Vector[PointData.Summary]
   }
 
+  /** Histogram represents the type of a metric that is calculated by
+    * aggregating as a histogram of all reported double measurements over a time
+    * interval.
+    *
+    * @see
+    *   [[https://opentelemetry.io/docs/specs/otel/metrics/data-model/#histogram]]
+    */
   sealed trait Histogram extends Data {
     def points: Vector[PointData.Histogram]
     def aggregationTemporality: AggregationTemporality
@@ -58,6 +83,8 @@ object Data {
     def aggregationTemporality: AggregationTemporality
   }
 
+  /** Creates a [[Sum]] with the given values.
+    */
   def sum[A <: PointData.NumberPoint](
       points: Vector[A],
       isMonotonic: Boolean,
@@ -65,6 +92,8 @@ object Data {
   ): Sum =
     SumImpl(points, isMonotonic, aggregationTemporality)
 
+  /** Creates a [[Gauge]] with the given values.
+    */
   def gauge[A <: PointData.NumberPoint](
       points: Vector[A]
   ): Gauge =
@@ -75,6 +104,8 @@ object Data {
   ): Summary =
     SummaryImpl(points)
 
+  /** Creates a [[Histogram]] with the given values.
+    */
   def histogram(
       points: Vector[PointData.Histogram],
       aggregationTemporality: AggregationTemporality
