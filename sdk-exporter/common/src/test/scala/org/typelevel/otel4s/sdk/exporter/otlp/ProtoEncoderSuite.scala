@@ -45,9 +45,9 @@ class ProtoEncoderSuite extends ScalaCheckSuite {
     Prop.forAll(Arbitrary.arbitrary[Attribute[_]]) { attribute =>
       val value = attribute.value
 
-      def list[A: Encoder](typeName: String): Json = {
-        val list = value.asInstanceOf[List[A]]
-        Json.obj("values" := list.map(value => Json.obj(typeName := value)))
+      def seq[A: Encoder](typeName: String): Json = {
+        val values = value.asInstanceOf[Seq[A]]
+        Json.obj("values" := values.map(value => Json.obj(typeName := value)))
       }
 
       implicit val longEncoder: Encoder[Long] =
@@ -64,13 +64,13 @@ class ProtoEncoderSuite extends ScalaCheckSuite {
           case AttributeType.Long =>
             Json.obj("intValue" := value.asInstanceOf[Long])
           case AttributeType.BooleanSeq =>
-            Json.obj("arrayValue" := list[Boolean]("boolValue"))
+            Json.obj("arrayValue" := seq[Boolean]("boolValue"))
           case AttributeType.DoubleSeq =>
-            Json.obj("arrayValue" := list[Double]("doubleValue"))
+            Json.obj("arrayValue" := seq[Double]("doubleValue"))
           case AttributeType.StringSeq =>
-            Json.obj("arrayValue" := list[String]("stringValue"))
+            Json.obj("arrayValue" := seq[String]("stringValue"))
           case AttributeType.LongSeq =>
-            Json.obj("arrayValue" := list[Long]("intValue"))
+            Json.obj("arrayValue" := seq[Long]("intValue"))
         }
 
         Json.obj("key" := attribute.key.name, "value" := v)

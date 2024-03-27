@@ -69,10 +69,10 @@ trait JsonCodecs {
     def primitive[A: Encoder]: Json =
       Encoder[A].apply(value.asInstanceOf[A])
 
-    def list[A: Encoder](attributeType: AttributeType[A]): Json = {
+    def seq[A: Encoder](attributeType: AttributeType[A]): Json = {
       val typeName = attributeTypeName(attributeType)
-      val list = value.asInstanceOf[List[A]]
-      Json.obj("values" := list.map(value => Json.obj(typeName := value)))
+      val values = value.asInstanceOf[Seq[A]]
+      Json.obj("values" := values.map(value => Json.obj(typeName := value)))
     }
 
     implicit val longEncoder: Encoder[Long] =
@@ -83,10 +83,10 @@ trait JsonCodecs {
       case AttributeType.Double     => primitive[Double]
       case AttributeType.String     => primitive[String]
       case AttributeType.Long       => primitive[Long]
-      case AttributeType.BooleanSeq => list[Boolean](AttributeType.Boolean)
-      case AttributeType.DoubleSeq  => list[Double](AttributeType.Double)
-      case AttributeType.StringSeq  => list[String](AttributeType.String)
-      case AttributeType.LongSeq    => list[Long](AttributeType.Long)
+      case AttributeType.BooleanSeq => seq[Boolean](AttributeType.Boolean)
+      case AttributeType.DoubleSeq  => seq[Double](AttributeType.Double)
+      case AttributeType.StringSeq  => seq[String](AttributeType.String)
+      case AttributeType.LongSeq    => seq[Long](AttributeType.Long)
     }
   }
 
