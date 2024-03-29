@@ -16,17 +16,15 @@
 
 package org.typelevel.otel4s.sdk.metrics.internal
 
-import cats.Hash
-import cats.Semigroup
 import cats.Show
-import org.typelevel.otel4s.Attributes
+import cats.kernel.Monoid
+import org.typelevel.otel4s.{Attribute, Attributes}
 import org.typelevel.otel4s.sdk.context.Context
 
-// todo: consider moving outside of the 'internal' package
-/** The AttributesProcessor is used to define the actual set of attributes that
-  * will be used in a metric.
+/** The AttributesProcessor can customize which attributes are to be reported as
+  * metric dimensions and add additional dimensions from the context.
   */
-sealed trait AttributesProcessor {
+private[metrics] sealed trait AttributesProcessor {
 
   /** Processes a set of attributes, returning the desired set.
     *
@@ -37,38 +35,92 @@ sealed trait AttributesProcessor {
     *   the context associated with the measurement
     */
   def process(attributes: Attributes, context: Context): Attributes
+
+  override final def toString: String =
+    Show[AttributesProcessor].show(this)
 }
 
-object AttributesProcessor {
+private[metrics] object AttributesProcessor {
 
-  def noop: AttributesProcessor =
-    new AttributesProcessor {
-      def process(attributes: Attributes, context: Context): Attributes =
-        attributes
-    }
+  /** Returns a no-op [[AttributesProcessor]] that returns original attributes.
+    */
+  def noop: AttributesProcessor = Noop
 
-  // todo: use case class to have proper hashcode
-  def filterByKeyName(keepWhen: String => Boolean): AttributesProcessor =
-    new AttributesProcessor {
-      def process(attributes: Attributes, context: Context): Attributes =
-        attributes.filter(attribute => keepWhen(attribute.key.name))
-    }
+  /** Creates an [[AttributesProcessor]] that retains attributes with the
+    * matching names.
+    *
+    * @param retain
+    *   the attribute keys to retain
+    */
+  def retain(retain: Set[String]): AttributesProcessor =
+    new Retain(retain)
 
-  implicit val attributesProcessorHash: Hash[AttributesProcessor] =
-    Hash.fromUniversalHashCode
+  /** Creates an [[AttributesProcessor]] that retains attributes that match the
+    * predicate.
+    *
+    * @param predicate
+    *   the predicate to match
+    */
+  def attributePredicate(
+      predicate: Attribute[_] => Boolean
+  ): AttributesProcessor =
+    new AttributePredicate(predicate)
 
   implicit val attributesProcessorShow: Show[AttributesProcessor] =
-    Show.fromToString
+    Show.show {
+      case p: Retain =>
+        s"AttributesProcessor.Retain(retain = ${p.retain.mkString("{", ", ", "}")})"
 
-  implicit val attributesProcessorSemigroup: Semigroup[AttributesProcessor] =
-    new Semigroup[AttributesProcessor] {
+      case _: AttributePredicate =>
+        "AttributesProcessor.AttributePredicate"
+
+      case c: Combined =>
+        s"AttributesProcessor.Combined(left=${c.left}, right=${c.right})"
+
+      case Noop =>
+        "AttributesProcessor.Noop"
+    }
+
+  implicit val attributesProcessorMonoid: Monoid[AttributesProcessor] =
+    new Monoid[AttributesProcessor] {
+      def empty: AttributesProcessor = AttributesProcessor.noop
+
       def combine(
           x: AttributesProcessor,
           y: AttributesProcessor
       ): AttributesProcessor =
-        new AttributesProcessor {
-          def process(incoming: Attributes, context: Context): Attributes =
-            x.process(y.process(incoming, context), context)
+        (x, y) match {
+          case (Noop, right) => right
+          case (left, Noop)  => left
+          case (left, right) => new Combined(left, right)
         }
     }
+
+  private final class Retain(
+      val retain: Set[String]
+  ) extends AttributesProcessor {
+    def process(attributes: Attributes, context: Context): Attributes =
+      attributes.filter(a => retain.contains(a.key.name))
+  }
+
+  private final class AttributePredicate(
+      predicate: Attribute[_] => Boolean
+  ) extends AttributesProcessor {
+    def process(attributes: Attributes, context: Context): Attributes =
+      attributes.filter(predicate)
+  }
+
+  private final class Combined(
+      val left: AttributesProcessor,
+      val right: AttributesProcessor
+  ) extends AttributesProcessor {
+    def process(attributes: Attributes, context: Context): Attributes =
+      left.process(right.process(attributes, context), context)
+  }
+
+  private object Noop extends AttributesProcessor {
+    def process(attributes: Attributes, context: Context): Attributes =
+      attributes
+  }
+
 }

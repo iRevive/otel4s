@@ -16,9 +16,9 @@
 
 package org.typelevel.otel4s.sdk.metrics
 
-import cats.Hash
 import cats.Show
 import cats.syntax.foldable._
+import org.typelevel.otel4s.Attribute
 import org.typelevel.otel4s.sdk.metrics.internal.AttributesProcessor
 
 /** A view configures how measurements are aggregated and exported as metrics.
@@ -51,15 +51,6 @@ sealed trait View {
     * metric.
     */
   def cardinalityLimit: Int
-
-  override final def hashCode(): Int =
-    Hash[View].hash(this)
-
-  override final def equals(obj: Any): Boolean =
-    obj match {
-      case other: View => Hash[View].eqv(this, other)
-      case _           => false
-    }
 
   override final def toString: String =
     Show[View].show(this)
@@ -106,19 +97,13 @@ object View {
       */
     def addAttributeFilter(retain: Set[String]): Builder
 
-    /** Adds an attribute filter which retains keys that satisfy the `filter`.
+    /** Adds an attribute filter which retains attributes that satisfy the
+      * `filter`.
       *
       * @param filter
       *   the filter to use
       */
-    def addAttributeFilter(filter: String => Boolean): Builder
-
-    /** Adds an attribute processor.
-      *
-      * @param processor
-      *   the processor to use
-      */
-    def addAttributesProcessor(processor: AttributesProcessor): Builder
+    def addAttributeFilter(filter: Attribute[_] => Boolean): Builder
 
     /** Creates a [[View]] using the configuration of this builder.
       */
@@ -129,16 +114,6 @@ object View {
     */
   def builder: Builder =
     BuilderImpl()
-
-  implicit val viewHash: Hash[View] = Hash.by { view =>
-    (
-      view.name,
-      view.description,
-      view.aggregation,
-      view.attributesProcessor,
-      view.cardinalityLimit
-    )
-  }
 
   implicit val viewShow: Show[View] = Show.show { view =>
     val name = view.name.foldMap(n => s"name=$n, ")
@@ -173,34 +148,25 @@ object View {
 
     def addAttributeFilter(retain: Set[String]): Builder =
       copy(attributesProcessors =
-        List(AttributesProcessor.filterByKeyName(retain.contains))
+        attributesProcessors :+ AttributesProcessor.retain(retain)
       )
 
-    def addAttributeFilter(filter: String => Boolean): Builder =
+    def addAttributeFilter(filter: Attribute[_] => Boolean): Builder =
       copy(attributesProcessors =
-        List(AttributesProcessor.filterByKeyName(filter))
+        attributesProcessors :+ AttributesProcessor.attributePredicate(filter)
       )
 
     def withCardinalityLimit(limit: Int): Builder =
       copy(cardinalityLimit = Some(limit))
 
-    def addAttributesProcessor(processor: AttributesProcessor): Builder =
-      copy(attributesProcessors = attributesProcessors :+ processor)
-
-    def build: View = {
-      val attributesProcessor =
-        attributesProcessors.combineAllOption.getOrElse(
-          AttributesProcessor.noop
-        )
-
+    def build: View =
       Impl(
         name,
         description,
         aggregation.getOrElse(Aggregation.default),
-        attributesProcessor,
+        attributesProcessors.combineAll,
         cardinalityLimit.getOrElse(2000)
       )
-    }
   }
 
 }
