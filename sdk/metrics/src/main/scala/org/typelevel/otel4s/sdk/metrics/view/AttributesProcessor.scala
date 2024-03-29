@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics.internal
+package org.typelevel.otel4s.sdk.metrics.view
 
 import cats.Show
 import cats.kernel.Monoid
-import org.typelevel.otel4s.{Attribute, Attributes}
+import org.typelevel.otel4s.Attribute
+import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.sdk.context.Context
 
 /** The AttributesProcessor can customize which attributes are to be reported as

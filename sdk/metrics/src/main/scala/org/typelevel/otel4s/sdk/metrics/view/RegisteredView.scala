@@ -14,20 +14,16 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics.internal.view
+package org.typelevel.otel4s.sdk.metrics.view
 
-import org.typelevel.otel4s.sdk.metrics.InstrumentSelector
-import org.typelevel.otel4s.sdk.metrics.View
-import org.typelevel.otel4s.sdk.metrics.internal.AttributesProcessor
-
-trait RegisteredView {
+private[metrics] trait RegisteredView {
   def selector: InstrumentSelector
   def view: View
   def viewAttributesProcessor: AttributesProcessor
   def cardinalityLimit: Int
 }
 
-object RegisteredView {
+private[metrics] object RegisteredView {
   def apply(selector: InstrumentSelector, view: View): RegisteredView =
     Impl(selector, view, view.attributesProcessor, view.cardinalityLimit)
 

@@ -14,28 +14,25 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics.internal.view
+package org.typelevel.otel4s.sdk.metrics.view
 
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.metrics.CardinalityLimitSelector
-import org.typelevel.otel4s.sdk.metrics.InstrumentSelector
 import org.typelevel.otel4s.sdk.metrics.InstrumentType
-import org.typelevel.otel4s.sdk.metrics.View
 import org.typelevel.otel4s.sdk.metrics.exporter.DefaultAggregationSelector
-import org.typelevel.otel4s.sdk.metrics.internal.AttributesProcessor
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
-import org.typelevel.otel4s.sdk.metrics.internal.view
+import org.typelevel.otel4s.sdk.metrics.view
 
 import java.util.regex.Pattern
 
-trait ViewRegistry {
+private[metrics] trait ViewRegistry {
   def findViews(
       descriptor: InstrumentDescriptor,
       scope: InstrumentationScope
   ): Vector[RegisteredView]
 }
 
-object ViewRegistry {
+private[metrics] object ViewRegistry {
   def apply(
       defaultAggregationSelector: DefaultAggregationSelector,
       cardinalityLimitSelector: CardinalityLimitSelector,

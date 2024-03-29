@@ -20,7 +20,7 @@ import cats.effect.Concurrent
 import cats.effect.Ref
 import cats.syntax.functor._
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricReader
-import org.typelevel.otel4s.sdk.metrics.internal.view.ViewRegistry
+import org.typelevel.otel4s.sdk.metrics.view.ViewRegistry
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.FiniteDuration

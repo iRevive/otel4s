@@ -34,7 +34,6 @@ import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
-import org.typelevel.otel4s.sdk.metrics.internal.AttributesProcessor
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.aggregation.Aggregator
@@ -42,7 +41,8 @@ import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage.Synchronous
-import org.typelevel.otel4s.sdk.metrics.internal.view.RegisteredView
+import org.typelevel.otel4s.sdk.metrics.view.AttributesProcessor
+import org.typelevel.otel4s.sdk.metrics.view.RegisteredView
 
 private final class DefaultSynchronous[F[_]: Monad: Console, A](
     reader: RegisteredReader[F],

@@ -37,7 +37,7 @@ import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
-import org.typelevel.otel4s.sdk.metrics.internal.view.RegisteredView
+import org.typelevel.otel4s.sdk.metrics.view.RegisteredView
 
 private[metrics] trait MetricStorage[F[_]] {
   def metricDescriptor: MetricDescriptor

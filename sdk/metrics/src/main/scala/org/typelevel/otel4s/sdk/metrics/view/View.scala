@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics
+package org.typelevel.otel4s.sdk.metrics.view
 
 import cats.Show
 import cats.syntax.foldable._
 import org.typelevel.otel4s.Attribute
-import org.typelevel.otel4s.sdk.metrics.internal.AttributesProcessor
+import org.typelevel.otel4s.sdk.metrics.Aggregation
 
 /** A view configures how measurements are aggregated and exported as metrics.
   */
@@ -41,9 +41,7 @@ sealed trait View {
     */
   def aggregation: Aggregation
 
-  /** The
-    * [[org.typelevel.otel4s.sdk.metrics.internal.AttributesProcessor AttributesProcessor]]
-    * associated with this view.
+  /** The [[AttributesProcessor]] associated with this view.
     */
   def attributesProcessor: AttributesProcessor
 

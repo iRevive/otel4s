@@ -31,6 +31,7 @@ import org.typelevel.otel4s.metrics.MeterProvider
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.internal.ComponentRegistry
+import org.typelevel.otel4s.sdk.metrics
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.exporter.CollectionRegistration
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricProducer
@@ -38,8 +39,10 @@ import org.typelevel.otel4s.sdk.metrics.exporter.MetricReader
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
-import org.typelevel.otel4s.sdk.metrics.internal.view.RegisteredView
-import org.typelevel.otel4s.sdk.metrics.internal.view.ViewRegistry
+import org.typelevel.otel4s.sdk.metrics.view.InstrumentSelector
+import org.typelevel.otel4s.sdk.metrics.view.RegisteredView
+import org.typelevel.otel4s.sdk.metrics.view.View
+import org.typelevel.otel4s.sdk.metrics.view.ViewRegistry
 
 private final class SdkMeterProvider[F[_]: Applicative](
     componentRegistry: ComponentRegistry[F, SdkMeter[F]],
@@ -201,7 +204,7 @@ object SdkMeterProvider {
 
     def registerView(selector: InstrumentSelector, view: View): Builder[F] =
       copy(registeredViews =
-        registeredViews :+ internal.view.RegisteredView(selector, view)
+        registeredViews :+ metrics.view.RegisteredView(selector, view)
       )
 
     def registerMetricReader(reader: MetricReader[F]): Builder[F] =

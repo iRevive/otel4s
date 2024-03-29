@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics
+package org.typelevel.otel4s.sdk.metrics.view
 
 import cats.Hash
 import cats.Show
+import org.typelevel.otel4s.sdk.metrics.InstrumentType
+import org.typelevel.otel4s.sdk.metrics.SdkMeterProvider
 
 /** Instrument selection criteria for applying [[View]]s registered via
   * [[SdkMeterProvider.Builder.registerView]].
