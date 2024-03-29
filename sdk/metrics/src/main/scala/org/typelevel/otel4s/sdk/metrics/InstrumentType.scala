@@ -19,12 +19,45 @@ package org.typelevel.otel4s.sdk.metrics
 import cats.Hash
 import cats.Show
 
+/** The type of an instrument.
+  *
+  * @note
+  *   the terms synchronous and asynchronous have nothing to do with
+  *   asynchronous programming. We follow naming according to the OpenTelemetry
+  *   specification.
+  *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/metrics/api/#synchronous-and-asynchronous-instruments]]
+  */
 sealed trait InstrumentType extends Product with Serializable
 
 object InstrumentType {
 
-  private[metrics] sealed trait Synchronous extends InstrumentType
-  private[metrics] sealed trait Asynchronous extends InstrumentType
+  /** Synchronous instruments (e.g.
+    * [[org.typelevel.otel4s.metrics.Counter Counter]]) are meant to be invoked
+    * inline with application/business processing logic.
+    *
+    * For instance, an HTTP client might utilize a counter to record the number
+    * of received bytes.
+    *
+    * The measurements captured by synchronous instruments can be linked with
+    * the tracing information (span id, trace id).
+    */
+  sealed trait Synchronous extends InstrumentType
+
+  /** Asynchronous instruments (e.g.
+    * [[org.typelevel.otel4s.metrics.ObservableGauge ObservableGauge]]) offer
+    * users the ability to register callback functions, which are only triggered
+    * on demand.
+    *
+    * For example, an asynchronous gauge can be used to collect the temperature
+    * from a sensor every 15 seconds, which means the callback function will
+    * only be invoked every 15 seconds.
+    *
+    * Unlike synchronous instruments, the measurements captured by asynchronous
+    * instruments '''cannot''' be linked with the tracing information.
+    */
+  sealed trait Asynchronous extends InstrumentType
 
   case object Counter extends Synchronous
   case object UpDownCounter extends Synchronous
