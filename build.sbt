@@ -276,7 +276,8 @@ lazy val sdk = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     core,
     `sdk-common`,
     `sdk-trace` % "compile->compile;test->test",
-    `sdk-trace-testkit` % Test
+    `sdk-trace-testkit` % Test,
+    `sdk-metrics`
   )
   .settings(
     name := "otel4s-sdk"
