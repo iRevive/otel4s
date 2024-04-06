@@ -19,10 +19,9 @@ package org.typelevel.otel4s.sdk.metrics.view
 import cats.Hash
 import cats.Show
 import org.typelevel.otel4s.sdk.metrics.InstrumentType
-import org.typelevel.otel4s.sdk.metrics.SdkMeterProvider
 
 /** Instrument selection criteria for applying [[View]]s registered via
-  * [[SdkMeterProvider.Builder.registerView]].
+  * [[org.typelevel.otel4s.sdk.metrics.SdkMeterProvider.Builder.registerView]].
   *
   * The predicate is built by the logical conjunction of the present properties.
   */

@@ -21,6 +21,7 @@ import cats.effect.std.Console
 import cats.mtl.Ask
 import cats.syntax.flatMap._
 import cats.syntax.functor._
+import org.typelevel.ci.CIString
 import org.typelevel.otel4s.Attribute
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.meta.InstrumentMeta
@@ -87,7 +88,7 @@ private object SdkCounter {
 
     def create: F[Counter[F, A]] = {
       val descriptor = InstrumentDescriptor.synchronous(
-        name,
+        CIString(name),
         unit,
         description,
         InstrumentType.Counter,
@@ -100,7 +101,7 @@ private object SdkCounter {
             .registerMetricStorage[Long](descriptor)
             .map { storage =>
               Counter.fromBackend(
-                new Backend[F, A, Long](cast, descriptor.name, storage)
+                new Backend[F, A, Long](cast, name, storage)
               )
             }
 
@@ -109,7 +110,7 @@ private object SdkCounter {
             .registerMetricStorage[Double](descriptor)
             .map { storage =>
               Counter.fromBackend(
-                new Backend[F, A, Double](cast, descriptor.name, storage)
+                new Backend[F, A, Double](cast, name, storage)
               )
             }
       }

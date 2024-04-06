@@ -23,6 +23,7 @@ import cats.effect.std.Console
 import cats.mtl.Ask
 import cats.syntax.flatMap._
 import cats.syntax.functor._
+import org.typelevel.ci.CIString
 import org.typelevel.otel4s.Attribute
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.metrics.BucketBoundaries
@@ -112,7 +113,7 @@ private object SdkHistogram {
 
     def create: F[Histogram[F, A]] = {
       val descriptor = InstrumentDescriptor.synchronous(
-        name,
+        CIString(name),
         unit,
         description,
         InstrumentType.Histogram,

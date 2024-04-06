@@ -33,7 +33,7 @@ object MetricDescriptor {
       instrumentDescriptor: InstrumentDescriptor
   ): MetricDescriptor =
     Impl(
-      view.name.getOrElse(instrumentDescriptor.name),
+      view.name.getOrElse(instrumentDescriptor.name.toString),
       view.description.orElse(instrumentDescriptor.description),
       view,
       instrumentDescriptor

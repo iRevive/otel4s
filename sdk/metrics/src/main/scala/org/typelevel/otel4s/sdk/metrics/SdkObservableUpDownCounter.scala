@@ -24,6 +24,7 @@ import cats.effect.std.Console
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.functor._
+import org.typelevel.ci.CIString
 import org.typelevel.otel4s.metrics.Measurement
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.metrics.ObservableMeasurement
@@ -128,7 +129,7 @@ private object SdkObservableUpDownCounter {
 
     private def makeDescriptor: InstrumentDescriptor.Asynchronous =
       InstrumentDescriptor.asynchronous(
-        name,
+        CIString(name),
         unit,
         description,
         InstrumentType.ObservableUpDownCounter,

@@ -189,10 +189,8 @@ object PointData {
     def exemplars: Vector[ExemplarData.DoubleExemplar]
     def sum: Double
     def zeroCount: Long
-    def hasMin: Boolean
-    def min: Double
-    def hasMax: Boolean
-    def max: Double
+    def min: Option[Double]
+    def max: Option[Double]
     val count: Long
     def positiveBuckets: ExponentialHistogram.Buckets
     def negativeBuckets: ExponentialHistogram.Buckets
@@ -260,10 +258,8 @@ object PointData {
       exemplars: Vector[ExemplarData.DoubleExemplar],
       sum: Double,
       zeroCount: Long,
-      hasMin: Boolean,
-      min: Double,
-      hasMax: Boolean,
-      max: Double,
+      min: Option[Double],
+      max: Option[Double],
       positiveBuckets: ExponentialHistogram.Buckets,
       negativeBuckets: ExponentialHistogram.Buckets
   ): ExponentialHistogram =
@@ -273,9 +269,7 @@ object PointData {
       exemplars,
       sum,
       zeroCount,
-      hasMin,
       min,
-      hasMax,
       max,
       positiveBuckets,
       negativeBuckets
@@ -389,10 +383,8 @@ object PointData {
       exemplars: Vector[ExemplarData.DoubleExemplar],
       sum: Double,
       zeroCount: Long,
-      hasMin: Boolean,
-      min: Double,
-      hasMax: Boolean,
-      max: Double,
+      min: Option[Double],
+      max: Option[Double],
       positiveBuckets: ExponentialHistogram.Buckets,
       negativeBuckets: ExponentialHistogram.Buckets
   ) extends ExponentialHistogram {

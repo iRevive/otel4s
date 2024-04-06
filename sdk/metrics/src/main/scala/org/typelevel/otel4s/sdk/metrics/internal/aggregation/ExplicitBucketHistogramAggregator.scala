@@ -123,7 +123,7 @@ private object ExplicitBucketHistogramAggregator {
           }
 
           val stats = Option.when(state.count > 0) {
-            PointData.Histogram.stats(
+            PointData.Histogram.Stats(
               state.sum,
               state.min,
               state.max,
@@ -136,7 +136,7 @@ private object ExplicitBucketHistogramAggregator {
             attributes = attributes,
             exemplars = e,
             stats = stats,
-            boundaries = boundaries.boundaries,
+            boundaries = boundaries,
             counts = state.counts
           )
 

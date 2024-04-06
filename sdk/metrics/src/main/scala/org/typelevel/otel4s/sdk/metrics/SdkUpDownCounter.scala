@@ -21,6 +21,7 @@ import cats.effect.std.Console
 import cats.mtl.Ask
 import cats.syntax.flatMap._
 import cats.syntax.functor._
+import org.typelevel.ci.CIString
 import org.typelevel.otel4s.Attribute
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.meta.InstrumentMeta
@@ -91,7 +92,7 @@ private object SdkUpDownCounter {
 
     def create: F[UpDownCounter[F, A]] = {
       val descriptor = InstrumentDescriptor.synchronous(
-        name,
+        CIString(name),
         unit,
         description,
         InstrumentType.UpDownCounter,
@@ -104,7 +105,7 @@ private object SdkUpDownCounter {
             .registerMetricStorage[Long](descriptor)
             .map { storage =>
               UpDownCounter.fromBackend(
-                new Backend[F, A, Long](cast, descriptor.name, storage)
+                new Backend[F, A, Long](cast, name, storage)
               )
             }
 
@@ -113,7 +114,7 @@ private object SdkUpDownCounter {
             .registerMetricStorage[Double](descriptor)
             .map { storage =>
               UpDownCounter.fromBackend(
-                new Backend[F, A, Double](cast, descriptor.name, storage)
+                new Backend[F, A, Double](cast, name, storage)
               )
             }
       }
