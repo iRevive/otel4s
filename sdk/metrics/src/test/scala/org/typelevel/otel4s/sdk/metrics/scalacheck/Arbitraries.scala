@@ -19,12 +19,17 @@ package org.typelevel.otel4s.sdk.metrics.scalacheck
 import org.scalacheck.Arbitrary
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
+import org.typelevel.otel4s.sdk.metrics.data.PointData
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
+import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 
 trait Arbitraries extends org.typelevel.otel4s.sdk.scalacheck.Arbitraries {
 
   implicit val aggregationTemporalityArb: Arbitrary[AggregationTemporality] =
     Arbitrary(Gens.aggregationTemporality)
+
+  implicit val instrumentDescriptorArbitrary: Arbitrary[InstrumentDescriptor] =
+    Arbitrary(Gens.instrumentDescriptor)
 
   implicit val timeWindowArbitrary: Arbitrary[TimeWindow] =
     Arbitrary(Gens.timeWindow)
@@ -34,6 +39,9 @@ trait Arbitraries extends org.typelevel.otel4s.sdk.scalacheck.Arbitraries {
 
   implicit val exemplarDataArbitrary: Arbitrary[ExemplarData] =
     Arbitrary(Gens.exemplarData)
+
+  implicit val pointDataArbitrary: Arbitrary[PointData] =
+    Arbitrary(Gens.pointData)
 
 }
 

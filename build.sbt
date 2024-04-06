@@ -51,6 +51,7 @@ val MUnitDisciplineVersion = "2.0.0-M3"
 val MUnitScalaCheckEffectVersion = "2.0.0-M2"
 val OpenTelemetryVersion = "1.36.0"
 val OpenTelemetryInstrumentationVersion = "2.2.0"
+val OpenTelemetryInstrumentationAlphaVersion = "2.2.0-alpha"
 val OpenTelemetrySemConvVersion = "1.24.0-alpha"
 val OpenTelemetryProtoVersion = "1.1.0-alpha"
 val PekkoStreamVersion = "1.0.2"
@@ -62,6 +63,7 @@ val Http4sVersion = "0.23.26"
 val CirceVersion = "0.14.6"
 val EpollcatVersion = "0.1.6"
 val ScalaPBCirceVersion = "0.15.1"
+val CaseInsensitiveVersion = "1.4.0"
 
 lazy val scalaReflectDependency = Def.settings(
   libraryDependencies ++= {
@@ -228,6 +230,7 @@ lazy val `sdk-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     libraryDependencies ++= Seq(
       "org.typelevel" %%% "cats-effect" % CatsEffectVersion,
       "org.scodec" %%% "scodec-bits" % ScodecVersion,
+      "org.typelevel" %%% "case-insensitive" % CaseInsensitiveVersion,
       "org.typelevel" %%% "cats-laws" % CatsVersion % Test,
       "org.typelevel" %%% "cats-effect-testkit" % CatsEffectVersion % Test,
       "org.typelevel" %%% "discipline-munit" % MUnitDisciplineVersion % Test,
@@ -611,10 +614,13 @@ lazy val docs = project
     libraryDependencies ++= Seq(
       "org.apache.pekko" %% "pekko-http" % PekkoHttpVersion,
       "io.opentelemetry" % "opentelemetry-sdk-extension-autoconfigure" % OpenTelemetryVersion,
-      "io.opentelemetry.instrumentation" % "opentelemetry-instrumentation-annotations" % OpenTelemetryInstrumentationVersion
+      "io.opentelemetry.instrumentation" % "opentelemetry-instrumentation-annotations" % OpenTelemetryInstrumentationVersion,
+      "io.opentelemetry.instrumentation" % "opentelemetry-runtime-telemetry-java8" % OpenTelemetryInstrumentationAlphaVersion,
+      "io.opentelemetry.instrumentation" % "opentelemetry-runtime-telemetry-java17" % OpenTelemetryInstrumentationAlphaVersion
     ),
     mdocVariables ++= Map(
-      "OPEN_TELEMETRY_VERSION" -> OpenTelemetryVersion
+      "OPEN_TELEMETRY_VERSION" -> OpenTelemetryVersion,
+      "OPEN_TELEMETRY_INSTRUMENTATION_ALPHA_VERSION" -> OpenTelemetryInstrumentationAlphaVersion
     ),
     laikaConfig := {
       import laika.config.{ChoiceConfig, Selections, SelectionConfig}

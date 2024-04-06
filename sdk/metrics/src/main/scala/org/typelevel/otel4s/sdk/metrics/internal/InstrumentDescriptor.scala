@@ -20,15 +20,31 @@ package internal
 import cats.Hash
 import cats.Show
 import cats.syntax.foldable._
+import org.typelevel.ci.CIString
 
-/** A description of an instrument that was registered to record data.
+/** A description of an instrument that was registered to record measurements.
   */
-sealed trait InstrumentDescriptor {
+private[metrics] sealed trait InstrumentDescriptor {
 
-  def name: String
+  /** The name of the instrument.
+    *
+    * @see
+    *   [[https://opentelemetry.io/docs/specs/otel/metrics/sdk/#name-conflict]]
+    */
+  def name: CIString
+
+  /** The description of the instrument.
+    */
   def description: Option[String]
+
+  /** The unit of the instrument.
+    */
   def unit: Option[String]
+
+  /** The type of the instrument.
+    */
   def instrumentType: InstrumentType
+
   def advice: Advice
 
   override final def hashCode(): Int =
@@ -45,7 +61,7 @@ sealed trait InstrumentDescriptor {
     Show[InstrumentDescriptor].show(this)
 }
 
-object InstrumentDescriptor {
+private[metrics] object InstrumentDescriptor {
 
   sealed trait Synchronous extends InstrumentDescriptor {
     def instrumentType: InstrumentType.Synchronous
@@ -55,44 +71,36 @@ object InstrumentDescriptor {
     def instrumentType: InstrumentType.Asynchronous
   }
 
+  /** Creates an [[InstrumentDescriptor]] for a synchronous instrument.
+    */
   def synchronous(
-      name: String,
+      name: CIString,
       description: Option[String],
       unit: Option[String],
       instrumentType: InstrumentType.Synchronous,
       advice: Advice
   ): InstrumentDescriptor.Synchronous =
-    SynchronousImpl(
-      name,
-      description,
-      unit,
-      instrumentType,
-      advice
-    )
+    SynchronousImpl(name, description, unit, instrumentType, advice)
 
+  /** Creates an [[InstrumentDescriptor]] for a asynchronous instrument.
+    */
   def asynchronous(
-      name: String,
+      name: CIString,
       description: Option[String],
       unit: Option[String],
       instrumentType: InstrumentType.Asynchronous,
       advice: Advice
   ): InstrumentDescriptor.Asynchronous =
-    AsynchronousImpl(
-      name,
-      description,
-      unit,
-      instrumentType,
-      advice
-    )
+    AsynchronousImpl(name, description, unit, instrumentType, advice)
 
   // advice is not a part of the hash, it's intended
   implicit val instrumentDescriptorHash: Hash[InstrumentDescriptor] =
     Hash.by { descriptor =>
       (
-        descriptor.name.toLowerCase, // name is case-insensitive
+        descriptor.name,
         descriptor.description,
         descriptor.unit,
-        descriptor.instrumentType,
+        descriptor.instrumentType
       )
     }
 
@@ -106,7 +114,7 @@ object InstrumentDescriptor {
     }
 
   private final case class SynchronousImpl(
-      name: String,
+      name: CIString,
       description: Option[String],
       unit: Option[String],
       instrumentType: InstrumentType.Synchronous,
@@ -114,7 +122,7 @@ object InstrumentDescriptor {
   ) extends InstrumentDescriptor.Synchronous
 
   private final case class AsynchronousImpl(
-      name: String,
+      name: CIString,
       description: Option[String],
       unit: Option[String],
       instrumentType: InstrumentType.Asynchronous,

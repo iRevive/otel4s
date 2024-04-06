@@ -16,28 +16,66 @@
 
 package org.typelevel.otel4s.sdk.metrics.data
 
+import cats.Hash
+import cats.Show
 import org.typelevel.otel4s.Attributes
+import org.typelevel.otel4s.metrics.BucketBoundaries
 
 /** A point in the metric data model.
   *
   * A point represents the aggregation of measurements recorded with a
   * particular set of [[Attributes]] over some time interval.
+  *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/metrics/data-model/#metric-points]]
   */
 sealed trait PointData {
 
   /** A [[TimeWindow]] for which the point data was calculated.
     */
   def timeWindow: TimeWindow
+
+  /** An [[Attributes]] associated with the point data.
+    */
   def attributes: Attributes
+
+  override final def hashCode(): Int =
+    Hash[PointData].hash(this)
+
+  override final def equals(obj: Any): Boolean =
+    obj match {
+      case other: PointData => Hash[PointData].eqv(this, other)
+      case _                => false
+    }
+
+  override final def toString: String =
+    Show[PointData].show(this)
 }
 
 object PointData {
 
+  /** The number point represents a single value.
+    *
+    * Can hold either Long or Double values.
+    *
+    * Used by Sum and Gauge metrics.
+    *
+    * @see
+    *   [[https://opentelemetry.io/docs/specs/otel/metrics/data-model/#gauge]]
+    *
+    * @see
+    *   [[https://opentelemetry.io/docs/specs/otel/metrics/data-model/#sums]]
+    */
   sealed trait NumberPoint extends PointData {
     type Exemplar <: ExemplarData
     type Value
 
+    /** The [[ExemplarData]] associated with the point data.
+      */
     def exemplars: Vector[Exemplar]
+
+    /** The measurement value.
+      */
     def value: Value
   }
 
@@ -51,6 +89,89 @@ object PointData {
     type Value = Double
   }
 
+  /** A population of recorded measurements. A histogram bundles a set of events
+    * into divided populations with an overall event count and aggregate sum for
+    * all events.
+    *
+    * @see
+    *   [[https://opentelemetry.io/docs/specs/otel/metrics/data-model/#histogram]]
+    */
+  sealed trait Histogram extends PointData {
+
+    /** The [[ExemplarData]] associated with the histogram data.
+      */
+    def exemplars: Vector[ExemplarData.DoubleExemplar]
+
+    /** The [[Histogram.Stats]] of the current measurement. `None` means the
+      * histogram is empty.
+      */
+    def stats: Option[Histogram.Stats]
+
+    /** The boundaries of this histogram.
+      */
+    def boundaries: BucketBoundaries
+
+    /** The numbers of observations that fell within each bucket.
+      */
+    def counts: Vector[Long]
+  }
+
+  object Histogram {
+
+    /** The aggregated stats of the histogram */
+    sealed trait Stats {
+
+      /** A sum of all values in the histogram. */
+      def sum: Double
+
+      /** The min of all values in the histogram. */
+      def min: Double
+
+      /** The max of all values in the histogram. */
+      def max: Double
+
+      /** The total population of points in the histogram. */
+      def count: Long
+
+      override final def hashCode(): Int =
+        Hash[Stats].hash(this)
+
+      override final def equals(obj: Any): Boolean =
+        obj match {
+          case other: Stats => Hash[Stats].eqv(this, other)
+          case _            => false
+        }
+
+      override final def toString: String =
+        Show[Stats].show(this)
+    }
+
+    object Stats {
+
+      /** Creates [[Stats]] with the given values.
+        */
+      def apply(sum: Double, min: Double, max: Double, count: Long): Stats =
+        Impl(sum, min, max, count)
+
+      implicit val statsHash: Hash[Stats] =
+        Hash.by(s => (s.sum, s.min, s.max, s.count))
+
+      implicit val statsShow: Show[Stats] =
+        Show.show { s =>
+          s"Stats{sum=${s.sum}, min=${s.min}, max=${s.max}, count=${s.count}}"
+        }
+
+      private final case class Impl(
+          sum: Double,
+          min: Double,
+          max: Double,
+          count: Long
+      ) extends Stats
+
+    }
+
+  }
+
   sealed trait Summary extends PointData {
     def count: Long
     def sum: Double
@@ -62,32 +183,6 @@ object PointData {
       def quantile: Double
       def value: Double
     }
-  }
-
-  sealed trait Histogram extends PointData {
-    def exemplars: Vector[ExemplarData.DoubleExemplar]
-    def stats: Option[Histogram.Stats]
-    def boundaries: Vector[Double]
-    def counts: Vector[Long]
-  }
-
-  object Histogram {
-    sealed trait Stats {
-      def sum: Double
-      def min: Double
-      def max: Double
-      def count: Long
-    }
-
-    def stats(sum: Double, min: Double, max: Double, count: Long): Stats =
-      StatsImpl(sum, min, max, count)
-
-    private final case class StatsImpl(
-        sum: Double,
-        min: Double,
-        max: Double,
-        count: Long
-    ) extends Stats
   }
 
   sealed trait ExponentialHistogram extends PointData {
@@ -112,31 +207,37 @@ object PointData {
     }
   }
 
+  /** Creates a [[LongNumber]] with the given values.
+    */
   def longNumber(
       timeWindow: TimeWindow,
       attributes: Attributes,
       exemplars: Vector[ExemplarData.LongExemplar],
       value: Long
   ): LongNumber =
-    LongNumberImpl(
-      timeWindow,
-      attributes,
-      exemplars,
-      value
-    )
+    LongNumberImpl(timeWindow, attributes, exemplars, value)
 
+  /** Creates a [[DoubleNumber]] with the given values.
+    */
   def doubleNumber(
       timeWindow: TimeWindow,
       attributes: Attributes,
       exemplars: Vector[ExemplarData.DoubleExemplar],
       value: Double
   ): DoubleNumber =
-    DoubleNumberImpl(
-      timeWindow,
-      attributes,
-      exemplars,
-      value
-    )
+    DoubleNumberImpl(timeWindow, attributes, exemplars, value)
+
+  /** Creates a [[Histogram]] with the given values.
+    */
+  def histogram(
+      timeWindow: TimeWindow,
+      attributes: Attributes,
+      exemplars: Vector[ExemplarData.DoubleExemplar],
+      stats: Option[Histogram.Stats],
+      boundaries: BucketBoundaries,
+      counts: Vector[Long]
+  ): Histogram =
+    HistogramImpl(timeWindow, attributes, exemplars, stats, boundaries, counts)
 
   def summary(
       timeWindow: TimeWindow,
@@ -152,27 +253,6 @@ object PointData {
       sum,
       percentileValues
     )
-
-  def histogram(
-      timeWindow: TimeWindow,
-      attributes: Attributes,
-      exemplars: Vector[ExemplarData.DoubleExemplar],
-      stats: Option[Histogram.Stats],
-      boundaries: Vector[Double],
-      counts: Vector[Long]
-  ): Histogram = {
-    require(counts.length == boundaries.size + 1)
-    // todo require(isStrictlyIncreasing())
-
-    HistogramImpl(
-      timeWindow,
-      attributes,
-      exemplars,
-      stats,
-      boundaries,
-      counts
-    )
-  }
 
   def exponentialHistogram(
       timeWindow: TimeWindow,
@@ -201,6 +281,77 @@ object PointData {
       negativeBuckets
     )
 
+  implicit val pointDataHash: Hash[PointData] = {
+    val numberHash: Hash[NumberPoint] = {
+      // a value can be either Long or Double. The universal hashcode is safe
+      implicit val valueHash: Hash[NumberPoint#Value] =
+        Hash.fromUniversalHashCode
+
+      Hash.by { d =>
+        (
+          d.timeWindow,
+          d.attributes,
+          d.exemplars: Vector[ExemplarData],
+          d.value: NumberPoint#Value
+        )
+      }
+    }
+
+    val histogramHash: Hash[Histogram] =
+      Hash.by { h =>
+        (
+          h.timeWindow,
+          h.attributes,
+          h.exemplars: Vector[ExemplarData],
+          h.stats,
+          h.boundaries,
+          h.counts
+        )
+      }
+
+    new Hash[PointData] {
+      def hash(x: PointData): Int =
+        x match {
+          case point: NumberPoint   => numberHash.hash(point)
+          case histogram: Histogram => histogramHash.hash(histogram)
+        }
+
+      def eqv(x: PointData, y: PointData): Boolean =
+        (x, y) match {
+          case (left: NumberPoint, right: NumberPoint) =>
+            numberHash.eqv(left, right)
+          case (left: Histogram, right: Histogram) =>
+            histogramHash.eqv(left, right)
+          case _ =>
+            false
+        }
+    }
+  }
+
+  implicit val pointDataShow: Show[PointData] =
+    Show.show {
+      case data: NumberPoint =>
+        val prefix = data match {
+          case _: LongNumber   => "LongNumber"
+          case _: DoubleNumber => "DoubleNumber"
+        }
+
+        s"PointData.$prefix{" +
+          s"timeWindow=${data.timeWindow}, " +
+          s"attribute=${data.attributes}, " +
+          s"exemplars=${data.exemplars}, " +
+          s"value=${data.value}}"
+
+      case data: Histogram =>
+        "PointData.Histogram{" +
+          s"timeWindow=${data.timeWindow}, " +
+          s"attribute=${data.attributes}, " +
+          s"exemplars=${data.exemplars}, " +
+          s"stats=${data.stats}, " +
+          s"boundaries=${data.boundaries}, " +
+          s"counts=${data.counts}}"
+    }
+
   private final case class LongNumberImpl(
       timeWindow: TimeWindow,
       attributes: Attributes,
@@ -215,6 +366,15 @@ object PointData {
       value: Double
   ) extends DoubleNumber
 
+  private final case class HistogramImpl(
+      timeWindow: TimeWindow,
+      attributes: Attributes,
+      exemplars: Vector[ExemplarData.DoubleExemplar],
+      stats: Option[Histogram.Stats],
+      boundaries: BucketBoundaries,
+      counts: Vector[Long]
+  ) extends Histogram
+
   private final case class SummaryImpl(
       timeWindow: TimeWindow,
       attributes: Attributes,
@@ -222,15 +382,6 @@ object PointData {
       sum: Double,
       percentileValues: Vector[Summary.ValueAtQuantile]
   ) extends Summary
-
-  private final case class HistogramImpl(
-      timeWindow: TimeWindow,
-      attributes: Attributes,
-      exemplars: Vector[ExemplarData.DoubleExemplar],
-      stats: Option[Histogram.Stats],
-      boundaries: Vector[Double],
-      counts: Vector[Long]
-  ) extends Histogram
 
   private final case class ExponentialHistogramImpl(
       timeWindow: TimeWindow,
