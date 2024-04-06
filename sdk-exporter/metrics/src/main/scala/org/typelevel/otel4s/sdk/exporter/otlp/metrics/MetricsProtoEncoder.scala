@@ -24,11 +24,7 @@ import io.opentelemetry.proto.metrics.v1.{metrics => Proto}
 import io.opentelemetry.proto.metrics.v1.metrics.ResourceMetrics
 import io.opentelemetry.proto.metrics.v1.metrics.ScopeMetrics
 import org.typelevel.otel4s.sdk.exporter.otlp.ProtoEncoder
-import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
-import org.typelevel.otel4s.sdk.metrics.data.Data
-import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
-import org.typelevel.otel4s.sdk.metrics.data.MetricData
-import org.typelevel.otel4s.sdk.metrics.data.PointData
+import org.typelevel.otel4s.sdk.metrics.data.{AggregationTemporality, Data, ExemplarData, MetricData, MetricPoints, PointData}
 import scalapb_circe.Printer
 
 /** @see
@@ -97,22 +93,22 @@ private object MetricsProtoEncoder {
     )
   }
 
-  implicit val dataEncoder: ProtoEncoder[Data, Proto.Metric.Data] = {
-    case sum: Data.Sum =>
+  implicit val dataEncoder: ProtoEncoder[MetricPoints, Proto.Metric.Data] = {
+    case sum: MetricPoints.Sum =>
       Proto.Metric.Data.Sum(
         Proto.Sum(
           sum.points.map(ProtoEncoder.encode(_)),
           ProtoEncoder.encode(sum.aggregationTemporality),
-          sum.isMonotonic
+          sum.monotonic
         )
       )
 
-    case gauge: Data.Gauge =>
+    case gauge: MetricPoints.Gauge =>
       Proto.Metric.Data.Gauge(
         Proto.Gauge(gauge.points.map(ProtoEncoder.encode(_)))
       )
 
-    case summary: Data.Summary =>
+    case summary: MetricPoints.Summary =>
       Proto.Metric.Data.Summary(
         Proto.Summary(
           summary.points.map(p =>
@@ -131,7 +127,7 @@ private object MetricsProtoEncoder {
         )
       )
 
-    case histogram: Data.Histogram =>
+    case histogram: MetricPoints.Histogram =>
       Proto.Metric.Data.Histogram(
         Proto.Histogram(
           histogram.points.map(p =>
@@ -142,7 +138,7 @@ private object MetricsProtoEncoder {
               count = p.stats.map(_.count).getOrElse(0L),
               sum = p.stats.map(_.sum),
               bucketCounts = p.counts,
-              explicitBounds = p.boundaries,
+              explicitBounds = p.boundaries.boundaries,
               exemplars = p.exemplars.map(ProtoEncoder.encode(_)),
               min = p.stats.map(_.min),
               max = p.stats.map(_.max)
@@ -152,7 +148,7 @@ private object MetricsProtoEncoder {
         )
       )
 
-    case exponentialHistogram: Data.ExponentialHistogram =>
+    case exponentialHistogram: MetricPoints.ExponentialHistogram =>
       Proto.Metric.Data.ExponentialHistogram(
         Proto.ExponentialHistogram(
           exponentialHistogram.points.map(p =>
@@ -178,8 +174,8 @@ private object MetricsProtoEncoder {
                   )
                 ),
                 exemplars = p.exemplars.map(ProtoEncoder.encode(_)),
-                min = Some(p.min),
-                max = Some(p.max),
+                min = p.min,
+                max = p.max,
                 // zeroThreshold = , // todo?
               )
           ),

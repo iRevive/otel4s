@@ -34,7 +34,7 @@ sealed trait MetricData {
 
   def unit: Option[String]
 
-  def data: Data
+  def data: MetricPoints
 
   final def isEmpty: Boolean = data.points.isEmpty
   final def nonEmpty: Boolean = !isEmpty
@@ -48,7 +48,7 @@ object MetricData {
       name: String,
       description: Option[String],
       unit: Option[String],
-      data: Data
+      data: MetricPoints
   ): MetricData =
     Impl(
       resource = resource,
@@ -65,7 +65,7 @@ object MetricData {
       name: String,
       description: Option[String],
       unit: Option[String],
-      data: Data,
+      data: MetricPoints,
   ) extends MetricData
 
 }

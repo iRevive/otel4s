@@ -29,8 +29,8 @@ import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.InstrumentType
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
-import org.typelevel.otel4s.sdk.metrics.data.Data
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
+import org.typelevel.otel4s.sdk.metrics.data.MetricPoints
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarReservoir
@@ -85,7 +85,7 @@ object SumAggregator {
           descriptor.name,
           descriptor.description,
           descriptor.sourceInstrument.unit,
-          Data.sum(points, isMonotonic(descriptor), temporality)
+          MetricPoints.sum(points, isMonotonic(descriptor), temporality)
         )
       )
 
@@ -164,7 +164,7 @@ object SumAggregator {
           descriptor.name,
           descriptor.description,
           descriptor.sourceInstrument.unit,
-          Data.sum(points, isMonotonic(descriptor), temporality)
+          MetricPoints.sum(points, isMonotonic(descriptor), temporality)
         )
       )
     }

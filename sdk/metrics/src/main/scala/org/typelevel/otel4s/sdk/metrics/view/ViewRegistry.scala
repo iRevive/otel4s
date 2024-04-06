@@ -85,7 +85,9 @@ private[metrics] object ViewRegistry {
     ): Boolean = {
       selector.instrumentType.forall(tpe => descriptor.instrumentType == tpe) &&
       selector.instrumentUnit.forall(unit => descriptor.unit.contains(unit)) &&
-      selector.instrumentName.forall(n => toGlobPattern(n)(descriptor.name.toString)) &&
+      selector.instrumentName.forall(n =>
+        toGlobPattern(n)(descriptor.name.toString)
+      ) &&
       selector.meterName.forall(n => n == meterScope.name) &&
       selector.meterVersion.forall(v => meterScope.version.contains(v)) &&
       selector.meterSchemaUrl.forall(s => meterScope.schemaUrl.contains(s))

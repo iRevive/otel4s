@@ -21,14 +21,14 @@ package org.typelevel.otel4s.sdk.metrics.data
   * @see
   *   [[https://opentelemetry.io/docs/specs/otel/metrics/data-model/#metric-points]]
   */
-sealed trait Data {
+sealed trait MetricPoints {
 
   /** The collection of the metric [[PointData]]s.
     */
   def points: Vector[PointData]
 }
 
-object Data {
+object MetricPoints {
 
   /** Sum represents the type of a numeric double scalar metric that is
     * calculated as a sum of all reported measurements over a time interval.
@@ -36,7 +36,7 @@ object Data {
     * @see
     *   [[https://opentelemetry.io/docs/specs/otel/metrics/data-model/#sums]]
     */
-  sealed trait Sum extends Data {
+  sealed trait Sum extends MetricPoints {
     type Point <: PointData.NumberPoint
 
     def points: Vector[Point]
@@ -44,7 +44,7 @@ object Data {
     /** Whether the points are monotonic. If true, it means the data points are
       * nominally increasing.
       */
-    def isMonotonic: Boolean
+    def monotonic: Boolean
 
     /** The aggregation temporality of this aggregation.
       */
@@ -56,13 +56,13 @@ object Data {
     * @see
     *   [[https://opentelemetry.io/docs/specs/otel/metrics/data-model/#gauge]]
     */
-  sealed trait Gauge extends Data {
+  sealed trait Gauge extends MetricPoints {
     type Point <: PointData.NumberPoint
 
     def points: Vector[Point]
   }
 
-  sealed trait Summary extends Data {
+  sealed trait Summary extends MetricPoints {
     def points: Vector[PointData.Summary]
   }
 
@@ -73,12 +73,12 @@ object Data {
     * @see
     *   [[https://opentelemetry.io/docs/specs/otel/metrics/data-model/#histogram]]
     */
-  sealed trait Histogram extends Data {
+  sealed trait Histogram extends MetricPoints {
     def points: Vector[PointData.Histogram]
     def aggregationTemporality: AggregationTemporality
   }
 
-  sealed trait ExponentialHistogram extends Data {
+  sealed trait ExponentialHistogram extends MetricPoints {
     def points: Vector[PointData.ExponentialHistogram]
     def aggregationTemporality: AggregationTemporality
   }
@@ -87,10 +87,10 @@ object Data {
     */
   def sum[A <: PointData.NumberPoint](
       points: Vector[A],
-      isMonotonic: Boolean,
+      monotonic: Boolean,
       aggregationTemporality: AggregationTemporality
   ): Sum =
-    SumImpl(points, isMonotonic, aggregationTemporality)
+    SumImpl(points, monotonic, aggregationTemporality)
 
   /** Creates a [[Gauge]] with the given values.
     */
@@ -120,7 +120,7 @@ object Data {
 
   private final case class SumImpl[A <: PointData.NumberPoint](
       points: Vector[A],
-      isMonotonic: Boolean,
+      monotonic: Boolean,
       aggregationTemporality: AggregationTemporality
   ) extends Sum { type Point = A }
 

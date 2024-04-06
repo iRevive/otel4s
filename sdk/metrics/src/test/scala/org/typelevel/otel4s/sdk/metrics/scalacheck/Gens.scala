@@ -24,6 +24,7 @@ import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
+import org.typelevel.otel4s.sdk.metrics.internal.Advice
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.view.InstrumentSelector
 import scodec.bits.ByteVector
@@ -63,7 +64,13 @@ trait Gens extends org.typelevel.otel4s.sdk.scalacheck.Gens {
       name <- Gens.ciString
       description <- Gen.option(Gen.alphaNumStr)
       unit <- Gen.option(Gen.alphaNumStr)
-    } yield InstrumentDescriptor.synchronous(name, description, unit, tpe)
+    } yield InstrumentDescriptor.synchronous(
+      name,
+      description,
+      unit,
+      tpe,
+      Advice.empty
+    )
 
   val asynchronousInstrumentDescriptor: Gen[InstrumentDescriptor] =
     for {
@@ -71,7 +78,13 @@ trait Gens extends org.typelevel.otel4s.sdk.scalacheck.Gens {
       name <- Gens.ciString
       description <- Gen.option(Gen.alphaNumStr)
       unit <- Gen.option(Gen.alphaNumStr)
-    } yield InstrumentDescriptor.asynchronous(name, description, unit, tpe)
+    } yield InstrumentDescriptor.asynchronous(
+      name,
+      description,
+      unit,
+      tpe,
+      Advice.empty
+    )
 
   val instrumentDescriptor: Gen[InstrumentDescriptor] =
     Gen.oneOf(synchronousInstrumentDescriptor, asynchronousInstrumentDescriptor)
