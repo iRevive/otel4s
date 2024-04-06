@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics.view
+package org.typelevel.otel4s.sdk.metrics
+package view
 
 import cats.Hash
 import cats.Show
-import org.typelevel.otel4s.sdk.metrics.InstrumentType
 
 /** Instrument selection criteria for applying [[View]]s registered via
   * [[org.typelevel.otel4s.sdk.metrics.SdkMeterProvider.Builder.registerView]].
@@ -98,12 +98,23 @@ object InstrumentSelector {
 
     /** Adds the given `name` as a predicate for an instrument.
       *
+      * Instrument name may contain the wildcard characters `*` and `?` with the
+      * following matching criteria:
+      *   - `*` - matches 0 or more instances of any character
+      *   - `?` - matches exactly one instance of any character
+      *
+      * @note
+      *   empty string is ignored
+      *
       * @param name
       *   the instrument name to filter by
       */
     def withInstrumentName(name: String): Builder
 
     /** Adds the given `unit` as a predicate for an instrument.
+      *
+      * @note
+      *   empty string is ignored
       *
       * @param unit
       *   the instrument type to filter by
@@ -112,6 +123,9 @@ object InstrumentSelector {
 
     /** Adds the given `name` as a predicate for a meter.
       *
+      * @note
+      *   empty string is ignored
+      *
       * @param name
       *   the meter name to filter by
       */
@@ -119,12 +133,18 @@ object InstrumentSelector {
 
     /** Adds the given `version` as a predicate for a meter.
       *
+      * @note
+      *   empty string is ignored
+      *
       * @param version
       *   the instrument type to filter by
       */
     def withMeterVersion(version: String): Builder
 
     /** Adds the given `schemaUrl` as a predicate for a meter.
+      *
+      * @note
+      *   empty string is ignored
       *
       * @param schemaUrl
       *   the instrument type to filter by
@@ -166,7 +186,7 @@ object InstrumentSelector {
         prop(_.meterName, "meterName"),
         prop(_.meterVersion, "meterVersion"),
         prop(_.meterSchemaUrl, "meterSchemaUrl"),
-      ).mkString("InstrumentSelector{", ", ", "}")
+      ).collect { case Some(k) => k }.mkString("InstrumentSelector{", ", ", "}")
     }
   }
 
@@ -184,19 +204,19 @@ object InstrumentSelector {
       copy(instrumentType = Some(tpe))
 
     def withInstrumentName(name: String): Builder =
-      copy(instrumentName = Some(name))
+      copy(instrumentName = keepNonEmpty(name))
 
     def withInstrumentUnit(unit: String): Builder =
-      copy(instrumentUnit = Some(unit))
+      copy(instrumentUnit = keepNonEmpty(unit))
 
     def withMeterName(name: String): Builder =
-      copy(meterName = Some(name))
+      copy(meterName = keepNonEmpty(name))
 
     def withMeterVersion(version: String): Builder =
-      copy(meterVersion = Some(version))
+      copy(meterVersion = keepNonEmpty(version))
 
     def withMeterSchemaUrl(schemaUrl: String): Builder =
-      copy(meterSchemaUrl = Some(schemaUrl))
+      copy(meterSchemaUrl = keepNonEmpty(schemaUrl))
 
     def build: InstrumentSelector = {
       require(
@@ -207,6 +227,11 @@ object InstrumentSelector {
       )
 
       this
+    }
+
+    private def keepNonEmpty(value: String): Option[String] = {
+      val trimmed = value.trim
+      Option.when(trimmed.nonEmpty)(trimmed)
     }
   }
 
