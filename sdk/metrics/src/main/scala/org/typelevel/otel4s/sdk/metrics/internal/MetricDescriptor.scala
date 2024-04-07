@@ -22,7 +22,6 @@ trait MetricDescriptor {
 
   def name: String
   def description: Option[String]
-  def view: View
   def sourceInstrument: InstrumentDescriptor
 
 }

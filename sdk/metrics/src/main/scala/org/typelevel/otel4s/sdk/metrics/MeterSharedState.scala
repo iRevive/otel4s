@@ -62,23 +62,27 @@ private[metrics] final class MeterSharedState[
       .flatTraverse { case (reader, registry) =>
         reader.viewRegistry
           .findViews(descriptor, scope)
-          .flatTraverse { registeredView =>
-            registeredView.view.aggregation match {
-              case aggregation: Aggregation.Synchronous =>
-                for {
-                  storage <- MetricStorage.synchronous(
-                    reader,
-                    registeredView,
-                    descriptor,
-                    exemplarFilter,
-                    traceContextLookup,
-                    aggregation
-                  )
-                  _ <- registry.register(storage)
-                } yield Vector(storage)
+          .flatMap { views =>
+            views.flatTraverse { view =>
+              view.aggregation match {
+                case aggregation: Aggregation.Synchronous =>
+                  for {
+                    storage <- MetricStorage.synchronous(
+                      reader,
+                      view,
+                      descriptor,
+                      exemplarFilter,
+                      traceContextLookup,
+                      aggregation
+                    )
+                    _ <- registry.register(storage)
+                  } yield Vector(storage)
 
-              case _ =>
-                Temporal[F].pure(Vector.empty[MetricStorage.Synchronous[F, A]])
+                case _ =>
+                  Temporal[F].pure(
+                    Vector.empty[MetricStorage.Synchronous[F, A]]
+                  )
+              }
             }
           }
       }
@@ -93,21 +97,25 @@ private[metrics] final class MeterSharedState[
       .flatTraverse { case (reader, registry) =>
         reader.viewRegistry
           .findViews(descriptor, scope)
-          .flatTraverse { registeredView =>
-            registeredView.view.aggregation match {
-              case aggregation: Aggregation.Asynchronous =>
-                for {
-                  storage <- MetricStorage.asynchronous(
-                    reader,
-                    registeredView,
-                    descriptor,
-                    aggregation
-                  )
-                  _ <- registry.register(storage)
-                } yield Vector(storage)
+          .flatMap { views =>
+            views.flatTraverse { view =>
+              view.aggregation match {
+                case aggregation: Aggregation.Asynchronous =>
+                  for {
+                    storage <- MetricStorage.asynchronous(
+                      reader,
+                      view,
+                      descriptor,
+                      aggregation
+                    )
+                    _ <- registry.register(storage)
+                  } yield Vector(storage)
 
-              case _ =>
-                Temporal[F].pure(Vector.empty[MetricStorage.Asynchronous[F, A]])
+                case _ =>
+                  Temporal[F].pure(
+                    Vector.empty[MetricStorage.Asynchronous[F, A]]
+                  )
+              }
             }
           }
       }

@@ -41,7 +41,7 @@ import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.view.AttributesProcessor
-import org.typelevel.otel4s.sdk.metrics.view.RegisteredView
+import org.typelevel.otel4s.sdk.metrics.view.View
 
 private final class DefaultSynchronous[F[_]: Monad: Console, A](
     reader: RegisteredReader[F],
@@ -78,7 +78,7 @@ private final class DefaultSynchronous[F[_]: Monad: Console, A](
     val isDelta = aggregationTemporality == AggregationTemporality.Delta
     val reset = isDelta
     val getStart =
-      if (isDelta) reader.getLastCollectTimestamp
+      if (isDelta) reader.lastCollectTimestamp
       else Monad[F].pure(timeWindow.start)
 
     val getHandlers =
@@ -139,13 +139,12 @@ object DefaultSynchronous {
 
   def create[F[_]: Temporal: Console: Random, A: MeasurementValue: Numeric](
       reader: RegisteredReader[F],
-      registeredView: RegisteredView,
+      view: View,
       instrumentDescriptor: InstrumentDescriptor.Synchronous,
       exemplarFilter: ExemplarFilter,
       traceContextLookup: TraceContextLookup,
       aggregation: Aggregation.Synchronous
   ): F[MetricStorage.Synchronous[F, A]] = {
-    val view = registeredView.view
     val descriptor = MetricDescriptor(view, instrumentDescriptor)
 
     val aggregator: Aggregator.Synchronous[F, A] =
@@ -163,8 +162,8 @@ object DefaultSynchronous {
           reader,
           descriptor,
           aggregator.asInstanceOf[Aggregator.Aux[F, A, PointData]],
-          registeredView.viewAttributesProcessor,
-          registeredView.cardinalityLimit - 1,
+          view.attributesProcessor,
+          view.cardinalityLimit - 1,
           accumulators
         )
       }

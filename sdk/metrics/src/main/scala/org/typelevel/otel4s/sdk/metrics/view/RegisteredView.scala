@@ -16,30 +16,19 @@
 
 package org.typelevel.otel4s.sdk.metrics.view
 
-private[metrics] trait RegisteredView {
+private[metrics] sealed trait RegisteredView {
   def selector: InstrumentSelector
   def view: View
-  def viewAttributesProcessor: AttributesProcessor
-  def cardinalityLimit: Int
 }
 
 private[metrics] object RegisteredView {
-  def apply(selector: InstrumentSelector, view: View): RegisteredView =
-    Impl(selector, view, view.attributesProcessor, view.cardinalityLimit)
 
-  def apply(
-      selector: InstrumentSelector,
-      view: View,
-      attributesProcessor: AttributesProcessor,
-      cardinalityLimit: Int
-  ): RegisteredView =
-    Impl(selector, view, attributesProcessor, cardinalityLimit)
+  def apply(selector: InstrumentSelector, view: View): RegisteredView =
+    Impl(selector, view)
 
   private final case class Impl(
       selector: InstrumentSelector,
-      view: View,
-      viewAttributesProcessor: AttributesProcessor,
-      cardinalityLimit: Int
+      view: View
   ) extends RegisteredView
 
 }

@@ -31,7 +31,6 @@ import org.typelevel.otel4s.metrics.MeterProvider
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.internal.ComponentRegistry
-import org.typelevel.otel4s.sdk.metrics
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.exemplar.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.exemplar.TraceContextLookup
@@ -200,9 +199,7 @@ object SdkMeterProvider {
       copy(traceContextLookup = lookup)
 
     def registerView(selector: InstrumentSelector, view: View): Builder[F] =
-      copy(registeredViews =
-        registeredViews :+ metrics.view.RegisteredView(selector, view)
-      )
+      copy(registeredViews = registeredViews :+ RegisteredView(selector, view))
 
     def registerMetricReader(reader: MetricReader[F]): Builder[F] =
       copy(metricReaders =

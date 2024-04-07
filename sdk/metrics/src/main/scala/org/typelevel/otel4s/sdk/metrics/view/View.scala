@@ -56,6 +56,10 @@ sealed trait View {
 
 object View {
 
+  private object Defaults {
+    val CardinalityLimit: Int = 2000
+  }
+
   /** Builder of a [[View]].
     */
   sealed trait Builder {
@@ -163,7 +167,7 @@ object View {
         description,
         aggregation.getOrElse(Aggregation.default),
         attributesProcessors.combineAll,
-        cardinalityLimit.getOrElse(2000)
+        cardinalityLimit.getOrElse(Defaults.CardinalityLimit)
       )
   }
 

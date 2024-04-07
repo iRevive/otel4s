@@ -40,7 +40,7 @@ import org.typelevel.otel4s.sdk.metrics.internal.Measurement
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.view.AttributesProcessor
-import org.typelevel.otel4s.sdk.metrics.view.RegisteredView
+import org.typelevel.otel4s.sdk.metrics.view.View
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -113,11 +113,10 @@ private object DefaultAsynchronous {
       A: MeasurementValue: Numeric
   ](
       reader: RegisteredReader[F],
-      registeredView: RegisteredView,
+      view: View,
       instrumentDescriptor: InstrumentDescriptor.Asynchronous,
       aggregation: Aggregation.Asynchronous
   ): F[MetricStorage.Asynchronous[F, A]] = {
-    val view = registeredView.view
     val descriptor = MetricDescriptor(view, instrumentDescriptor)
 
     val aggregator: Aggregator.Asynchronous[F, A] =
@@ -139,8 +138,8 @@ private object DefaultAsynchronous {
       descriptor,
       aggregationTemporality,
       aggregator,
-      registeredView.viewAttributesProcessor,
-      registeredView.cardinalityLimit - 1,
+      view.attributesProcessor,
+      view.cardinalityLimit - 1,
       collector
     )
   }
@@ -172,7 +171,7 @@ private object DefaultAsynchronous {
         Ref.of(Map.empty[Attributes, Measurement[A]]).map { lastPointsRef =>
           new Collector[F, A] {
             def startTimestamp(measurement: Measurement[A]): F[FiniteDuration] =
-              reader.getLastCollectTimestamp
+              reader.lastCollectTimestamp
 
             def record(measurement: Measurement[A]): F[Unit] =
               pointsRef.update(_.updated(measurement.attributes, measurement))

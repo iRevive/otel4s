@@ -25,32 +25,27 @@ import org.typelevel.otel4s.sdk.metrics.view.ViewRegistry
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.FiniteDuration
 
-trait RegisteredReader[F[_]] {
-  def reader: MetricReader[F]
-  def viewRegistry: ViewRegistry
-  def getLastCollectTimestamp: F[FiniteDuration]
-  def setLastCollectTimestamp(timestamp: FiniteDuration): F[Unit]
+private[metrics] final class RegisteredReader[F[_]](
+    val reader: MetricReader[F],
+    val viewRegistry: ViewRegistry[F],
+    lastCollectTimestampRef: Ref[F, FiniteDuration]
+) {
+
+  def lastCollectTimestamp: F[FiniteDuration] =
+    lastCollectTimestampRef.get
+
+  def setLastCollectTimestamp(timestamp: FiniteDuration): F[Unit] =
+    lastCollectTimestampRef.set(timestamp)
 }
 
 object RegisteredReader {
+
   def create[F[_]: Concurrent](
       reader: MetricReader[F],
-      viewRegistry: ViewRegistry
+      viewRegistry: ViewRegistry[F]
   ): F[RegisteredReader[F]] =
-    Concurrent[F].ref(Duration.Zero).map { ref =>
-      new Impl(ref, reader, viewRegistry)
-    }
+    for {
+      ref <- Concurrent[F].ref(Duration.Zero)
+    } yield new RegisteredReader[F](reader, viewRegistry, ref)
 
-  private final class Impl[F[_]](
-      lastCollectTimestamp: Ref[F, FiniteDuration],
-      val reader: MetricReader[F],
-      val viewRegistry: ViewRegistry
-  ) extends RegisteredReader[F] {
-
-    def getLastCollectTimestamp: F[FiniteDuration] =
-      lastCollectTimestamp.get
-
-    def setLastCollectTimestamp(timestamp: FiniteDuration): F[Unit] =
-      lastCollectTimestamp.set(timestamp)
-  }
 }
