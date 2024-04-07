@@ -31,15 +31,14 @@ import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.Aggregation
+import org.typelevel.otel4s.sdk.metrics.aggregation.Aggregator
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.Measurement
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
-import org.typelevel.otel4s.sdk.metrics.internal.aggregation.Aggregator
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
-import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage.Asynchronous
 import org.typelevel.otel4s.sdk.metrics.view.AttributesProcessor
 import org.typelevel.otel4s.sdk.metrics.view.RegisteredView
 
@@ -56,7 +55,7 @@ private final class DefaultAsynchronous[
     attributesProcessor: AttributesProcessor,
     maxCardinality: Int,
     collector: DefaultAsynchronous.Collector[F, A]
-) extends Asynchronous[F, A] {
+) extends MetricStorage.Asynchronous[F, A] {
 
   def record(m: Measurement[A]): F[Unit] =
     for {
@@ -117,7 +116,7 @@ private object DefaultAsynchronous {
       registeredView: RegisteredView,
       instrumentDescriptor: InstrumentDescriptor.Asynchronous,
       aggregation: Aggregation.Asynchronous
-  ): F[Asynchronous[F, A]] = {
+  ): F[MetricStorage.Asynchronous[F, A]] = {
     val view = registeredView.view
     val descriptor = MetricDescriptor(view, instrumentDescriptor)
 

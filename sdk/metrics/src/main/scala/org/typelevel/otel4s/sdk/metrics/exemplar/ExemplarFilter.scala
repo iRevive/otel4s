@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics.internal.exemplar
+package org.typelevel.otel4s.sdk.metrics.exemplar
 
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.metrics.MeasurementValue

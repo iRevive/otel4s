@@ -14,49 +14,63 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics.internal
-package aggregation
+package org.typelevel.otel4s.sdk.metrics.aggregation
 
 import cats.Applicative
-import cats.effect.Concurrent
+import cats.effect.Temporal
+import cats.effect.std.Random
+import cats.syntax.flatMap._
 import cats.syntax.functor._
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.Context
+import org.typelevel.otel4s.sdk.metrics.InstrumentType
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.MetricPoints
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
-import org.typelevel.otel4s.sdk.metrics.internal.utils.Current
+import org.typelevel.otel4s.sdk.metrics.exemplar.ExemplarFilter
+import org.typelevel.otel4s.sdk.metrics.exemplar.ExemplarReservoir
+import org.typelevel.otel4s.sdk.metrics.exemplar.TraceContextLookup
+import org.typelevel.otel4s.sdk.metrics.internal.Measurement
+import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.utils.Adder
 
-object LastValueAggregator {
+object SumAggregator {
 
-  def synchronous[
-      F[_]: Concurrent,
-      A: MeasurementValue
-  ]: Aggregator.Synchronous[F, A] =
-    new Synchronous[F, A]
+  def synchronous[F[_]: Temporal: Random, A: MeasurementValue: Numeric](
+      reservoirSize: Int,
+      filter: ExemplarFilter,
+      lookup: TraceContextLookup
+  ): Aggregator.Synchronous[F, A] =
+    new Synchronous(reservoirSize, filter, lookup)
 
   def asynchronous[
       F[_]: Applicative,
-      A: MeasurementValue
+      A: MeasurementValue: Numeric
   ]: Aggregator.Asynchronous[F, A] =
     new Asynchronous[F, A]
 
   private final class Synchronous[
-      F[_]: Concurrent,
-      A: MeasurementValue
-  ] extends Aggregator.Synchronous[F, A] {
+      F[_]: Temporal: Random,
+      A: MeasurementValue: Numeric
+  ](
+      reservoirSize: Int,
+      filter: ExemplarFilter,
+      traceContextLookup: TraceContextLookup
+  ) extends Aggregator.Synchronous[F, A] {
+
     val target: Target[A] = Target[A]
 
     type Point = target.Point
 
     def createAccumulator: F[Aggregator.Accumulator[F, A, Point]] =
       for {
-        current <- Current.create[F, A]
-      } yield new Accumulator(current)
+        adder <- Adder.create[F, A]
+        reservoir <- makeReservoir
+      } yield new Accumulator(adder, reservoir)
 
     def toMetricData(
         resource: TelemetryResource,
@@ -65,19 +79,28 @@ object LastValueAggregator {
         points: Vector[Point],
         temporality: AggregationTemporality
     ): F[MetricData] =
-      Concurrent[F].pure(
+      Temporal[F].pure(
         MetricData(
           resource,
           scope,
           descriptor.name,
           descriptor.description,
           descriptor.sourceInstrument.unit,
-          MetricPoints.gauge(points)
+          MetricPoints.sum(points, isMonotonic(descriptor), temporality)
         )
       )
 
+    private def makeReservoir: F[ExemplarReservoir[F, A]] =
+      ExemplarReservoir
+        .fixedSize[F, A](
+          size = reservoirSize,
+          traceContextLookup
+        )
+        .map(r => ExemplarReservoir.filtered(filter, r))
+
     private class Accumulator(
-        current: Current[F, A]
+        adder: Adder[F, A],
+        reservoir: ExemplarReservoir[F, A]
     ) extends Aggregator.Accumulator[F, A, Point] {
 
       def aggregate(
@@ -85,25 +108,35 @@ object LastValueAggregator {
           attributes: Attributes,
           reset: Boolean
       ): F[Option[Point]] =
-        current.get(reset).map { value =>
-          value.map { v =>
-            target.makePointData(
-              timeWindow,
-              attributes,
-              Vector.empty,
-              v
-            )
-          }
-        }
+        for {
+          value <- adder.sum(reset)
+          exemplars <- reservoir.collectAndReset(attributes)
+        } yield Some(
+          target.makePointData(
+            timeWindow,
+            attributes,
+            exemplars.map { e =>
+              target.makeExemplar(
+                e.filteredAttributes,
+                e.timestamp,
+                e.traceContext,
+                e.value
+              )
+            },
+            value
+          )
+        )
 
       def record(value: A, attributes: Attributes, context: Context): F[Unit] =
-        current.set(value)
+        reservoir.offer(value, attributes, context) >> adder.add(value)
+
     }
+
   }
 
   private final class Asynchronous[
       F[_]: Applicative,
-      A: MeasurementValue
+      A: MeasurementValue: Numeric
   ] extends Aggregator.Asynchronous[F, A] {
 
     private val target: Target[A] = Target[A]
@@ -112,7 +145,7 @@ object LastValueAggregator {
         previous: Measurement[A],
         current: Measurement[A]
     ): Measurement[A] =
-      current
+      current.withValue(Numeric[A].minus(current.value, previous.value))
 
     def toMetricData(
         measurements: Vector[Measurement[A]],
@@ -132,11 +165,19 @@ object LastValueAggregator {
           descriptor.name,
           descriptor.description,
           descriptor.sourceInstrument.unit,
-          MetricPoints.gauge(points)
+          MetricPoints.sum(points, isMonotonic(descriptor), temporality)
         )
       )
     }
 
   }
+
+  private def isMonotonic(descriptor: MetricDescriptor): Boolean =
+    descriptor.sourceInstrument.instrumentType match {
+      case InstrumentType.Counter           => true
+      case InstrumentType.Histogram         => true
+      case InstrumentType.ObservableCounter => true
+      case _                                => false
+    }
 
 }

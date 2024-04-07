@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics.internal.exemplar
+package org.typelevel.otel4s.sdk.metrics.exemplar
 
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 
 import scala.concurrent.duration.FiniteDuration
 
-private[internal] final case class Exemplar[A](
+private[exemplar] final case class Exemplar[A](
     filteredAttributes: Attributes,
     timestamp: FiniteDuration,
     traceContext: Option[ExemplarData.TraceContext],

@@ -19,12 +19,13 @@ package org.typelevel.otel4s.sdk.metrics.internal.utils
 import cats.effect.Concurrent
 import cats.syntax.functor._
 
-private[internal] trait Adder[F[_], A] {
+private[metrics] trait Adder[F[_], A] {
   def add(a: A): F[Unit]
   def sum(reset: Boolean): F[A]
+  def reset: F[Unit]
 }
 
-private[internal] object Adder {
+private[metrics] object Adder {
 
   def create[F[_]: Concurrent, A: Numeric]: F[Adder[F, A]] =
     Concurrent[F].ref(Numeric[A].zero).map { ref =>
@@ -34,6 +35,9 @@ private[internal] object Adder {
 
         def sum(reset: Boolean): F[A] =
           if (reset) ref.getAndSet(Numeric[A].zero) else ref.get
+
+        def reset: F[Unit] =
+          ref.set(Numeric[A].zero)
       }
     }
 

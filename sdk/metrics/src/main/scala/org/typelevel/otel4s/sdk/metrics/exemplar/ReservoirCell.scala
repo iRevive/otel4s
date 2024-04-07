@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics.internal.exemplar
+package org.typelevel.otel4s.sdk.metrics.exemplar
 
 import cats.effect.Ref
 import cats.effect.Temporal

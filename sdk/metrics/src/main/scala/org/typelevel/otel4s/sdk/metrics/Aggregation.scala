@@ -50,7 +50,7 @@ object Aggregation {
   def default: Aggregation = Default
 
   /** Aggregates measurements into
-    * [[org.typelevel.otel4s.sdk.metrics.data.MetricPoints.Sum Data.Sum]].
+    * [[org.typelevel.otel4s.sdk.metrics.data.MetricPoints.Sum MetricPoints.Sum]].
     *
     * Compatible instruments:
     *   - [[org.typelevel.otel4s.metrics.Counter Counter]]
@@ -62,7 +62,7 @@ object Aggregation {
   def sum: Aggregation = Sum
 
   /** Aggregates measurements into
-    * [[org.typelevel.otel4s.sdk.metrics.data.MetricPoints.Gauge Data.Gauge]]
+    * [[org.typelevel.otel4s.sdk.metrics.data.MetricPoints.Gauge MetricPoints.Gauge]]
     * using the last seen measurement.
     *
     * Compatible instruments:
@@ -71,7 +71,7 @@ object Aggregation {
   def lastValue: Aggregation = LastValue
 
   /** Aggregates measurements into an explicit bucket
-    * [[org.typelevel.otel4s.sdk.metrics.data.MetricPoints.Histogram Data.Histogram]]
+    * [[org.typelevel.otel4s.sdk.metrics.data.MetricPoints.Histogram MetricPoints.Histogram]]
     * using the default bucket boundaries.
     *
     * Compatible instruments:
@@ -86,7 +86,7 @@ object Aggregation {
     ExplicitBucketHistogram(BucketBoundaries.default)
 
   /** Aggregates measurements into an explicit bucket
-    * [[org.typelevel.otel4s.sdk.metrics.data.MetricPoints.Histogram Data.Histogram]]
+    * [[org.typelevel.otel4s.sdk.metrics.data.MetricPoints.Histogram MetricPoints.Histogram]]
     * using the given bucket boundaries.
     *
     * Compatible instruments:
@@ -100,7 +100,7 @@ object Aggregation {
     ExplicitBucketHistogram(boundaries)
 
   /** Aggregates measurements into a base-2
-    * [[org.typelevel.otel4s.sdk.metrics.data.MetricPoints.ExponentialHistogram Data.ExponentialHistogram]]
+    * [[org.typelevel.otel4s.sdk.metrics.data.MetricPoints.ExponentialHistogram MetricPoints.ExponentialHistogram]]
     * using the default `maxBuckets` and `maxScale`.
     *
     * Compatible instruments:

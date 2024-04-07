@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics
-package internal.aggregation
+package org.typelevel.otel4s.sdk.metrics.aggregation
 
 import cats.Applicative
 import cats.effect.Temporal
@@ -26,15 +25,17 @@ import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.Context
+import org.typelevel.otel4s.sdk.metrics.Aggregation
+import org.typelevel.otel4s.sdk.metrics.InstrumentType
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
+import org.typelevel.otel4s.sdk.metrics.exemplar.ExemplarFilter
+import org.typelevel.otel4s.sdk.metrics.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.Measurement
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
-import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarFilter
-import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 
 private[metrics] object Aggregator {
 

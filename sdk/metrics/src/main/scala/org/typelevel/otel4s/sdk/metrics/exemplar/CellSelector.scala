@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics.internal.exemplar
+package org.typelevel.otel4s.sdk.metrics.exemplar
 
 import cats.Applicative
 import cats.effect.Concurrent
@@ -68,7 +68,7 @@ private[exemplar] object CellSelector {
         } yield cells.lift(idx)
       }
 
-      def reset: F[Unit] = adder.sum(reset = true).void // todo use reset
+      def reset: F[Unit] = adder.reset
     }
 
 }

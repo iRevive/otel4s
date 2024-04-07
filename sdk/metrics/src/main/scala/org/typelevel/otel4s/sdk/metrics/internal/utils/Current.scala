@@ -19,12 +19,12 @@ package org.typelevel.otel4s.sdk.metrics.internal.utils
 import cats.effect.Concurrent
 import cats.syntax.functor._
 
-private[internal] trait Current[F[_], A] {
+private[metrics] trait Current[F[_], A] {
   def set(a: A): F[Unit]
   def get(reset: Boolean): F[Option[A]]
 }
 
-private[internal] object Current {
+private[metrics] object Current {
 
   def create[F[_]: Concurrent, A]: F[Current[F, A]] =
     Concurrent[F].ref(Option.empty[A]).map { ref =>

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics.internal.exemplar
+package org.typelevel.otel4s.sdk.metrics.exemplar
 
 import cats.Applicative
 import cats.Monad
@@ -30,12 +30,12 @@ import org.typelevel.otel4s.metrics.BucketBoundaries
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.context.Context
 
-private[internal] trait ExemplarReservoir[F[_], A] {
+private[metrics] trait ExemplarReservoir[F[_], A] {
   def offer(value: A, attributes: Attributes, context: Context): F[Unit]
   def collectAndReset(attributes: Attributes): F[Vector[Exemplar[A]]]
 }
 
-private[internal] object ExemplarReservoir {
+private[metrics] object ExemplarReservoir {
 
   // size = availableProcessors
   def fixedSize[F[_]: Temporal: Random, A: Numeric](

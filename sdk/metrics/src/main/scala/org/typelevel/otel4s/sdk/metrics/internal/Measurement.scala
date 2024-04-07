@@ -21,7 +21,7 @@ import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 
 import scala.concurrent.duration.FiniteDuration
 
-sealed trait Measurement[A] {
+private[metrics] sealed trait Measurement[A] {
   def timeWindow: TimeWindow
   def attributes: Attributes
   def value: A
@@ -33,7 +33,7 @@ sealed trait Measurement[A] {
   def withValue(a: A): Measurement[A]
 }
 
-object Measurement {
+private[metrics] object Measurement {
 
   def apply[A](
       timeWindow: TimeWindow,
@@ -56,30 +56,5 @@ object Measurement {
     def withValue(a: A): Measurement[A] =
       copy(value = a)
   }
-  /*
-  final case class LongMeasurement(
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration,
-      attributes: Attributes,
-      value: Long
-  ) extends Measurement[Long] {
-    def withAttributes(attributes: Attributes): Measurement[Long] =
-      copy(attributes = attributes)
 
-    def withStartTimestamp(start: FiniteDuration): Measurement[Long] =
-      copy(startTimestamp = start)
-  }
-
-  final case class DoubleMeasurement(
-      startTimestamp: FiniteDuration,
-      collectTimestamp: FiniteDuration,
-      attributes: Attributes,
-      value: Double
-  ) extends Measurement[Double] {
-    def withAttributes(attributes: Attributes): Measurement[Double] =
-      copy(attributes = attributes)
-
-    def withStartTimestamp(start: FiniteDuration): Measurement[Double] =
-      copy(startTimestamp = start)
-  }*/
 }

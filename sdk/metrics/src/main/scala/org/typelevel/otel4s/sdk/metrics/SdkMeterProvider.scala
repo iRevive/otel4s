@@ -33,11 +33,11 @@ import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.internal.ComponentRegistry
 import org.typelevel.otel4s.sdk.metrics
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
+import org.typelevel.otel4s.sdk.metrics.exemplar.ExemplarFilter
+import org.typelevel.otel4s.sdk.metrics.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.exporter.CollectionRegistration
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricProducer
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricReader
-import org.typelevel.otel4s.sdk.metrics.internal.exemplar.ExemplarFilter
-import org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.view.InstrumentSelector
 import org.typelevel.otel4s.sdk.metrics.view.RegisteredView
@@ -112,14 +112,11 @@ object SdkMeterProvider {
       */
     def withExemplarFilter(filter: ExemplarFilter): Builder[F]
 
-    /** Sets a
-      * [[org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup TraceContextLookup]]
-      * to be used by exemplars.
+    /** Sets a [[TraceContextLookup TraceContextLookup]] to be used by
+      * exemplars.
       *
       * @param lookup
-      *   the
-      *   [[org.typelevel.otel4s.sdk.metrics.internal.exemplar.TraceContextLookup]]
-      *   to use
+      *   the [[TraceContextLookup]] to use
       */
     def withTraceContextLookup(lookup: TraceContextLookup): Builder[F]
 

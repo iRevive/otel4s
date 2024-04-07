@@ -24,7 +24,11 @@ import io.opentelemetry.proto.metrics.v1.{metrics => Proto}
 import io.opentelemetry.proto.metrics.v1.metrics.ResourceMetrics
 import io.opentelemetry.proto.metrics.v1.metrics.ScopeMetrics
 import org.typelevel.otel4s.sdk.exporter.otlp.ProtoEncoder
-import org.typelevel.otel4s.sdk.metrics.data.{AggregationTemporality, Data, ExemplarData, MetricData, MetricPoints, PointData}
+import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
+import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
+import org.typelevel.otel4s.sdk.metrics.data.MetricData
+import org.typelevel.otel4s.sdk.metrics.data.MetricPoints
+import org.typelevel.otel4s.sdk.metrics.data.PointData
 import scalapb_circe.Printer
 
 /** @see

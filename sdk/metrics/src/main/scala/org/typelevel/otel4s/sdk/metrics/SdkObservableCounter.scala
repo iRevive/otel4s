@@ -31,6 +31,7 @@ import org.typelevel.otel4s.metrics.ObservableCounter
 import org.typelevel.otel4s.metrics.ObservableMeasurement
 import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.metrics.internal._
+import org.typelevel.otel4s.sdk.metrics.internal.CallbackRegistration
 
 private object SdkObservableCounter {
 
