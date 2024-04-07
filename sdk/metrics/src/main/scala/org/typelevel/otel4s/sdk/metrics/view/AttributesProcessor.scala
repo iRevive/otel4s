@@ -16,8 +16,8 @@
 
 package org.typelevel.otel4s.sdk.metrics.view
 
+import cats.Monoid
 import cats.Show
-import cats.kernel.Monoid
 import org.typelevel.otel4s.Attribute
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.sdk.context.Context
@@ -73,7 +73,7 @@ private[metrics] object AttributesProcessor {
         s"AttributesProcessor.Retain(retain = ${p.retain.mkString("{", ", ", "}")})"
 
       case _: AttributePredicate =>
-        "AttributesProcessor.AttributePredicate"
+        "AttributesProcessor.AttributePredicate(<f>)"
 
       case c: Combined =>
         s"AttributesProcessor.Combined(left=${c.left}, right=${c.right})"
