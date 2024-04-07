@@ -16,19 +16,7 @@
 
 package org.typelevel.otel4s.sdk.metrics.view
 
-private[metrics] sealed trait RegisteredView {
-  def selector: InstrumentSelector
-  def view: View
-}
-
-private[metrics] object RegisteredView {
-
-  def apply(selector: InstrumentSelector, view: View): RegisteredView =
-    Impl(selector, view)
-
-  private final case class Impl(
-      selector: InstrumentSelector,
-      view: View
-  ) extends RegisteredView
-
-}
+private[metrics] final case class RegisteredView(
+    selector: InstrumentSelector,
+    view: View
+)

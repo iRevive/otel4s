@@ -140,7 +140,8 @@ object View {
       attributesProcessors: List[AttributesProcessor] = Nil
   ) extends Builder {
 
-    def withName(name: String): Builder = copy(name = Some(name))
+    def withName(name: String): Builder =
+      copy(name = Some(name))
 
     def withDescription(description: String): Builder =
       copy(description = Some(description))
