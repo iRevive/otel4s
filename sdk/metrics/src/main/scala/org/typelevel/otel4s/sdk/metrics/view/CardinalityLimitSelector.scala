@@ -14,16 +14,19 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics
-package exporter
+package org.typelevel.otel4s.sdk.metrics.view
 
-trait DefaultAggregationSelector {
+import org.typelevel.otel4s.sdk.metrics.InstrumentType
 
-  /** Returns preferred [[Aggregation]] for the given [[InstrumentType]].
-    */
-  def select(instrumentType: InstrumentType): Aggregation
+trait CardinalityLimitSelector {
+  def select(instrumentType: InstrumentType): Int
 }
 
-object DefaultAggregationSelector {
-  def default: DefaultAggregationSelector = _ => Aggregation.default
+object CardinalityLimitSelector {
+  private object Default extends CardinalityLimitSelector {
+    def select(instrumentType: InstrumentType): Int = 2000
+  }
+
+  def default: CardinalityLimitSelector = Default
+
 }

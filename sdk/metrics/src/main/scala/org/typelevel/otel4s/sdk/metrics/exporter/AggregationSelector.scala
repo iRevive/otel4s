@@ -15,16 +15,15 @@
  */
 
 package org.typelevel.otel4s.sdk.metrics
+package exporter
 
-trait CardinalityLimitSelector {
-  def select(instrumentType: InstrumentType): Int
+trait AggregationSelector {
+
+  /** Returns preferred [[Aggregation]] for the given [[InstrumentType]].
+    */
+  def select(instrumentType: InstrumentType): Aggregation
 }
 
-object CardinalityLimitSelector {
-  private object Default extends CardinalityLimitSelector {
-    def select(instrumentType: InstrumentType): Int = 2000
-  }
-
-  def default: CardinalityLimitSelector = Default
-
+object AggregationSelector {
+  def default: AggregationSelector = _ => Aggregation.default
 }

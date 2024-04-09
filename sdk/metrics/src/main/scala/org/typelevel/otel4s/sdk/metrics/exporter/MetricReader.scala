@@ -18,7 +18,7 @@ package org.typelevel.otel4s.sdk.metrics
 package exporter
 
 trait MetricReader[F[_]] {
-  def defaultAggregationSelector: DefaultAggregationSelector
+  def defaultAggregationSelector: AggregationSelector
   def aggregationTemporalitySelector: AggregationTemporalitySelector
   def register(registration: CollectionRegistration[F]): F[Unit]
   def forceFlush: F[Unit]

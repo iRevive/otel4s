@@ -378,6 +378,21 @@ object OpenTelemetrySdk {
         ): Resource[F, AutoConfigured[F]] = {
           def makeLocalContext = LocalProvider[F, Context].local
 
+          val traceContextLookup: TraceContextLookup =
+            new TraceContextLookup {
+              def get(context: Context): Option[ExemplarData.TraceContext] =
+                context
+                  .get(SdkContextKeys.SpanContextKey)
+                  .filter(_.isValid)
+                  .map { ctx =>
+                    ExemplarData.TraceContext(
+                      ctx.traceId,
+                      ctx.spanId,
+                      ctx.isSampled
+                    )
+                  }
+            }
+
           Resource.eval(makeLocalContext).flatMap { implicit local =>
             Resource.eval(Random.scalaUtilRandom).flatMap { implicit random =>
               val propagatorsConfigure = ContextPropagatorsAutoConfigure[F](
@@ -388,25 +403,7 @@ object OpenTelemetrySdk {
                 val meterProviderConfigure = MeterProviderAutoConfigure[F](
                   resource,
                   merge(
-                    (a, _) =>
-                      a.withTraceContextLookup(
-                        new TraceContextLookup {
-                          def get(context: Context)
-                              : Option[ExemplarData.TraceContext] =
-                            context
-                              .get(SdkContextKeys.SpanContextKey)
-                              .filter(_.isValid)
-                              .map(ctx =>
-                                ExemplarData
-                                  .TraceContext(ctx.traceId, ctx.spanId)
-                              )
-
-                          def isSampled(context: Context): Boolean =
-                            context
-                              .get(SdkContextKeys.SpanContextKey)
-                              .exists(_.isSampled)
-                        }
-                      ),
+                    (a, _) => a.withTraceContextLookup(traceContextLookup),
                     meterProviderCustomizer
                   ),
                   metricExporterConfigurers

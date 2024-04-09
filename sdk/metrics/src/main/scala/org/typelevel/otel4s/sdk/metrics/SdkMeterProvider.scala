@@ -29,6 +29,7 @@ import cats.syntax.traverse._
 import org.typelevel.otel4s.metrics.MeterBuilder
 import org.typelevel.otel4s.metrics.MeterProvider
 import org.typelevel.otel4s.sdk.TelemetryResource
+import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.internal.ComponentRegistry
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
@@ -38,10 +39,13 @@ import org.typelevel.otel4s.sdk.metrics.exporter.CollectionRegistration
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricProducer
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricReader
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
+import org.typelevel.otel4s.sdk.metrics.view.CardinalityLimitSelector
 import org.typelevel.otel4s.sdk.metrics.view.InstrumentSelector
 import org.typelevel.otel4s.sdk.metrics.view.RegisteredView
 import org.typelevel.otel4s.sdk.metrics.view.View
 import org.typelevel.otel4s.sdk.metrics.view.ViewRegistry
+
+import scala.concurrent.duration.FiniteDuration
 
 private final class SdkMeterProvider[F[_]: Applicative](
     componentRegistry: ComponentRegistry[F, SdkMeter[F]],
@@ -215,69 +219,77 @@ object SdkMeterProvider {
     def registerMetricProducer(producer: MetricProducer[F]): Builder[F] =
       copy(metricProducers = metricProducers :+ producer)
 
-    def build: F[MeterProvider[F]] = {
-      if (metricReaders.isEmpty) {
-        Monad[F].pure(MeterProvider.noop)
-      } else
-        Clock[F].realTime.flatMap { now =>
-          metricReaders.toVector
-            .traverse { case (reader, limit) =>
-              val registry = ViewRegistry(
-                reader.defaultAggregationSelector,
-                limit,
-                registeredViews
-              )
+    def build: F[MeterProvider[F]] =
+      if (metricReaders.isEmpty) Monad[F].pure(MeterProvider.noop)
+      else create
 
-              RegisteredReader.create(reader, registry)
-            }
-            .flatMap { readers =>
-              ComponentRegistry
-                .create { scope =>
-                  val filter = exemplarFilter.getOrElse(
-                    ExemplarFilter.traceBased(traceContextLookup)
-                  )
+    private def create: F[MeterProvider[F]] = {
+      def createRegisteredReader(
+          reader: MetricReader[F],
+          selector: CardinalityLimitSelector
+      ): F[RegisteredReader[F]] = {
+        val registry = ViewRegistry(
+          reader.defaultAggregationSelector,
+          selector,
+          registeredViews
+        )
 
-                  for {
-                    state <- MeterSharedState.create(
-                      resource,
-                      scope,
-                      now,
-                      filter,
-                      traceContextLookup,
-                      readers
-                    )
-                  } yield new SdkMeter[F](state)
-                }
-                .flatMap { registry =>
-                  readers
-                    .traverse_ { reader =>
-                      val producers =
-                        metricProducers :+ new LeasedMetricProducer[F](
-                          registry,
-                          reader
-                        )
+        RegisteredReader.create(reader, registry)
+      }
 
-                      for {
-                        _ <- reader.reader.register(
-                          new SdkCollectionRegistration[F](producers, resource)
-                        )
-                        _ <- reader.setLastCollectTimestamp(now)
-                      } yield ()
-                    }
-                    .map { _ =>
-                      new SdkMeterProvider(
-                        registry,
-                        resource,
-                        registeredViews,
-                        readers,
-                        metricProducers
-                      )
-                    }
-                }
+      def createMeter(
+          startTimestamp: FiniteDuration,
+          scope: InstrumentationScope,
+          readers: Vector[RegisteredReader[F]]
+      ): F[SdkMeter[F]] = {
+        val filter = exemplarFilter.getOrElse(
+          ExemplarFilter.traceBased(traceContextLookup)
+        )
 
-            }
+        for {
+          state <- MeterSharedState.create(
+            resource,
+            scope,
+            startTimestamp,
+            filter,
+            traceContextLookup,
+            readers
+          )
+        } yield new SdkMeter[F](state)
+      }
 
+      def configureReader(
+          startTimestamp: FiniteDuration,
+          registry: ComponentRegistry[F, SdkMeter[F]],
+          reader: RegisteredReader[F]
+      ): F[Unit] = {
+        val producers = metricProducers :+ new LeasedMetricProducer[F](
+          registry,
+          reader
+        )
+
+        for {
+          _ <- reader.reader.register(
+            new SdkCollectionRegistration[F](producers, resource)
+          )
+          _ <- reader.setLastCollectTimestamp(startTimestamp)
+        } yield ()
+      }
+
+      for {
+        now <- Clock[F].realTime
+        readers <- metricReaders.toVector.traverse { case (reader, selector) =>
+          createRegisteredReader(reader, selector)
         }
+        registry <- ComponentRegistry.create(s => createMeter(now, s, readers))
+        _ <- readers.traverse_(reader => configureReader(now, registry, reader))
+      } yield new SdkMeterProvider(
+        registry,
+        resource,
+        registeredViews,
+        readers,
+        metricProducers
+      )
     }
   }
 

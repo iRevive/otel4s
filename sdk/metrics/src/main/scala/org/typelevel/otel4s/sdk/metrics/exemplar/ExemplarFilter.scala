@@ -72,6 +72,6 @@ object ExemplarFilter {
         attributes: Attributes,
         context: Context
     ): Boolean =
-      lookup.isSampled(context)
+      lookup.get(context).exists(_.isSampled)
   }
 }

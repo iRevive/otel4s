@@ -40,7 +40,7 @@ private class PeriodicMetricReader[F[_]: Temporal: Console] private (
 ) extends MetricReader[F] {
   import PeriodicMetricReader._
 
-  def defaultAggregationSelector: DefaultAggregationSelector =
+  def defaultAggregationSelector: AggregationSelector =
     exporter.defaultAggregationSelector
 
   def aggregationTemporalitySelector: AggregationTemporalitySelector =

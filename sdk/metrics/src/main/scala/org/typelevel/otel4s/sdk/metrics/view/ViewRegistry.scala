@@ -22,9 +22,8 @@ import cats.effect.std.Console
 import cats.syntax.functor._
 import cats.syntax.traverse._
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
-import org.typelevel.otel4s.sdk.metrics.CardinalityLimitSelector
 import org.typelevel.otel4s.sdk.metrics.InstrumentType
-import org.typelevel.otel4s.sdk.metrics.exporter.DefaultAggregationSelector
+import org.typelevel.otel4s.sdk.metrics.exporter.AggregationSelector
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 
 import java.util.regex.Pattern
@@ -90,7 +89,7 @@ private[metrics] final class ViewRegistry[F[_]: Monad: Console](
 private[metrics] object ViewRegistry {
 
   def apply[F[_]: Monad: Console](
-      defaultAggregationSelector: DefaultAggregationSelector,
+      defaultAggregationSelector: AggregationSelector,
       cardinalityLimitSelector: CardinalityLimitSelector,
       registeredViews: Vector[RegisteredView]
   ): ViewRegistry[F] = {
