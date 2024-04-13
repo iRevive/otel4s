@@ -35,8 +35,8 @@ import org.typelevel.otel4s.sdk.metrics.aggregation.Aggregator
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
+import org.typelevel.otel4s.sdk.metrics.internal.AsynchronousMeasurement
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
-import org.typelevel.otel4s.sdk.metrics.internal.Measurement
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.view.AttributesProcessor
@@ -57,27 +57,32 @@ private final class DefaultAsynchronous[
     collector: DefaultAsynchronous.Collector[F, A]
 ) extends MetricStorage.Asynchronous[F, A] {
 
-  def record(m: Measurement[A]): F[Unit] =
+  def record(measurement: AsynchronousMeasurement[A]): F[Unit] =
     for {
       context <- Ask[F, Context].ask
-      attributes = attributesProcessor.process(m.attributes, context)
-      start <- collector.startTimestamp(m)
-      measurement = m.withAttributes(attributes).withStartTimestamp(start)
+      start <- collector.startTimestamp(measurement)
       points <- collector.currentPoints
       _ <- {
+        val attributes =
+          attributesProcessor.process(measurement.attributes, context)
+
         if (points.contains(attributes)) {
           Console[F].errorln(
             s"Instrument ${metricDescriptor.sourceInstrument.name} has recorded multiple values for the same attributes $attributes"
           )
         } else {
+          val timeWindow = TimeWindow(start, measurement.timeWindow.end)
           if (points.sizeIs >= maxCardinality) {
             cardinalityWarning >> collector.record(
-              measurement.withAttributes(
-                attributes.added(MetricStorage.OverflowAttribute)
+              measurement.copy(
+                attributes = attributes.added(MetricStorage.OverflowAttribute),
+                timeWindow = timeWindow
               )
             )
           } else {
-            collector.record(measurement)
+            collector.record(
+              measurement.copy(attributes = attributes, timeWindow = timeWindow)
+            )
           }
         }
       }
@@ -145,10 +150,12 @@ private object DefaultAsynchronous {
   }
 
   private trait Collector[F[_], A] {
-    def startTimestamp(measurement: Measurement[A]): F[FiniteDuration]
-    def record(measurement: Measurement[A]): F[Unit]
-    def currentPoints: F[Map[Attributes, Measurement[A]]]
-    def collectPoints: F[Vector[Measurement[A]]]
+    def startTimestamp(
+        measurement: AsynchronousMeasurement[A]
+    ): F[FiniteDuration]
+    def record(measurement: AsynchronousMeasurement[A]): F[Unit]
+    def currentPoints: F[Map[Attributes, AsynchronousMeasurement[A]]]
+    def collectPoints: F[Vector[AsynchronousMeasurement[A]]]
   }
 
   private object Collector {
@@ -167,49 +174,58 @@ private object DefaultAsynchronous {
         reader: RegisteredReader[F],
         aggregator: Aggregator.Asynchronous[F, A]
     ): F[Collector[F, A]] =
-      Ref.of(Map.empty[Attributes, Measurement[A]]).flatMap { pointsRef =>
-        Ref.of(Map.empty[Attributes, Measurement[A]]).map { lastPointsRef =>
-          new Collector[F, A] {
-            def startTimestamp(measurement: Measurement[A]): F[FiniteDuration] =
-              reader.lastCollectTimestamp
+      Ref.of(Map.empty[Attributes, AsynchronousMeasurement[A]]).flatMap {
+        pointsRef =>
+          Ref.of(Map.empty[Attributes, AsynchronousMeasurement[A]]).map {
+            lastPointsRef =>
+              new Collector[F, A] {
+                def startTimestamp(
+                    measurement: AsynchronousMeasurement[A]
+                ): F[FiniteDuration] =
+                  reader.lastCollectTimestamp
 
-            def record(measurement: Measurement[A]): F[Unit] =
-              pointsRef.update(_.updated(measurement.attributes, measurement))
+                def record(measurement: AsynchronousMeasurement[A]): F[Unit] =
+                  pointsRef
+                    .update(_.updated(measurement.attributes, measurement))
 
-            def currentPoints: F[Map[Attributes, Measurement[A]]] =
-              pointsRef.get
+                def currentPoints
+                    : F[Map[Attributes, AsynchronousMeasurement[A]]] =
+                  pointsRef.get
 
-            def collectPoints: F[Vector[Measurement[A]]] =
-              for {
-                points <- pointsRef.get
-                lastPoints <- lastPointsRef.getAndSet(points)
-              } yield points.toVector.map { case (k, v) =>
-                lastPoints.get(k) match {
-                  case Some(lastPoint) =>
-                    aggregator.diff(lastPoint, v)
-                  case None =>
-                    v
-                }
+                def collectPoints: F[Vector[AsynchronousMeasurement[A]]] =
+                  for {
+                    points <- pointsRef.get
+                    lastPoints <- lastPointsRef.getAndSet(points)
+                  } yield points.toVector.map { case (k, v) =>
+                    lastPoints.get(k) match {
+                      case Some(lastPoint) =>
+                        aggregator.diff(lastPoint, v)
+                      case None =>
+                        v
+                    }
+                  }
               }
           }
-        }
       }
 
     private def cumulative[F[_]: Concurrent, A]: F[Collector[F, A]] =
-      Ref.of(Map.empty[Attributes, Measurement[A]]).map { pointsRef =>
-        new Collector[F, A] {
-          def startTimestamp(measurement: Measurement[A]): F[FiniteDuration] =
-            Monad[F].pure(measurement.timeWindow.start)
+      Ref.of(Map.empty[Attributes, AsynchronousMeasurement[A]]).map {
+        pointsRef =>
+          new Collector[F, A] {
+            def startTimestamp(
+                measurement: AsynchronousMeasurement[A]
+            ): F[FiniteDuration] =
+              Monad[F].pure(measurement.timeWindow.start)
 
-          def record(measurement: Measurement[A]): F[Unit] =
-            pointsRef.update(_.updated(measurement.attributes, measurement))
+            def record(measurement: AsynchronousMeasurement[A]): F[Unit] =
+              pointsRef.update(_.updated(measurement.attributes, measurement))
 
-          def currentPoints: F[Map[Attributes, Measurement[A]]] =
-            pointsRef.get
+            def currentPoints: F[Map[Attributes, AsynchronousMeasurement[A]]] =
+              pointsRef.get
 
-          def collectPoints: F[Vector[Measurement[A]]] =
-            pointsRef.getAndSet(Map.empty).map(_.values.toVector)
-        }
+            def collectPoints: F[Vector[AsynchronousMeasurement[A]]] =
+              pointsRef.getAndSet(Map.empty).map(_.values.toVector)
+          }
       }
 
   }

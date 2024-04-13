@@ -28,7 +28,7 @@ import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.MetricPoints
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
-import org.typelevel.otel4s.sdk.metrics.internal.Measurement
+import org.typelevel.otel4s.sdk.metrics.internal.AsynchronousMeasurement
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.utils.Current
 
@@ -110,13 +110,13 @@ object LastValueAggregator {
     private val target: Target[A] = Target[A]
 
     def diff(
-        previous: Measurement[A],
-        current: Measurement[A]
-    ): Measurement[A] =
+        previous: AsynchronousMeasurement[A],
+        current: AsynchronousMeasurement[A]
+    ): AsynchronousMeasurement[A] =
       current
 
     def toMetricData(
-        measurements: Vector[Measurement[A]],
+        measurements: Vector[AsynchronousMeasurement[A]],
         resource: TelemetryResource,
         scope: InstrumentationScope,
         descriptor: MetricDescriptor,

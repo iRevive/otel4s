@@ -53,7 +53,7 @@ private[metrics] final class SdkObservableMeasurement[F[_]: Monad, A](
         Monad[F].unit // todo: log warning
 
       case State.WithReader(reader, timeWindow) =>
-        val measurement = Measurement(timeWindow, attributes, value)
+        val measurement = AsynchronousMeasurement(timeWindow, attributes, value)
 
         storages.traverse_ { storage =>
           storage.record(measurement).whenA(storage.reader == reader)

@@ -16,8 +16,8 @@
 
 package org.typelevel.otel4s.sdk.metrics.view
 
-import cats.data.OptionT
 import cats.Monad
+import cats.data.OptionT
 import cats.effect.std.Console
 import cats.syntax.functor._
 import cats.syntax.traverse._

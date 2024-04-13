@@ -33,8 +33,8 @@ import org.typelevel.otel4s.sdk.metrics.data.PointData
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 import org.typelevel.otel4s.sdk.metrics.exemplar.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.exemplar.TraceContextLookup
+import org.typelevel.otel4s.sdk.metrics.internal.AsynchronousMeasurement
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
-import org.typelevel.otel4s.sdk.metrics.internal.Measurement
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 
 private[metrics] object Aggregator {
@@ -54,10 +54,13 @@ private[metrics] object Aggregator {
   }
 
   trait Asynchronous[F[_], A] {
-    def diff(previous: Measurement[A], current: Measurement[A]): Measurement[A]
+    def diff(
+        previous: AsynchronousMeasurement[A],
+        current: AsynchronousMeasurement[A]
+    ): AsynchronousMeasurement[A]
 
     def toMetricData(
-        measurements: Vector[Measurement[A]],
+        measurements: Vector[AsynchronousMeasurement[A]],
         resource: TelemetryResource,
         scope: InstrumentationScope,
         descriptor: MetricDescriptor,

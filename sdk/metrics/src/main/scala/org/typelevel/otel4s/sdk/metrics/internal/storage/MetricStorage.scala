@@ -33,8 +33,8 @@ import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 import org.typelevel.otel4s.sdk.metrics.exemplar.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.exemplar.TraceContextLookup
+import org.typelevel.otel4s.sdk.metrics.internal.AsynchronousMeasurement
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
-import org.typelevel.otel4s.sdk.metrics.internal.Measurement
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.view.View
@@ -76,7 +76,7 @@ private[metrics] object MetricStorage {
   trait Synchronous[F[_], A] extends MetricStorage[F] with Writeable[F, A]
 
   trait Asynchronous[F[_], A] extends MetricStorage[F] {
-    def record(measurement: Measurement[A]): F[Unit]
+    def record(measurement: AsynchronousMeasurement[A]): F[Unit]
     def reader: RegisteredReader[F]
   }
 

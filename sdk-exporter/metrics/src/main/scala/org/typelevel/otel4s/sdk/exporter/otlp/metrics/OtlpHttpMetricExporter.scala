@@ -33,8 +33,8 @@ import org.http4s.headers.`User-Agent`
 import org.http4s.syntax.literals._
 import org.typelevel.otel4s.sdk.BuildInfo
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
-import org.typelevel.otel4s.sdk.metrics.exporter.AggregationTemporalitySelector
 import org.typelevel.otel4s.sdk.metrics.exporter.AggregationSelector
+import org.typelevel.otel4s.sdk.metrics.exporter.AggregationTemporalitySelector
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricExporter
 
 import scala.concurrent.duration._
@@ -161,15 +161,15 @@ object OtlpHttpMetricExporter {
   private final case class BuilderImpl[
       F[_]: Async: Network: Compression: Console
   ](
-     encoding: HttpPayloadEncoding,
-     endpoint: Uri,
-     gzipCompression: Boolean,
-     timeout: FiniteDuration,
-     headers: Headers,
-     retryPolicy: RetryPolicy,
-     defaultAggregationSelector: AggregationSelector,
-     aggregationTemporalitySelector: AggregationTemporalitySelector,
-     tlsContext: Option[TLSContext[F]]
+      encoding: HttpPayloadEncoding,
+      endpoint: Uri,
+      gzipCompression: Boolean,
+      timeout: FiniteDuration,
+      headers: Headers,
+      retryPolicy: RetryPolicy,
+      defaultAggregationSelector: AggregationSelector,
+      aggregationTemporalitySelector: AggregationTemporalitySelector,
+      tlsContext: Option[TLSContext[F]]
   ) extends Builder[F] {
 
     def withTimeout(timeout: FiniteDuration): Builder[F] =
@@ -218,7 +218,8 @@ object OtlpHttpMetricExporter {
           headers,
           gzipCompression,
           retryPolicy,
-          tlsContext
+          tlsContext,
+          None
         )
       } yield new OtlpHttpMetricExporter[F](
         client,
