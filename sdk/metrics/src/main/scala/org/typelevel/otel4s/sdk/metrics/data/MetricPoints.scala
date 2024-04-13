@@ -16,6 +16,9 @@
 
 package org.typelevel.otel4s.sdk.metrics.data
 
+import cats.Hash
+import cats.Show
+
 /** A collection of metric data points.
   *
   * @see
@@ -26,6 +29,18 @@ sealed trait MetricPoints {
   /** The collection of the metric [[PointData]]s.
     */
   def points: Vector[PointData]
+
+  override final def hashCode(): Int =
+    Hash[MetricPoints].hash(this)
+
+  override final def equals(obj: Any): Boolean =
+    obj match {
+      case other: MetricPoints => Hash[MetricPoints].eqv(this, other)
+      case _                   => false
+    }
+
+  override final def toString: String =
+    Show[MetricPoints].show(this)
 }
 
 object MetricPoints {
@@ -75,6 +90,9 @@ object MetricPoints {
     */
   sealed trait Histogram extends MetricPoints {
     def points: Vector[PointData.Histogram]
+
+    /** The aggregation temporality of this aggregation.
+      */
     def aggregationTemporality: AggregationTemporality
   }
 
@@ -117,6 +135,56 @@ object MetricPoints {
       aggregationTemporality: AggregationTemporality
   ): ExponentialHistogram =
     ExponentialHistogramImpl(points, aggregationTemporality)
+
+  implicit val metricPointsHash: Hash[MetricPoints] = {
+    val sumHash: Hash[Sum] =
+      Hash.by { s =>
+        (s.points: Vector[PointData], s.monotonic, s.aggregationTemporality)
+      }
+
+    val gaugeHash: Hash[Gauge] =
+      Hash.by(_.points: Vector[PointData])
+
+    val histogramHash: Hash[Histogram] =
+      Hash.by(h => (h.points: Vector[PointData], h.aggregationTemporality))
+
+    new Hash[MetricPoints] {
+      def hash(x: MetricPoints): Int =
+        x match {
+          case sum: Sum             => sumHash.hash(sum)
+          case gauge: Gauge         => gaugeHash.hash(gauge)
+          case histogram: Histogram => histogramHash.hash(histogram)
+        }
+
+      def eqv(x: MetricPoints, y: MetricPoints): Boolean =
+        (x, y) match {
+          case (left: Sum, right: Sum) =>
+            sumHash.eqv(left, right)
+          case (left: Gauge, right: Gauge) =>
+            gaugeHash.eqv(left, right)
+          case (left: Histogram, right: Histogram) =>
+            histogramHash.eqv(left, right)
+          case _ =>
+            false
+        }
+    }
+  }
+
+  implicit val metricPointsShow: Show[MetricPoints] = {
+    Show.show {
+      case sum: Sum =>
+        "MetricPoints.Sum{" +
+          s"points=${sum.points.mkString("{", ",", "}")}, " +
+          s"monotonic=${sum.monotonic}, " +
+          s"aggregationTemporality=${sum.aggregationTemporality}}"
+
+      case gauge: Gauge =>
+        s"MetricPoints.Gauge{points=${gauge.points.mkString("{", ",", "}")}}"
+
+      case h: Histogram =>
+        s"MetricPoints.Histogram{points=${h.points.mkString("{", ",", "}")}, aggregationTemporality=${h.aggregationTemporality}}"
+    }
+  }
 
   private final case class SumImpl[A <: PointData.NumberPoint](
       points: Vector[A],
