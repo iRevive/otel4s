@@ -16,32 +16,74 @@
 
 package org.typelevel.otel4s.sdk.metrics.data
 
+import cats.Show
+import cats.Hash
+import cats.syntax.foldable._
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 
-/** @see
+/** Representation of the aggregated measurements of an instrument.
+  *
+  * @see
   *   [[https://opentelemetry.io/docs/specs/otel/metrics/data-model/#timeseries-model]]
   */
 sealed trait MetricData {
 
-  def resource: TelemetryResource
-
-  def instrumentationScope: InstrumentationScope
-
+  /** The name of the metric.
+    *
+    * The name is typically the instrument name, but may be optionally
+    * overridden by a view.
+    */
   def name: String
 
+  /** The description of the metric.
+    *
+    * The metric name is typically the instrument description, but may be
+    * optionally overridden by a view.
+    */
   def description: Option[String]
 
+  /** The unit of the metric.
+    */
   def unit: Option[String]
 
+  /** The datapoints (measurements) of the metric.
+    */
   def data: MetricPoints
 
+  /** The instrumentation scope associated with the measurements.
+    */
+  def instrumentationScope: InstrumentationScope
+
+  /** The resource associated with the measurements.
+    */
+  def resource: TelemetryResource
+
+  /** Whether the measurements are empty.
+    */
   final def isEmpty: Boolean = data.points.isEmpty
+
+  /** Whether the measurements are non empty.
+    */
   final def nonEmpty: Boolean = !isEmpty
+
+  override final def hashCode(): Int =
+    Hash[MetricData].hash(this)
+
+  override final def equals(obj: Any): Boolean =
+    obj match {
+      case other: MetricData => Hash[MetricData].eqv(this, other)
+      case _                 => false
+    }
+
+  override final def toString: String =
+    Show[MetricData].show(this)
 }
 
 object MetricData {
 
+  /** Creates a new [[MetricData]] with the given values.
+    */
   def apply(
       resource: TelemetryResource,
       scope: InstrumentationScope,
@@ -58,6 +100,31 @@ object MetricData {
       unit = unit,
       data = data
     )
+
+  implicit val metricDataHash: Hash[MetricData] =
+    Hash.by { data =>
+      (
+        data.name,
+        data.description,
+        data.unit,
+        data.data,
+        data.instrumentationScope,
+        data.resource
+      )
+    }
+
+  implicit val metricDataShow: Show[MetricData] =
+    Show.show { data =>
+      val description = data.description.foldMap(d => s"description=$d, ")
+      val unit = data.unit.foldMap(d => s"unit=$d, ")
+      s"MetricData{" +
+        s"name=${data.name}, " +
+        description +
+        unit +
+        s"data=${data.data}, " +
+        s"instrumentationScope=${data.instrumentationScope}, " +
+        s"resource=${data.resource}}"
+    }
 
   private final case class Impl(
       resource: TelemetryResource,
