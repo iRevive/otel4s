@@ -16,8 +16,8 @@
 
 package org.typelevel.otel4s.sdk.metrics.data
 
-import cats.Show
 import cats.Hash
+import cats.Show
 import cats.syntax.foldable._
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
@@ -117,7 +117,7 @@ object MetricData {
     Show.show { data =>
       val description = data.description.foldMap(d => s"description=$d, ")
       val unit = data.unit.foldMap(d => s"unit=$d, ")
-      s"MetricData{" +
+      "MetricData{" +
         s"name=${data.name}, " +
         description +
         unit +

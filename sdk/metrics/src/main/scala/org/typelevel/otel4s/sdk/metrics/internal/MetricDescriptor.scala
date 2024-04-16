@@ -18,15 +18,41 @@ package org.typelevel.otel4s.sdk.metrics.internal
 
 import org.typelevel.otel4s.sdk.metrics.view.View
 
-trait MetricDescriptor {
+/** Describes a metric that will be output.
+  */
+private[metrics] sealed trait MetricDescriptor {
 
+  /** The name of the descriptor.
+    *
+    * Either the [[View.name]] or [[InstrumentDescriptor.name]].
+    */
   def name: String
+
+  /** The description of the descriptor.
+    *
+    * Either the [[View.description]] or [[InstrumentDescriptor.description]].
+    */
   def description: Option[String]
+
+  /** The instrument used by this metric.
+    */
   def sourceInstrument: InstrumentDescriptor
 
 }
 
-object MetricDescriptor {
+private[metrics] object MetricDescriptor {
+
+  /** Creates a [[MetricDescriptor]] using the given `view` and
+    * `instrumentDescriptor`.
+    *
+    * The `name` and `description` from the `view` are prioritized.
+    *
+    * @param view
+    *   the view associated with the instrument
+    *
+    * @param instrumentDescriptor
+    *   the descriptor of the instrument
+    */
   def apply(
       view: View,
       instrumentDescriptor: InstrumentDescriptor
@@ -34,14 +60,12 @@ object MetricDescriptor {
     Impl(
       view.name.getOrElse(instrumentDescriptor.name.toString),
       view.description.orElse(instrumentDescriptor.description),
-      view,
       instrumentDescriptor
     )
 
   private final case class Impl(
       name: String,
       description: Option[String],
-      view: View,
       sourceInstrument: InstrumentDescriptor
   ) extends MetricDescriptor
 
