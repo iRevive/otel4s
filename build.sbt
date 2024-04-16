@@ -46,7 +46,7 @@ val CatsEffectVersion = "3.5.4"
 val CatsMtlVersion = "1.4.0"
 val FS2Version = "3.10.2"
 val MUnitVersion = "1.0.0-M11"
-val MUnitCatsEffectVersion = "2.0.0-M4"
+val MUnitCatsEffectVersion = "2.0.0-M5"
 val MUnitDisciplineVersion = "2.0.0-M3"
 val MUnitScalaCheckEffectVersion = "2.0.0-M2"
 val OpenTelemetryVersion = "1.37.0"
@@ -637,6 +637,11 @@ lazy val docs = project
             ChoiceConfig("sbt", "sbt"),
             ChoiceConfig("scala-cli", "Scala CLI"),
             ChoiceConfig("shell", "Shell")
+          ).withSeparateEbooks,
+          SelectionConfig(
+            "scala-version",
+            ChoiceConfig("scala-2", "Scala 2"),
+            ChoiceConfig("scala-3", "Scala 3")
           ).withSeparateEbooks
         )
       )

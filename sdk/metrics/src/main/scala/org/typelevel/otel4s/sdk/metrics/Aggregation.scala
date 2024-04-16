@@ -23,6 +23,9 @@ import org.typelevel.otel4s.metrics.BucketBoundaries
 
 /** The aggregation strategy for measurements.
   *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/metrics/sdk/#aggregation]]
+  *
   * @param supportedInstruments
   *   the set of supported instruments
   */
@@ -31,9 +34,22 @@ sealed abstract class Aggregation(
 ) {
   def compatibleWith(tpe: InstrumentType): Boolean =
     supportedInstruments.contains(tpe)
+
+  override final def toString: String =
+    Show[Aggregation].show(this)
 }
 
 object Aggregation {
+
+  private object Defaults {
+    // See https://opentelemetry.io/docs/specs/otel/metrics/sdk/#explicit-bucket-histogram-aggregation
+    val Boundaries: BucketBoundaries = BucketBoundaries(
+      Vector(
+        0d, 5d, 10d, 25d, 50d, 75d, 100d, 250d, 500d, 750d, 1000d, 2500d, 5000d,
+        7500d, 10000d
+      )
+    )
+  }
 
   /** Drops all measurements and doesn't export any metric.
     */
@@ -83,7 +99,7 @@ object Aggregation {
     *   bucket boundaries
     */
   def explicitBucketHistogram: Aggregation =
-    ExplicitBucketHistogram(BucketBoundaries.default)
+    ExplicitBucketHistogram(Defaults.Boundaries)
 
   /** Aggregates measurements into an explicit bucket
     * [[org.typelevel.otel4s.sdk.metrics.data.MetricPoints.Histogram MetricPoints.Histogram]]

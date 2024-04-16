@@ -19,7 +19,7 @@ package org.typelevel.otel4s.sdk.metrics.exemplar
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData.TraceContext
 
-/** Provides a way to extract [[TraceContext]] from the [[Context]].
+/** Provides a way to extract `TraceContext` from the `Context`.
   */
 trait TraceContextLookup {
   def get(context: Context): Option[TraceContext]
