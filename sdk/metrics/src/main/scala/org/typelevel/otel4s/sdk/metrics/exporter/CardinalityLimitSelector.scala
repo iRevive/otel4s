@@ -14,19 +14,27 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics.exporter
+package org.typelevel.otel4s.sdk.metrics
+package exporter
 
-import org.typelevel.otel4s.sdk.metrics.InstrumentType
-
+/** Used by the `MetricReader` to decide the default aggregation.
+  */
 trait CardinalityLimitSelector {
+
+  /** Returns preferred cardinality limit for the given [[InstrumentType]].
+    */
   def select(instrumentType: InstrumentType): Int
 }
 
 object CardinalityLimitSelector {
-  private object Default extends CardinalityLimitSelector {
-    def select(instrumentType: InstrumentType): Int = 2000
+
+  private object Defaults {
+    // see https://opentelemetry.io/docs/specs/otel/metrics/sdk/#cardinality-limits
+    val CardinalityLimit: Int = 2000
   }
 
-  def default: CardinalityLimitSelector = Default
+  /** Returns default cardinality limit (2000) for all instruments.
+    */
+  def default: CardinalityLimitSelector = _ => Defaults.CardinalityLimit
 
 }

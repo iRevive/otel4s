@@ -19,6 +19,8 @@ package org.typelevel.otel4s.sdk.metrics.exporter
 import org.typelevel.otel4s.sdk.metrics.InstrumentType
 import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 
+/** Used by the `MetricReader` to decide the default aggregation temporality.
+  */
 trait AggregationTemporalitySelector {
 
   /** Returns preferred aggregation temporality for the given
@@ -34,6 +36,10 @@ object AggregationTemporalitySelector {
   def alwaysCumulative: AggregationTemporalitySelector =
     _ => AggregationTemporality.Cumulative
 
+  /** Returns cumulative aggregation temporality for `UpDownCounter` and
+    * `ObservableUpDownCounter`, and delta aggregation temporality for any other
+    * instrument.
+    */
   def deltaPreferred: AggregationTemporalitySelector = {
     case InstrumentType.UpDownCounter =>
       AggregationTemporality.Cumulative
@@ -45,6 +51,10 @@ object AggregationTemporalitySelector {
       AggregationTemporality.Delta
   }
 
+  /** Returns cumulative aggregation temporality for `UpDownCounter`,
+    * `ObservableUpDownCounter`, `ObservableCounter`, and delta aggregation
+    * temporality for any other instrument.
+    */
   def lowMemory: AggregationTemporalitySelector = {
     case InstrumentType.UpDownCounter =>
       AggregationTemporality.Cumulative

@@ -14,21 +14,18 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics
-package exporter
+package org.typelevel.otel4s.sdk.metrics.exporter
 
-/** Used by the `MetricReader` to decide the default aggregation.
-  */
-trait AggregationSelector {
+import munit.FunSuite
+import org.typelevel.otel4s.sdk.metrics.InstrumentType
 
-  /** Returns preferred [[Aggregation]] for the given [[InstrumentType]].
-    */
-  def select(instrumentType: InstrumentType): Aggregation
-}
+class CardinalityLimitSelectorSuite extends FunSuite {
 
-object AggregationSelector {
+  test("default") {
+    val selector = CardinalityLimitSelector.default
+    InstrumentType.values.foreach { tpe =>
+      assertEquals(selector.select(tpe), 2000)
+    }
+  }
 
-  /** Returns [[Aggregation.default]] for all instruments.
-    */
-  def default: AggregationSelector = _ => Aggregation.default
 }

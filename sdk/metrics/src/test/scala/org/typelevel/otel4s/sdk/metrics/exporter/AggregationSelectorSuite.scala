@@ -14,21 +14,19 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics
-package exporter
+package org.typelevel.otel4s.sdk.metrics.exporter
 
-/** Used by the `MetricReader` to decide the default aggregation.
-  */
-trait AggregationSelector {
+import munit.FunSuite
+import org.typelevel.otel4s.sdk.metrics.Aggregation
+import org.typelevel.otel4s.sdk.metrics.InstrumentType
 
-  /** Returns preferred [[Aggregation]] for the given [[InstrumentType]].
-    */
-  def select(instrumentType: InstrumentType): Aggregation
-}
+class AggregationSelectorSuite extends FunSuite {
 
-object AggregationSelector {
+  test("default") {
+    val selector = AggregationSelector.default
+    InstrumentType.values.foreach { tpe =>
+      assertEquals(selector.select(tpe), Aggregation.Default)
+    }
+  }
 
-  /** Returns [[Aggregation.default]] for all instruments.
-    */
-  def default: AggregationSelector = _ => Aggregation.default
 }
