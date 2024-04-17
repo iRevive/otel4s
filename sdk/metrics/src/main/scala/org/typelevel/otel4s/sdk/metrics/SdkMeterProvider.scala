@@ -39,7 +39,6 @@ import org.typelevel.otel4s.sdk.metrics.exporter.CollectionRegistration
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricProducer
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricReader
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
-import org.typelevel.otel4s.sdk.metrics.view.CardinalityLimitSelector
 import org.typelevel.otel4s.sdk.metrics.view.InstrumentSelector
 import org.typelevel.otel4s.sdk.metrics.view.RegisteredView
 import org.typelevel.otel4s.sdk.metrics.view.View
@@ -146,11 +145,6 @@ object SdkMeterProvider {
       */
     def registerMetricReader(reader: MetricReader[F]): Builder[F]
 
-    def registerMetricReader(
-        reader: MetricReader[F],
-        selector: CardinalityLimitSelector
-    ): Builder[F]
-
     /** Registers a
       * [[org.typelevel.otel4s.sdk.metrics.exporter.MetricProducer MetricProducer]].
       *
@@ -175,7 +169,7 @@ object SdkMeterProvider {
       exemplarFilter = None,
       traceContextLookup = TraceContextLookup.noop,
       registeredViews = Vector.empty,
-      metricReaders = Map.empty,
+      metricReaders = Vector.empty,
       metricProducers = Vector.empty
     )
 
@@ -186,7 +180,7 @@ object SdkMeterProvider {
       exemplarFilter: Option[ExemplarFilter],
       traceContextLookup: TraceContextLookup,
       registeredViews: Vector[RegisteredView],
-      metricReaders: Map[MetricReader[F], CardinalityLimitSelector],
+      metricReaders: Vector[MetricReader[F]],
       metricProducers: Vector[MetricProducer[F]]
   ) extends Builder[F] {
 
@@ -206,15 +200,7 @@ object SdkMeterProvider {
       copy(registeredViews = registeredViews :+ RegisteredView(selector, view))
 
     def registerMetricReader(reader: MetricReader[F]): Builder[F] =
-      copy(metricReaders =
-        metricReaders.updated(reader, CardinalityLimitSelector.default)
-      )
-
-    def registerMetricReader(
-        reader: MetricReader[F],
-        selector: CardinalityLimitSelector
-    ): Builder[F] =
-      copy(metricReaders = metricReaders.updated(reader, selector))
+      copy(metricReaders = metricReaders :+ reader)
 
     def registerMetricProducer(producer: MetricProducer[F]): Builder[F] =
       copy(metricProducers = metricProducers :+ producer)
@@ -224,19 +210,6 @@ object SdkMeterProvider {
       else create
 
     private def create: F[MeterProvider[F]] = {
-      def createRegisteredReader(
-          reader: MetricReader[F],
-          selector: CardinalityLimitSelector
-      ): F[RegisteredReader[F]] = {
-        val registry = ViewRegistry(
-          reader.defaultAggregationSelector,
-          selector,
-          registeredViews
-        )
-
-        RegisteredReader.create(reader, registry)
-      }
-
       def createMeter(
           startTimestamp: FiniteDuration,
           scope: InstrumentationScope,
@@ -278,8 +251,8 @@ object SdkMeterProvider {
 
       for {
         now <- Clock[F].realTime
-        readers <- metricReaders.toVector.traverse { case (reader, selector) =>
-          createRegisteredReader(reader, selector)
+        readers <- metricReaders.traverse { reader =>
+          RegisteredReader.create(reader, ViewRegistry(registeredViews))
         }
         registry <- ComponentRegistry.create(s => createMeter(now, s, readers))
         _ <- readers.traverse_(reader => configureReader(now, registry, reader))

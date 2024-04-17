@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.metrics.view
+package org.typelevel.otel4s.sdk.metrics.exporter
 
 import org.typelevel.otel4s.sdk.metrics.InstrumentType
 

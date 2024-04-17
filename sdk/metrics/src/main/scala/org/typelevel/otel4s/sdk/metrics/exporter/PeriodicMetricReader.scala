@@ -46,6 +46,9 @@ private class PeriodicMetricReader[F[_]: Temporal: Console] private (
   def aggregationTemporalitySelector: AggregationTemporalitySelector =
     exporter.aggregationTemporalitySelector
 
+  def defaultCardinalityLimitSelector: CardinalityLimitSelector =
+    exporter.defaultCardinalityLimitSelector
+
   def register(registration: CollectionRegistration[F]): F[Unit] =
     stateRef.evalUpdate {
       case State.Idle() =>

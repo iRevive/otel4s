@@ -24,9 +24,11 @@ trait MetricExporter[F[_]] {
 
   def name: String
 
+  def aggregationTemporalitySelector: AggregationTemporalitySelector
+
   def defaultAggregationSelector: AggregationSelector
 
-  def aggregationTemporalitySelector: AggregationTemporalitySelector
+  def defaultCardinalityLimitSelector: CardinalityLimitSelector
 
   def exportMetrics[G[_]: Foldable](metrics: G[MetricData]): F[Unit]
 
@@ -42,10 +44,12 @@ object MetricExporter {
   def noop[F[_]: Applicative]: MetricExporter[F] =
     new MetricExporter[F] {
       def name: String = "Noop"
-      def defaultAggregationSelector: AggregationSelector =
-        AggregationSelector.default
       def aggregationTemporalitySelector: AggregationTemporalitySelector =
         AggregationTemporalitySelector.alwaysCumulative
+      def defaultAggregationSelector: AggregationSelector =
+        AggregationSelector.default
+      def defaultCardinalityLimitSelector: CardinalityLimitSelector =
+        CardinalityLimitSelector.default
       def exportMetrics[G[_]: Foldable](metrics: G[MetricData]): F[Unit] =
         Applicative[F].unit
       def flush: F[Unit] =

@@ -39,6 +39,7 @@ import org.typelevel.otel4s.sdk.metrics.internal.MetricStorageRegistry
 import org.typelevel.otel4s.sdk.metrics.internal.SdkObservableMeasurement
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
+import org.typelevel.otel4s.sdk.metrics.view.View
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -57,71 +58,98 @@ private[metrics] final class MeterSharedState[
 
   def registerMetricStorage[A: MeasurementValue: Numeric](
       descriptor: InstrumentDescriptor.Synchronous
-  ): F[MetricStorage.Writeable[F, A]] =
+  ): F[MetricStorage.Writeable[F, A]] = {
+
+    def make(
+        reader: RegisteredReader[F],
+        registry: MetricStorageRegistry[F],
+        aggregation: Aggregation.Synchronous,
+        view: Option[View]
+    ): F[Vector[MetricStorage.Synchronous[F, A]]] =
+      for {
+        storage <- MetricStorage.synchronous(
+          reader,
+          view,
+          descriptor,
+          exemplarFilter,
+          traceContextLookup,
+          aggregation
+        )
+        _ <- registry.register(storage)
+      } yield Vector(storage)
+
     registries.toVector
       .flatTraverse { case (reader, registry) =>
         reader.viewRegistry
           .findViews(descriptor, scope)
-          .flatMap { views =>
-            views.flatTraverse { view =>
-              view.aggregation match {
-                case aggregation: Aggregation.Synchronous =>
-                  for {
-                    storage <- MetricStorage.synchronous(
-                      reader,
-                      view,
-                      descriptor,
-                      exemplarFilter,
-                      traceContextLookup,
-                      aggregation
-                    )
-                    _ <- registry.register(storage)
-                  } yield Vector(storage)
+          .flatMap {
+            case Some(views) =>
+              views.toVector.flatTraverse { view =>
+                view.aggregation.getOrElse(Aggregation.Default) match {
+                  case aggregation: Aggregation.Synchronous =>
+                    make(reader, registry, aggregation, Some(view))
 
-                case _ =>
-                  Temporal[F].pure(
-                    Vector.empty[MetricStorage.Synchronous[F, A]]
-                  )
+                  case _ =>
+                    Temporal[F].pure(
+                      Vector.empty[MetricStorage.Synchronous[F, A]]
+                    )
+                }
               }
-            }
+
+            case None =>
+              make(reader, registry, Aggregation.Default, None)
           }
       }
       .map { storages =>
         MetricStorage.Writeable.of(storages: _*)
       }
+  }
 
   def registerObservableMeasurement[A: MeasurementValue: Numeric](
       descriptor: InstrumentDescriptor.Asynchronous
-  ): F[SdkObservableMeasurement[F, A]] =
+  ): F[SdkObservableMeasurement[F, A]] = {
+    def make(
+        reader: RegisteredReader[F],
+        registry: MetricStorageRegistry[F],
+        aggregation: Aggregation.Asynchronous,
+        view: Option[View]
+    ): F[Vector[MetricStorage.Asynchronous[F, A]]] =
+      for {
+        storage <- MetricStorage.asynchronous(
+          reader,
+          view,
+          descriptor,
+          aggregation
+        )
+        _ <- registry.register(storage)
+      } yield Vector(storage)
+
     registries.toVector
       .flatTraverse { case (reader, registry) =>
         reader.viewRegistry
           .findViews(descriptor, scope)
-          .flatMap { views =>
-            views.flatTraverse { view =>
-              view.aggregation match {
-                case aggregation: Aggregation.Asynchronous =>
-                  for {
-                    storage <- MetricStorage.asynchronous(
-                      reader,
-                      view,
-                      descriptor,
-                      aggregation
-                    )
-                    _ <- registry.register(storage)
-                  } yield Vector(storage)
+          .flatMap {
+            case Some(views) =>
+              views.toVector.flatTraverse { view =>
+                view.aggregation.getOrElse(Aggregation.Default) match {
+                  case aggregation: Aggregation.Asynchronous =>
+                    make(reader, registry, aggregation, Some(view))
 
-                case _ =>
-                  Temporal[F].pure(
-                    Vector.empty[MetricStorage.Asynchronous[F, A]]
-                  )
+                  case _ =>
+                    Temporal[F].pure(
+                      Vector.empty[MetricStorage.Asynchronous[F, A]]
+                    )
+                }
               }
-            }
+
+            case None =>
+              make(reader, registry, Aggregation.Default, None)
           }
       }
       .flatMap { storages =>
         SdkObservableMeasurement.create(storages, scope, descriptor)
       }
+  }
 
   def collectAll(
       reader: RegisteredReader[F],

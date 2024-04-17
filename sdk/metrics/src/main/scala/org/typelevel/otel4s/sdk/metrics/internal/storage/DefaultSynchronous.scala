@@ -139,7 +139,7 @@ object DefaultSynchronous {
 
   def create[F[_]: Temporal: Console: Random, A: MeasurementValue: Numeric](
       reader: RegisteredReader[F],
-      view: View,
+      view: Option[View],
       instrumentDescriptor: InstrumentDescriptor.Synchronous,
       exemplarFilter: ExemplarFilter,
       traceContextLookup: TraceContextLookup,
@@ -155,6 +155,17 @@ object DefaultSynchronous {
         traceContextLookup
       )
 
+    val attributesProcessor =
+      view.flatMap(_.attributesProcessor).getOrElse(AttributesProcessor.noop)
+
+    val cardinalityLimit =
+      view
+        .flatMap(_.cardinalityLimit)
+        .getOrElse(
+          reader.reader.defaultCardinalityLimitSelector
+            .select(instrumentDescriptor.instrumentType)
+        )
+
     AtomicCell[F]
       .of(Map.empty[Attributes, Aggregator.Accumulator[F, A, PointData]])
       .map { accumulators =>
@@ -162,8 +173,8 @@ object DefaultSynchronous {
           reader,
           descriptor,
           aggregator.asInstanceOf[Aggregator.Aux[F, A, PointData]],
-          view.attributesProcessor,
-          view.cardinalityLimit - 1,
+          attributesProcessor,
+          cardinalityLimit - 1,
           accumulators
         )
       }

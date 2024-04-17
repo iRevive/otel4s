@@ -54,12 +54,12 @@ private[metrics] object MetricDescriptor {
     *   the descriptor of the instrument
     */
   def apply(
-      view: View,
+      view: Option[View],
       instrumentDescriptor: InstrumentDescriptor
   ): MetricDescriptor =
     Impl(
-      view.name.getOrElse(instrumentDescriptor.name.toString),
-      view.description.orElse(instrumentDescriptor.description),
+      view.flatMap(_.name).getOrElse(instrumentDescriptor.name.toString),
+      view.flatMap(_.description).orElse(instrumentDescriptor.description),
       instrumentDescriptor
     )
 

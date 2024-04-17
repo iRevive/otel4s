@@ -18,6 +18,7 @@ package org.typelevel.otel4s.sdk.metrics.view
 
 import cats.Show
 import cats.syntax.foldable._
+import cats.syntax.show._
 import org.typelevel.otel4s.Attribute
 import org.typelevel.otel4s.sdk.metrics.Aggregation
 
@@ -39,26 +40,22 @@ sealed trait View {
 
   /** The [[Aggregation]] of the resulting metric.
     */
-  def aggregation: Aggregation
+  def aggregation: Option[Aggregation]
 
   /** The [[AttributesProcessor]] associated with this view.
     */
-  def attributesProcessor: AttributesProcessor
+  def attributesProcessor: Option[AttributesProcessor]
 
   /** The cardinality limit of this view - the maximum number of series for a
     * metric.
     */
-  def cardinalityLimit: Int
+  def cardinalityLimit: Option[Int]
 
   override final def toString: String =
     Show[View].show(this)
 }
 
 object View {
-
-  private object Defaults {
-    val CardinalityLimit: Int = 2000
-  }
 
   /** Builder of a [[View]].
     */
@@ -118,18 +115,24 @@ object View {
     BuilderImpl()
 
   implicit val viewShow: Show[View] = Show.show { view =>
-    val name = view.name.foldMap(n => s"name=$n, ")
-    val description = view.description.foldMap(d => s"description=$d, ")
+    def prop[A: Show](focus: View => Option[A], name: String) =
+      focus(view).map(value => show"$name=$value")
 
-    s"View{$name${description}aggregation=${view.aggregation}, cardinalityLimit=${view.cardinalityLimit}}"
+    Seq(
+      prop(_.name, "name"),
+      prop(_.description, "description"),
+      prop(_.aggregation, "aggregation"),
+      prop(_.attributesProcessor, "attributesProcessor"),
+      prop(_.cardinalityLimit, "cardinalityLimit")
+    ).collect { case Some(k) => k }.mkString("View{", ", ", "}")
   }
 
   private final case class Impl(
       name: Option[String],
       description: Option[String],
-      aggregation: Aggregation,
-      attributesProcessor: AttributesProcessor,
-      cardinalityLimit: Int
+      aggregation: Option[Aggregation],
+      attributesProcessor: Option[AttributesProcessor],
+      cardinalityLimit: Option[Int]
   ) extends View
 
   private final case class BuilderImpl(
@@ -137,7 +140,7 @@ object View {
       description: Option[String] = None,
       aggregation: Option[Aggregation] = None,
       cardinalityLimit: Option[Int] = None,
-      attributesProcessors: List[AttributesProcessor] = Nil
+      attributesProcessors: Vector[AttributesProcessor] = Vector.empty
   ) extends Builder {
 
     def withName(name: String): Builder =
@@ -162,14 +165,20 @@ object View {
     def withCardinalityLimit(limit: Int): Builder =
       copy(cardinalityLimit = Some(limit))
 
-    def build: View =
+    def build: View = {
+      require(
+        name.isDefined || description.isDefined || aggregation.isDefined || cardinalityLimit.isDefined || attributesProcessors.nonEmpty,
+        "at least one parameter must be defined"
+      )
+
       Impl(
         name,
         description,
-        aggregation.getOrElse(Aggregation.default),
-        attributesProcessors.combineAll,
-        cardinalityLimit.getOrElse(Defaults.CardinalityLimit)
+        aggregation,
+        attributesProcessors.combineAllOption,
+        cardinalityLimit
       )
+    }
   }
 
 }

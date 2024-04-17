@@ -85,7 +85,7 @@ private[metrics] object MetricStorage {
       A: MeasurementValue: Numeric
   ](
       reader: RegisteredReader[F],
-      view: View,
+      view: Option[View],
       instrumentDescriptor: InstrumentDescriptor.Synchronous,
       exemplarFilter: ExemplarFilter,
       traceContextLookup: TraceContextLookup,
@@ -105,7 +105,7 @@ private[metrics] object MetricStorage {
       A: MeasurementValue: Numeric
   ](
       reader: RegisteredReader[F],
-      view: View,
+      view: Option[View],
       instrumentDescriptor: InstrumentDescriptor.Asynchronous,
       aggregation: Aggregation.Asynchronous
   ): F[Asynchronous[F, A]] =

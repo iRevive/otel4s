@@ -118,7 +118,7 @@ private object DefaultAsynchronous {
       A: MeasurementValue: Numeric
   ](
       reader: RegisteredReader[F],
-      view: View,
+      view: Option[View],
       instrumentDescriptor: InstrumentDescriptor.Asynchronous,
       aggregation: Aggregation.Asynchronous
   ): F[MetricStorage.Asynchronous[F, A]] = {
@@ -132,6 +132,17 @@ private object DefaultAsynchronous {
         descriptor.sourceInstrument.instrumentType
       )
 
+    val attributesProcessor =
+      view.flatMap(_.attributesProcessor).getOrElse(AttributesProcessor.noop)
+
+    val cardinalityLimit =
+      view
+        .flatMap(_.cardinalityLimit)
+        .getOrElse(
+          reader.reader.defaultCardinalityLimitSelector
+            .select(instrumentDescriptor.instrumentType)
+        )
+
     for {
       collector <- Collector.create[F, A](
         aggregationTemporality,
@@ -143,8 +154,8 @@ private object DefaultAsynchronous {
       descriptor,
       aggregationTemporality,
       aggregator,
-      view.attributesProcessor,
-      view.cardinalityLimit - 1,
+      attributesProcessor,
+      cardinalityLimit - 1,
       collector
     )
   }

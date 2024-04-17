@@ -17,52 +17,34 @@
 package org.typelevel.otel4s.sdk.metrics.view
 
 import cats.Monad
-import cats.data.OptionT
+import cats.data.NonEmptyVector
 import cats.effect.std.Console
 import cats.syntax.functor._
 import cats.syntax.traverse._
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
-import org.typelevel.otel4s.sdk.metrics.InstrumentType
-import org.typelevel.otel4s.sdk.metrics.exporter.AggregationSelector
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 
 import java.util.regex.Pattern
 
 private[metrics] final class ViewRegistry[F[_]: Monad: Console](
-    defaultViews: Map[InstrumentType, View],
     registeredViews: Vector[RegisteredView]
 ) {
 
   def findViews(
       descriptor: InstrumentDescriptor,
       scope: InstrumentationScope
-  ): F[Vector[View]] =
-    OptionT(find(descriptor, scope)).getOrElseF(default(descriptor))
-
-  private def find(
-      descriptor: InstrumentDescriptor,
-      scope: InstrumentationScope
-  ): F[Option[Vector[View]]] =
+  ): F[Option[NonEmptyVector[View]]] =
     registeredViews
       .filter(v => matchesSelector(v.selector, descriptor, scope))
       .flatTraverse[F, View] { entry =>
-        val compatible =
-          entry.view.aggregation.compatibleWith(descriptor.instrumentType)
+        val compatible = entry.view.aggregation.forall(
+          _.compatibleWith(descriptor.instrumentType)
+        )
 
         if (compatible) Monad[F].pure(Vector(entry.view))
         else warn(descriptor, entry.view).as(Vector.empty)
       }
-      .map(views => Option.when(views.nonEmpty)(views))
-
-  private def default(descriptor: InstrumentDescriptor): F[Vector[View]] = {
-    val view = defaultViews(descriptor.instrumentType)
-
-    val compatible =
-      view.aggregation.compatibleWith(descriptor.instrumentType)
-
-    if (compatible) Monad[F].pure(Vector(view))
-    else warn(descriptor, view).as(Vector.empty)
-  }
+      .map(views => NonEmptyVector.fromVector(views))
 
   private def matchesSelector(
       selector: InstrumentSelector,
@@ -81,7 +63,7 @@ private[metrics] final class ViewRegistry[F[_]: Monad: Console](
 
   private def warn(descriptor: InstrumentDescriptor, view: View): F[Unit] =
     Console[F].println(
-      s"View aggregation [${view.aggregation}] is incompatible with instrument [${descriptor.name}] of type [${descriptor.instrumentType}]"
+      s"$view aggregation is incompatible with instrument [${descriptor.name}] of type [${descriptor.instrumentType}]"
     )
 
 }
@@ -89,21 +71,9 @@ private[metrics] final class ViewRegistry[F[_]: Monad: Console](
 private[metrics] object ViewRegistry {
 
   def apply[F[_]: Monad: Console](
-      defaultAggregationSelector: AggregationSelector,
-      cardinalityLimitSelector: CardinalityLimitSelector,
       registeredViews: Vector[RegisteredView]
-  ): ViewRegistry[F] = {
-    val defaultViews = InstrumentType.values.map { tpe =>
-      val view = View.builder
-        .withAggregation(defaultAggregationSelector.select(tpe))
-        .withCardinalityLimit(cardinalityLimitSelector.select(tpe))
-        .build
-
-      tpe -> view
-    }
-
-    new ViewRegistry(defaultViews.toMap, registeredViews)
-  }
+  ): ViewRegistry[F] =
+    new ViewRegistry(registeredViews)
 
   private[view] def toGlobPattern(globPattern: String): String => Boolean =
     if (globPattern == "*") {
