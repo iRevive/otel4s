@@ -30,15 +30,46 @@ import org.typelevel.otel4s.metrics.BucketBoundaries
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.context.Context
 
+/** The exemplar reservoir of samples.
+  *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/metrics/sdk/#exemplarreservoir]]
+  *
+  * @tparam F
+  *   the higher-kinded type of a polymorphic effect
+  *
+  * @tparam A
+  *   the type of the values to record
+  */
 private[metrics] trait ExemplarReservoir[F[_], A] {
+
+  /** Offers a measurement to be sampled.
+    */
   def offer(value: A, attributes: Attributes, context: Context): F[Unit]
+
+  /** Returns an collection of [[Exemplar]] for exporting from the current
+    * reservoir.
+    *
+    * Clears the reservoir for the next sampling period.
+    */
   def collectAndReset(attributes: Attributes): F[Vector[Exemplar[A]]]
 }
 
 private[metrics] object ExemplarReservoir {
 
-  // size = availableProcessors
-  def fixedSize[F[_]: Temporal: Random, A: Numeric](
+  /** Creates a reservoir with fixed size that stores the given number of
+    * exemplars.
+    *
+    * @param size
+    *   the maximum number of exemplars to preserve
+    *
+    * @param lookup
+    *   extracts tracing information from the context
+    *
+    * @tparam A
+    *   the type of the values to record
+    */
+  def fixedSize[F[_]: Temporal: Random, A](
       size: Int,
       lookup: TraceContextLookup
   ): F[ExemplarReservoir[F, A]] =
@@ -47,6 +78,18 @@ private[metrics] object ExemplarReservoir {
       reservoir <- create(size, selector, lookup)
     } yield reservoir
 
+  /** Creates a reservoir that preserves the latest seen measurement per
+    * histogram bucket.
+    *
+    * @param boundaries
+    *   the bucket boundaries of the histogram
+    *
+    * @param lookup
+    *   extracts tracing information from the context
+    *
+    * @tparam A
+    *   the type of the values to record
+    */
   def histogramBucket[F[_]: Temporal, A: Numeric](
       boundaries: BucketBoundaries,
       lookup: TraceContextLookup
@@ -57,6 +100,18 @@ private[metrics] object ExemplarReservoir {
       lookup
     )
 
+  /** Creates a proxy reservoir that records offered values that have passed the
+    * filter.
+    *
+    * @param filter
+    *   filters the offered values
+    *
+    * @param original
+    *   the original reservoir
+    *
+    * @tparam A
+    *   the type of the values to record
+    */
   def filtered[F[_]: Applicative, A: MeasurementValue](
       filter: ExemplarFilter,
       original: ExemplarReservoir[F, A]

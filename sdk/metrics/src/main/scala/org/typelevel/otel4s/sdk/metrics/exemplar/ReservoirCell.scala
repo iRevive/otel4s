@@ -26,11 +26,24 @@ import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 
 import scala.concurrent.duration.FiniteDuration
 
+/** A cell that stores exemplar data.
+  */
 private[exemplar] final class ReservoirCell[F[_]: Temporal, A] private (
     stateRef: Ref[F, Option[ReservoirCell.State[A]]],
     lookup: TraceContextLookup
 ) {
 
+  /** Record the given `value` (measurement) to the cell.
+    *
+    * @param value
+    *   the value to record
+    *
+    * @param attributes
+    *   the attributes to associate with the value
+    *
+    * @param context
+    *   the context to extract tracing information from
+    */
   def record(value: A, attributes: Attributes, context: Context): F[Unit] =
     for {
       now <- Temporal[F].realTime
@@ -38,6 +51,8 @@ private[exemplar] final class ReservoirCell[F[_]: Temporal, A] private (
       _ <- stateRef.set(Some(ReservoirCell.State(value, attributes, ctx, now)))
     } yield ()
 
+  /** Retrieve the cell's exemplar and reset that state afterward.
+    */
   def getAndReset(pointAttributes: Attributes): F[Option[Exemplar[A]]] =
     stateRef.getAndSet(None).map { state =>
       state.map { s =>

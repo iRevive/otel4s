@@ -24,12 +24,26 @@ import cats.syntax.functor._
 import org.typelevel.otel4s.metrics.BucketBoundaries
 import org.typelevel.otel4s.sdk.metrics.internal.utils.Adder
 
+/** Selects which [[ReservoirCell]] within the [[ExemplarReservoir]] should
+  * receive the measurements.
+  *
+  * @tparam F
+  *   the higher-kinded type of a polymorphic effect
+  *
+  * @tparam A
+  *   the type of the values to record
+  */
 private[exemplar] trait CellSelector[F[_], A] {
+
+  /** Returns the [[ReservoirCell]] that should record the given value.
+    */
   def select(
       cells: Vector[ReservoirCell[F, A]],
       value: A,
   ): F[Option[ReservoirCell[F, A]]]
 
+  /** Resets the internal state.
+    */
   def reset: F[Unit]
 }
 
@@ -43,30 +57,30 @@ private[exemplar] object CellSelector {
           cells: Vector[ReservoirCell[F, A]],
           value: A
       ): F[Option[ReservoirCell[F, A]]] =
-        Applicative[F].pure(
-          cells.lift(
-            boundaries.bucketIndex(Numeric[A].toDouble(value))
-          )
-        )
+        Applicative[F].pure(cells.lift(bucketIndex(Numeric[A].toDouble(value))))
 
       def reset: F[Unit] = Applicative[F].unit
+
+      private def bucketIndex(value: Double): Int = {
+        val idx = boundaries.boundaries.indexWhere(b => value <= b)
+        if (idx == -1) boundaries.length else idx
+      }
     }
 
-  def random[F[_]: Concurrent: Random, A: Numeric]: F[CellSelector[F, A]] =
+  def random[F[_]: Concurrent: Random, A]: F[CellSelector[F, A]] =
     for {
-      adder <- Adder.create[F, A]
+      adder <- Adder.create[F, Int]
     } yield new CellSelector[F, A] {
       def select(
           cells: Vector[ReservoirCell[F, A]],
           value: A
-      ): F[Option[ReservoirCell[F, A]]] = {
+      ): F[Option[ReservoirCell[F, A]]] =
         for {
           sum <- adder.sum(reset = false)
-          count = Numeric[A].toInt(sum) + 1
+          count = sum + 1
           idx <- Random[F].nextIntBounded(if (count > 0) count else 1)
-          _ <- adder.add(Numeric[A].one)
+          _ <- adder.add(1)
         } yield cells.lift(idx)
-      }
 
       def reset: F[Unit] = adder.reset
     }

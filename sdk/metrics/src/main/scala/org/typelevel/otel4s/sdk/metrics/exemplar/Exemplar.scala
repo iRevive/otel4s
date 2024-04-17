@@ -21,6 +21,8 @@ import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 
 import scala.concurrent.duration.FiniteDuration
 
+/** The recorded exemplar.
+  */
 private[exemplar] final case class Exemplar[A](
     filteredAttributes: Attributes,
     timestamp: FiniteDuration,
