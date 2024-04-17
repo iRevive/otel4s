@@ -101,13 +101,14 @@ private[metrics] final class MeterSharedState[
           }
       }
       .map { storages =>
-        MetricStorage.Writeable.of(storages: _*)
+        MetricStorage.Writeable.of(storages)
       }
   }
 
   def registerObservableMeasurement[A: MeasurementValue: Numeric](
       descriptor: InstrumentDescriptor.Asynchronous
   ): F[SdkObservableMeasurement[F, A]] = {
+
     def make(
         reader: RegisteredReader[F],
         registry: MetricStorageRegistry[F],

@@ -54,15 +54,13 @@ private[metrics] object MetricStorage {
     Attribute("otel.metric.overflow", true)
 
   trait Writeable[F[_], A] {
-    def record(
-        value: A,
-        attributes: Attributes,
-        context: Context
-    ): F[Unit]
+    def record(value: A, attributes: Attributes, context: Context): F[Unit]
   }
 
   object Writeable {
-    def of[F[_]: Applicative, A](storages: Writeable[F, A]*): Writeable[F, A] =
+    def of[F[_]: Applicative, A](
+        storages: Vector[Writeable[F, A]]
+    ): Writeable[F, A] =
       new Writeable[F, A] {
         def record(
             value: A,
