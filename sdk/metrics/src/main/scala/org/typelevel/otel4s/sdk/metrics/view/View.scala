@@ -23,6 +23,9 @@ import org.typelevel.otel4s.Attribute
 import org.typelevel.otel4s.sdk.metrics.Aggregation
 
 /** A view configures how measurements are aggregated and exported as metrics.
+  *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/metrics/sdk/#view]]
   */
 sealed trait View {
 
@@ -39,17 +42,23 @@ sealed trait View {
   def description: Option[String]
 
   /** The [[Aggregation]] of the resulting metric.
+    *
+    * `None` means the default aggregation should be used.
     */
   def aggregation: Option[Aggregation]
 
   /** The [[AttributesProcessor]] associated with this view.
+    *
+    * `None` means the attributes will not be customized.
     */
-  def attributesProcessor: Option[AttributesProcessor]
+  private[metrics] def attributesProcessor: Option[AttributesProcessor]
 
   /** The cardinality limit of this view - the maximum number of series for a
     * metric.
+    *
+    * `None` means the MetricReader's default cardinality limit should be used.
     */
-  def cardinalityLimit: Option[Int]
+  private[metrics] def cardinalityLimit: Option[Int]
 
   override final def toString: String =
     Show[View].show(this)
@@ -109,7 +118,7 @@ object View {
     def build: View
   }
 
-  /** * Returns an empty [[Builder]] of a [[View]].
+  /** Returns an empty [[Builder]] of a [[View]].
     */
   def builder: Builder =
     BuilderImpl()
@@ -144,10 +153,10 @@ object View {
   ) extends Builder {
 
     def withName(name: String): Builder =
-      copy(name = Some(name))
+      copy(name = keepNonEmpty(name))
 
     def withDescription(description: String): Builder =
-      copy(description = Some(description))
+      copy(description = keepNonEmpty(description))
 
     def withAggregation(aggregation: Aggregation): Builder =
       copy(aggregation = Some(aggregation))
@@ -162,15 +171,12 @@ object View {
         attributesProcessors :+ AttributesProcessor.attributePredicate(filter)
       )
 
-    def withCardinalityLimit(limit: Int): Builder =
+    def withCardinalityLimit(limit: Int): Builder = {
+      require(limit > 0, s"cardinality limit [$limit] must be positive")
       copy(cardinalityLimit = Some(limit))
+    }
 
-    def build: View = {
-      require(
-        name.isDefined || description.isDefined || aggregation.isDefined || cardinalityLimit.isDefined || attributesProcessors.nonEmpty,
-        "at least one parameter must be defined"
-      )
-
+    def build: View =
       Impl(
         name,
         description,
@@ -178,6 +184,10 @@ object View {
         attributesProcessors.combineAllOption,
         cardinalityLimit
       )
+
+    private def keepNonEmpty(value: String): Option[String] = {
+      val trimmed = value.trim
+      Option.when(trimmed.nonEmpty)(trimmed)
     }
   }
 
