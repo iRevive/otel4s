@@ -39,7 +39,7 @@ import org.typelevel.otel4s.sdk.metrics.internal.MetricStorageRegistry
 import org.typelevel.otel4s.sdk.metrics.internal.SdkObservableMeasurement
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
-import org.typelevel.otel4s.sdk.metrics.view.View
+import org.typelevel.otel4s.sdk.metrics.view.{View, ViewRegistry}
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -47,6 +47,7 @@ private[metrics] final class MeterSharedState[
     F[_]: Temporal: Random: Console: AskContext
 ](
     mutex: Mutex[F],
+    viewRegistry: ViewRegistry[F],
     resource: TelemetryResource,
     val scope: InstrumentationScope,
     startTimestamp: FiniteDuration,
@@ -80,12 +81,17 @@ private[metrics] final class MeterSharedState[
 
     registries.toVector
       .flatTraverse { case (reader, registry) =>
-        reader.viewRegistry
+        def defaultAggregation: Aggregation with Aggregation.Synchronous =
+          reader.reader.defaultAggregationSelector.forSynchronous(
+            descriptor.instrumentType
+          )
+
+        viewRegistry
           .findViews(descriptor, scope)
           .flatMap {
             case Some(views) =>
               views.toVector.flatTraverse { view =>
-                view.aggregation.getOrElse(Aggregation.Default) match {
+                view.aggregation.getOrElse(defaultAggregation) match {
                   case aggregation: Aggregation.Synchronous =>
                     make(reader, registry, aggregation, Some(view))
 
@@ -97,7 +103,7 @@ private[metrics] final class MeterSharedState[
               }
 
             case None =>
-              make(reader, registry, Aggregation.Default, None)
+              make(reader, registry, defaultAggregation, None)
           }
       }
       .map { storages =>
@@ -127,12 +133,17 @@ private[metrics] final class MeterSharedState[
 
     registries.toVector
       .flatTraverse { case (reader, registry) =>
-        reader.viewRegistry
+        def defaultAggregation: Aggregation with Aggregation.Asynchronous =
+          reader.reader.defaultAggregationSelector.forAsynchronous(
+            descriptor.instrumentType
+          )
+
+        viewRegistry
           .findViews(descriptor, scope)
           .flatMap {
             case Some(views) =>
               views.toVector.flatTraverse { view =>
-                view.aggregation.getOrElse(Aggregation.Default) match {
+                view.aggregation.getOrElse(defaultAggregation) match {
                   case aggregation: Aggregation.Asynchronous =>
                     make(reader, registry, aggregation, Some(view))
 
@@ -144,7 +155,7 @@ private[metrics] final class MeterSharedState[
               }
 
             case None =>
-              make(reader, registry, Aggregation.Default, None)
+              make(reader, registry, defaultAggregation, None)
           }
       }
       .flatMap { storages =>
@@ -191,6 +202,7 @@ private object MeterSharedState {
       startTimestamp: FiniteDuration,
       exemplarFilter: ExemplarFilter,
       traceContextLookup: TraceContextLookup,
+      viewRegistry: ViewRegistry[F],
       registeredReaders: Vector[RegisteredReader[F]]
   ): F[MeterSharedState[F]] =
     for {
@@ -201,6 +213,7 @@ private object MeterSharedState {
       }
     } yield new MeterSharedState(
       mutex,
+      viewRegistry,
       resource,
       scope,
       startTimestamp,

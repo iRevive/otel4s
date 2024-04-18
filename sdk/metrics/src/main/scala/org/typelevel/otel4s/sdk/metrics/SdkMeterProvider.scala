@@ -215,6 +215,8 @@ object SdkMeterProvider {
           scope: InstrumentationScope,
           readers: Vector[RegisteredReader[F]]
       ): F[SdkMeter[F]] = {
+        val viewRegistry = ViewRegistry(registeredViews)
+
         val filter = exemplarFilter.getOrElse(
           ExemplarFilter.traceBased(traceContextLookup)
         )
@@ -226,13 +228,13 @@ object SdkMeterProvider {
             startTimestamp,
             filter,
             traceContextLookup,
+            viewRegistry,
             readers
           )
         } yield new SdkMeter[F](state)
       }
 
       def configureReader(
-          startTimestamp: FiniteDuration,
           registry: ComponentRegistry[F, SdkMeter[F]],
           reader: RegisteredReader[F]
       ): F[Unit] = {
@@ -245,17 +247,16 @@ object SdkMeterProvider {
           _ <- reader.reader.register(
             new SdkCollectionRegistration[F](producers, resource)
           )
-          _ <- reader.setLastCollectTimestamp(startTimestamp)
         } yield ()
       }
 
       for {
         now <- Clock[F].realTime
         readers <- metricReaders.traverse { reader =>
-          RegisteredReader.create(reader, ViewRegistry(registeredViews))
+          RegisteredReader.create(now, reader)
         }
         registry <- ComponentRegistry.create(s => createMeter(now, s, readers))
-        _ <- readers.traverse_(reader => configureReader(now, registry, reader))
+        _ <- readers.traverse_(reader => configureReader(registry, reader))
       } yield new SdkMeterProvider(
         registry,
         resource,

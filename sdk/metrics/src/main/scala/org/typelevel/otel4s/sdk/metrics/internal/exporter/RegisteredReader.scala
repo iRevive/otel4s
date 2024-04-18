@@ -20,14 +20,11 @@ import cats.effect.Concurrent
 import cats.effect.Ref
 import cats.syntax.functor._
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricReader
-import org.typelevel.otel4s.sdk.metrics.view.ViewRegistry
 
-import scala.concurrent.duration.Duration
 import scala.concurrent.duration.FiniteDuration
 
 private[metrics] final class RegisteredReader[F[_]](
     val reader: MetricReader[F],
-    val viewRegistry: ViewRegistry[F],
     lastCollectTimestampRef: Ref[F, FiniteDuration]
 ) {
 
@@ -41,11 +38,11 @@ private[metrics] final class RegisteredReader[F[_]](
 object RegisteredReader {
 
   def create[F[_]: Concurrent](
+      start: FiniteDuration,
       reader: MetricReader[F],
-      viewRegistry: ViewRegistry[F]
   ): F[RegisteredReader[F]] =
     for {
-      ref <- Concurrent[F].ref(Duration.Zero)
-    } yield new RegisteredReader[F](reader, viewRegistry, ref)
+      ref <- Concurrent[F].ref(start)
+    } yield new RegisteredReader[F](reader, ref)
 
 }
