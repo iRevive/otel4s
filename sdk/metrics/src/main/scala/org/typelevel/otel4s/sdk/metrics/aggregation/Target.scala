@@ -25,10 +25,17 @@ import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 
 import scala.concurrent.duration.FiniteDuration
 
+/** A utility trait to select matching `ExemplarData` and `PointData`.
+  *
+  * @tparam A
+  *   the type of the values to record
+  */
 private sealed trait Target[A] { self =>
   type Exemplar <: ExemplarData
   type Point <: PointData.NumberPoint
 
+  /** Creates a `Point` with the given values.
+    */
   def makePointData(
       timeWindow: TimeWindow,
       attributes: Attributes,
@@ -36,6 +43,8 @@ private sealed trait Target[A] { self =>
       value: A
   ): Point
 
+  /** Creates an `Exemplar` with the given values.
+    */
   def makeExemplar(
       attributes: Attributes,
       timestamp: FiniteDuration,
@@ -106,9 +115,7 @@ private object Target {
               traceContext,
               cast(value)
             )
-
         }
-
     }
 
 }
