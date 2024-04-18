@@ -96,10 +96,10 @@ private final class DefaultAsynchronous[
     collector.collectPoints.flatMap { measurements =>
       aggregator
         .toMetricData(
-          measurements,
           resource,
           scope,
           metricDescriptor,
+          measurements,
           aggregationTemporality
         )
         .map(Some(_))

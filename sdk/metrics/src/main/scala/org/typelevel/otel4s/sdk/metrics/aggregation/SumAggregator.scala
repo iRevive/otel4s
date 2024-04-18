@@ -148,10 +148,10 @@ object SumAggregator {
       current.copy(value = Numeric[A].minus(current.value, previous.value))
 
     def toMetricData(
-        measurements: Vector[AsynchronousMeasurement[A]],
         resource: TelemetryResource,
         scope: InstrumentationScope,
         descriptor: MetricDescriptor,
+        measurements: Vector[AsynchronousMeasurement[A]],
         temporality: AggregationTemporality
     ): F[MetricData] = {
       val points = measurements.map { m =>

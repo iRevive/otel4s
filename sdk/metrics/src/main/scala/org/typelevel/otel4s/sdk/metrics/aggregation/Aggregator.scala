@@ -37,13 +37,46 @@ import org.typelevel.otel4s.sdk.metrics.internal.AsynchronousMeasurement
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 
+/** Aggregators are responsible for holding aggregated values and taking a
+  * snapshot of these values upon export.
+  */
 private[metrics] object Aggregator {
 
+  /** An aggregator for synchronous instruments:
+    *   - Counter
+    *   - UpDownCounter
+    *   - Histogram
+    *
+    * @tparam F
+    *   the higher-kinded type of a polymorphic effect
+    *
+    * @tparam A
+    *   the type of the values to record
+    */
   trait Synchronous[F[_], A] {
     type Point <: PointData
 
+    /** Creates an empty accumulator to aggregate measurements.
+      */
     def createAccumulator: F[Aggregator.Accumulator[F, A, Point]]
 
+    /** Returns the MetricData using the given values.
+      *
+      * @param resource
+      *   the resource to associate the `MetricData` with
+      *
+      * @param scope
+      *   the instrumentation scope to associate the `MetricData` with
+      *
+      * @param descriptor
+      *   the descriptor of the instrument
+      *
+      * @param points
+      *   the measurements to create a `MetricData` with
+      *
+      * @param temporality
+      *   the aggregation temporality of the resulting `MetricData`
+      */
     def toMetricData(
         resource: TelemetryResource,
         scope: InstrumentationScope,
@@ -53,17 +86,55 @@ private[metrics] object Aggregator {
     ): F[MetricData]
   }
 
+  /** An aggregator for asynchronous instruments:
+    *   - ObservableCounter
+    *   - ObservableUpDownCounter
+    *   - ObservableGauge
+    *
+    * @tparam F
+    *   the higher-kinded type of a polymorphic effect
+    *
+    * @tparam A
+    *   the type of the values to record
+    */
   trait Asynchronous[F[_], A] {
+
+    /** Returns a new delta aggregation by comparing two cumulative
+      * measurements.
+      *
+      * @param previous
+      *   the previously captured measurement
+      *
+      * @param current
+      *   the newly captured (delta) measurement
+      */
     def diff(
         previous: AsynchronousMeasurement[A],
         current: AsynchronousMeasurement[A]
     ): AsynchronousMeasurement[A]
 
+    /** Returns the `MetricData` using the given values.
+      *
+      * @param resource
+      *   the resource to associate the `MetricData` with
+      *
+      * @param scope
+      *   the instrumentation scope to associate the `MetricData` with
+      *
+      * @param descriptor
+      *   the descriptor of the instrument
+      *
+      * @param measurements
+      *   the measurements to create a `MetricData` with
+      *
+      * @param temporality
+      *   the aggregation temporality of the resulting `MetricData`
+      */
     def toMetricData(
-        measurements: Vector[AsynchronousMeasurement[A]],
         resource: TelemetryResource,
         scope: InstrumentationScope,
         descriptor: MetricDescriptor,
+        measurements: Vector[AsynchronousMeasurement[A]],
         temporality: AggregationTemporality
     ): F[MetricData]
   }
@@ -72,13 +143,48 @@ private[metrics] object Aggregator {
     type Point = P
   }
 
+  /** Records incoming raw values (measurements) and aggregates them into the
+    * `P` (PointData).
+    *
+    * @tparam F
+    *   the higher-kinded type of a polymorphic effect
+    *
+    * @tparam A
+    *   the type of the values to record
+    *
+    * @tparam P
+    *   the type of the aggregated PointData
+    */
   trait Accumulator[F[_], A, P <: PointData] {
+
+    /** Creates a `PointData` using accumulated data.
+      *
+      * @param timeWindow
+      *   the time window to associate the points with
+      *
+      * @param attributes
+      *   the attributes to associate the points with
+      *
+      * @param reset
+      *   whether to reset the internal state
+      */
     def aggregate(
         timeWindow: TimeWindow,
         attributes: Attributes,
         reset: Boolean
     ): F[Option[P]]
 
+    /** Records the value.
+      *
+      * @param value
+      *   the value to record
+      *
+      * @param attributes
+      *   the attributes to record
+      *
+      * @param context
+      *   the context to record
+      */
     def record(
         value: A,
         attributes: Attributes,
