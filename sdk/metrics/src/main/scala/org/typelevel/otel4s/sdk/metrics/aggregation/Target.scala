@@ -27,6 +27,8 @@ import scala.concurrent.duration.FiniteDuration
 
 /** A utility trait to select matching `ExemplarData` and `PointData`.
   *
+  * Used by the `Sum` and `LastValue` aggregators.
+  *
   * @tparam A
   *   the type of the values to record
   */
@@ -59,63 +61,73 @@ private object Target {
   def apply[A: MeasurementValue]: Target[A] =
     MeasurementValue[A] match {
       case MeasurementValue.LongMeasurementValue(cast) =>
-        new Target[A] {
-          type Exemplar = ExemplarData.LongExemplar
-          type Point = PointData.LongNumber
-
-          def makePointData(
-              timeWindow: TimeWindow,
-              attributes: Attributes,
-              exemplars: Vector[ExemplarData.LongExemplar],
-              value: A
-          ): PointData.LongNumber =
-            PointData.longNumber(
-              timeWindow,
-              attributes,
-              exemplars,
-              cast(value)
-            )
-
-          def makeExemplar(
-              attributes: Attributes,
-              timestamp: FiniteDuration,
-              traceContext: Option[TraceContext],
-              value: A
-          ): ExemplarData.LongExemplar =
-            ExemplarData.long(attributes, timestamp, traceContext, cast(value))
-        }
-
+        new LongTarget[A](cast)
       case MeasurementValue.DoubleMeasurementValue(cast) =>
-        new Target[A] {
-          type Exemplar = ExemplarData.DoubleExemplar
-          type Point = PointData.DoubleNumber
+        new DoubleTarget[A](cast)
+    }
 
-          def makePointData(
-              timeWindow: TimeWindow,
-              attributes: Attributes,
-              exemplars: Vector[ExemplarData.DoubleExemplar],
-              value: A
-          ): PointData.DoubleNumber =
-            PointData.doubleNumber(
-              timeWindow,
-              attributes,
-              exemplars,
-              cast(value)
-            )
+  private[aggregation] final class LongTarget[A](
+      cast: A => Long
+  ) extends Target[A] {
 
-          def makeExemplar(
-              attributes: Attributes,
-              timestamp: FiniteDuration,
-              traceContext: Option[TraceContext],
-              value: A
-          ): ExemplarData.DoubleExemplar =
-            ExemplarData.double(
-              attributes,
-              timestamp,
-              traceContext,
-              cast(value)
-            )
-        }
+    type Exemplar = ExemplarData.LongExemplar
+    type Point = PointData.LongNumber
+
+    def makePointData(
+        timeWindow: TimeWindow,
+        attributes: Attributes,
+        exemplars: Vector[ExemplarData.LongExemplar],
+        value: A
+    ): PointData.LongNumber =
+      PointData.longNumber(
+        timeWindow,
+        attributes,
+        exemplars,
+        cast(value)
+      )
+
+    def makeExemplar(
+        attributes: Attributes,
+        timestamp: FiniteDuration,
+        traceContext: Option[TraceContext],
+        value: A
+    ): ExemplarData.LongExemplar =
+      ExemplarData.long(attributes, timestamp, traceContext, cast(value))
+  }
+
+  private[aggregation] final class DoubleTarget[A](
+      cast: A => Double
+  ) extends Target[A] {
+
+    type Exemplar = ExemplarData.DoubleExemplar
+    type Point = PointData.DoubleNumber
+
+    def makePointData(
+        timeWindow: TimeWindow,
+        attributes: Attributes,
+        exemplars: Vector[ExemplarData.DoubleExemplar],
+        value: A
+    ): PointData.DoubleNumber =
+      PointData.doubleNumber(
+        timeWindow,
+        attributes,
+        exemplars,
+        cast(value)
+      )
+
+    def makeExemplar(
+        attributes: Attributes,
+        timestamp: FiniteDuration,
+        traceContext: Option[TraceContext],
+        value: A
+    ): ExemplarData.DoubleExemplar =
+      ExemplarData.double(
+        attributes,
+        timestamp,
+        traceContext,
+        cast(value)
+      )
+  }
     }
 
 }

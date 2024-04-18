@@ -16,11 +16,197 @@
 
 package org.typelevel.otel4s.sdk.metrics.view
 
-import munit.ScalaCheckSuite
+import cats.data.NonEmptyVector
+import cats.effect.IO
+import cats.syntax.applicative._
+import munit.CatsEffectSuite
+import munit.ScalaCheckEffectSuite
+import org.scalacheck.effect.PropF
+import org.typelevel.otel4s.sdk.metrics.scalacheck.Gens
 
-class ViewRegistrySuite extends ScalaCheckSuite {
+class ViewRegistrySuite extends CatsEffectSuite with ScalaCheckEffectSuite {
 
   import ViewRegistry.toGlobPattern
+
+  test("select by instrument type") {
+    PropF.forAllF(
+      Gens.instrumentDescriptor,
+      Gens.instrumentationScope
+    ) { (descriptor, scope) =>
+      val selector = InstrumentSelector.builder
+        .withInstrumentType(descriptor.instrumentType)
+        .build
+
+      val view = View.builder.build
+
+      val registry = ViewRegistry[IO](Vector(RegisteredView(selector, view)))
+
+      registry
+        .findViews(descriptor, scope)
+        .assertEquals(Some(NonEmptyVector.one(view)))
+    }
+  }
+
+  test("select by instrument unit") {
+    PropF.forAllF(
+      Gens.instrumentDescriptor,
+      Gens.instrumentationScope
+    ) { (descriptor, scope) =>
+      val selector = InstrumentSelector.builder
+        .withInstrumentUnit(descriptor.unit.filter(_.nonEmpty).getOrElse("*"))
+        .build
+
+      val view = View.builder.build
+
+      val registry = ViewRegistry[IO](Vector(RegisteredView(selector, view)))
+
+      registry
+        .findViews(descriptor, scope)
+        .assertEquals(Some(NonEmptyVector.one(view)))
+        .whenA(descriptor.unit.exists(_.nonEmpty))
+    }
+  }
+
+  test("select by instrument name (wildcard)") {
+    PropF.forAllF(
+      Gens.instrumentDescriptor,
+      Gens.instrumentationScope
+    ) { (descriptor, scope) =>
+      val selector = InstrumentSelector.builder
+        .withInstrumentName("*")
+        .build
+
+      val view = View.builder.build
+
+      val registry = ViewRegistry[IO](Vector(RegisteredView(selector, view)))
+
+      registry
+        .findViews(descriptor, scope)
+        .assertEquals(Some(NonEmptyVector.one(view)))
+    }
+  }
+
+  test("select by instrument name (exact match)") {
+    PropF.forAllF(
+      Gens.instrumentDescriptor,
+      Gens.instrumentationScope
+    ) { (descriptor, scope) =>
+      val selector = InstrumentSelector.builder
+        .withInstrumentName(descriptor.name.toString)
+        .build
+
+      val view = View.builder.build
+
+      val registry = ViewRegistry[IO](Vector(RegisteredView(selector, view)))
+
+      registry
+        .findViews(descriptor, scope)
+        .assertEquals(Some(NonEmptyVector.one(view)))
+    }
+  }
+
+  test("select by meter name") {
+    PropF.forAllF(
+      Gens.instrumentDescriptor,
+      Gens.instrumentationScope
+    ) { (descriptor, scope) =>
+      val selector = InstrumentSelector.builder
+        .withMeterName(scope.name)
+        .build
+
+      val view = View.builder.build
+
+      val registry = ViewRegistry[IO](Vector(RegisteredView(selector, view)))
+
+      registry
+        .findViews(descriptor, scope)
+        .assertEquals(Some(NonEmptyVector.one(view)))
+        .whenA(scope.name.nonEmpty)
+    }
+  }
+
+  test("select by meter version") {
+    PropF.forAllF(
+      Gens.instrumentDescriptor,
+      Gens.instrumentationScope
+    ) { (descriptor, scope) =>
+      val selector = InstrumentSelector.builder
+        .withMeterVersion(scope.version.filter(_.nonEmpty).getOrElse("*"))
+        .build
+
+      val view = View.builder.build
+
+      val registry = ViewRegistry[IO](Vector(RegisteredView(selector, view)))
+
+      registry
+        .findViews(descriptor, scope)
+        .assertEquals(Some(NonEmptyVector.one(view)))
+        .whenA(scope.version.exists(_.nonEmpty))
+    }
+  }
+
+  test("select by meter schema url") {
+    PropF.forAllF(
+      Gens.instrumentDescriptor,
+      Gens.instrumentationScope
+    ) { (descriptor, scope) =>
+      val selector = InstrumentSelector.builder
+        .withMeterSchemaUrl(scope.schemaUrl.filter(_.nonEmpty).getOrElse("*"))
+        .build
+
+      val view = View.builder.build
+
+      val registry = ViewRegistry[IO](Vector(RegisteredView(selector, view)))
+
+      registry
+        .findViews(descriptor, scope)
+        .assertEquals(Some(NonEmptyVector.one(view)))
+        .whenA(scope.schemaUrl.exists(_.nonEmpty))
+    }
+  }
+
+  test("select by all params") {
+    PropF.forAllF(
+      Gens.instrumentDescriptor,
+      Gens.instrumentationScope
+    ) { (descriptor, scope) =>
+      val selector = {
+        val builder = InstrumentSelector.builder
+          .withInstrumentName(descriptor.name.toString)
+          .withInstrumentType(descriptor.instrumentType)
+
+        val withUnit =
+          descriptor.unit
+            .filter(_.nonEmpty)
+            .fold(builder)(builder.withInstrumentUnit)
+
+        val withMeterName =
+          Option(scope.name)
+            .filter(_.nonEmpty)
+            .fold(withUnit)(withUnit.withMeterName)
+
+        val withMeterVersion =
+          scope.version
+            .filter(_.nonEmpty)
+            .fold(withMeterName)(withMeterName.withMeterVersion)
+
+        val withMeterSchemaUrl =
+          scope.schemaUrl
+            .filter(_.nonEmpty)
+            .fold(withMeterVersion)(withUnit.withMeterSchemaUrl)
+
+        withMeterSchemaUrl.build
+      }
+
+      val view = View.builder.build
+
+      val registry = ViewRegistry[IO](Vector(RegisteredView(selector, view)))
+
+      registry
+        .findViews(descriptor, scope)
+        .assertEquals(Some(NonEmptyVector.one(view)))
+    }
+  }
 
   test("correctly create a pattern") {
     assertEquals(toGlobPattern("foo").apply("foo"), true)

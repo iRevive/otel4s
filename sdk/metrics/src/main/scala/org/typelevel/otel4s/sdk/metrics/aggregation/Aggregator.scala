@@ -39,6 +39,9 @@ import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 
 /** Aggregators are responsible for holding aggregated values and taking a
   * snapshot of these values upon export.
+  *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/metrics/sdk/#aggregation]]
   */
 private[metrics] object Aggregator {
 
@@ -145,6 +148,8 @@ private[metrics] object Aggregator {
 
   /** Records incoming raw values (measurements) and aggregates them into the
     * `P` (PointData).
+    *
+    * Used by the synchronous instruments.
     *
     * @tparam F
     *   the higher-kinded type of a polymorphic effect
