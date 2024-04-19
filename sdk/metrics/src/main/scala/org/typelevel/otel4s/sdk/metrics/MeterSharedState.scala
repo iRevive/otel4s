@@ -39,7 +39,8 @@ import org.typelevel.otel4s.sdk.metrics.internal.MetricStorageRegistry
 import org.typelevel.otel4s.sdk.metrics.internal.SdkObservableMeasurement
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
-import org.typelevel.otel4s.sdk.metrics.view.{View, ViewRegistry}
+import org.typelevel.otel4s.sdk.metrics.view.View
+import org.typelevel.otel4s.sdk.metrics.view.ViewRegistry
 
 import scala.concurrent.duration.FiniteDuration
 

@@ -161,9 +161,7 @@ private object DefaultAsynchronous {
   }
 
   private trait Collector[F[_], A] {
-    def startTimestamp(
-        measurement: AsynchronousMeasurement[A]
-    ): F[FiniteDuration]
+    def startTimestamp(m: AsynchronousMeasurement[A]): F[FiniteDuration]
     def record(measurement: AsynchronousMeasurement[A]): F[Unit]
     def currentPoints: F[Map[Attributes, AsynchronousMeasurement[A]]]
     def collectPoints: F[Vector[AsynchronousMeasurement[A]]]
@@ -185,59 +183,61 @@ private object DefaultAsynchronous {
         reader: RegisteredReader[F],
         aggregator: Aggregator.Asynchronous[F, A]
     ): F[Collector[F, A]] =
-      Ref.of(Map.empty[Attributes, AsynchronousMeasurement[A]]).flatMap {
-        pointsRef =>
-          Ref.of(Map.empty[Attributes, AsynchronousMeasurement[A]]).map {
-            lastPointsRef =>
-              new Collector[F, A] {
-                def startTimestamp(
-                    measurement: AsynchronousMeasurement[A]
-                ): F[FiniteDuration] =
-                  reader.lastCollectTimestamp
-
-                def record(measurement: AsynchronousMeasurement[A]): F[Unit] =
-                  pointsRef
-                    .update(_.updated(measurement.attributes, measurement))
-
-                def currentPoints
-                    : F[Map[Attributes, AsynchronousMeasurement[A]]] =
-                  pointsRef.get
-
-                def collectPoints: F[Vector[AsynchronousMeasurement[A]]] =
-                  for {
-                    points <- pointsRef.get
-                    lastPoints <- lastPointsRef.getAndSet(points)
-                  } yield points.toVector.map { case (k, v) =>
-                    lastPoints.get(k) match {
-                      case Some(lastPoint) =>
-                        aggregator.diff(lastPoint, v)
-                      case None =>
-                        v
-                    }
-                  }
-              }
-          }
-      }
+      for {
+        points <- Ref.of(Map.empty[Attributes, AsynchronousMeasurement[A]])
+        lastPoints <- Ref.of(Map.empty[Attributes, AsynchronousMeasurement[A]])
+      } yield new Delta(reader, aggregator, points, lastPoints)
 
     private def cumulative[F[_]: Concurrent, A]: F[Collector[F, A]] =
-      Ref.of(Map.empty[Attributes, AsynchronousMeasurement[A]]).map {
-        pointsRef =>
-          new Collector[F, A] {
-            def startTimestamp(
-                measurement: AsynchronousMeasurement[A]
-            ): F[FiniteDuration] =
-              Monad[F].pure(measurement.timeWindow.start)
+      for {
+        points <- Ref.of(Map.empty[Attributes, AsynchronousMeasurement[A]])
+      } yield new Cumulative(points)
 
-            def record(measurement: AsynchronousMeasurement[A]): F[Unit] =
-              pointsRef.update(_.updated(measurement.attributes, measurement))
+    private final class Delta[F[_]: Monad, A](
+        reader: RegisteredReader[F],
+        aggregator: Aggregator.Asynchronous[F, A],
+        pointsRef: Ref[F, Map[Attributes, AsynchronousMeasurement[A]]],
+        lastPointsRef: Ref[F, Map[Attributes, AsynchronousMeasurement[A]]]
+    ) extends Collector[F, A] {
+      def startTimestamp(m: AsynchronousMeasurement[A]): F[FiniteDuration] =
+        reader.lastCollectTimestamp
 
-            def currentPoints: F[Map[Attributes, AsynchronousMeasurement[A]]] =
-              pointsRef.get
+      def record(measurement: AsynchronousMeasurement[A]): F[Unit] =
+        pointsRef.update(_.updated(measurement.attributes, measurement))
 
-            def collectPoints: F[Vector[AsynchronousMeasurement[A]]] =
-              pointsRef.getAndSet(Map.empty).map(_.values.toVector)
+      def currentPoints: F[Map[Attributes, AsynchronousMeasurement[A]]] =
+        pointsRef.get
+
+      def collectPoints: F[Vector[AsynchronousMeasurement[A]]] =
+        for {
+          points <- pointsRef.get
+          lastPoints <- lastPointsRef.getAndSet(points)
+        } yield points.toVector.map { case (k, v) =>
+          lastPoints.get(k) match {
+            case Some(lastPoint) =>
+              aggregator.diff(lastPoint, v)
+            case None =>
+              v
           }
-      }
+        }
+    }
+
+    private final class Cumulative[F[_]: Monad, A](
+        pointsRef: Ref[F, Map[Attributes, AsynchronousMeasurement[A]]]
+    ) extends Collector[F, A] {
+
+      def startTimestamp(m: AsynchronousMeasurement[A]): F[FiniteDuration] =
+        Monad[F].pure(m.timeWindow.start)
+
+      def record(measurement: AsynchronousMeasurement[A]): F[Unit] =
+        pointsRef.update(_.updated(measurement.attributes, measurement))
+
+      def currentPoints: F[Map[Attributes, AsynchronousMeasurement[A]]] =
+        pointsRef.get
+
+      def collectPoints: F[Vector[AsynchronousMeasurement[A]]] =
+        pointsRef.getAndSet(Map.empty).map(_.values.toVector)
+    }
 
   }
 

@@ -238,7 +238,7 @@ object SdkMeterProvider {
           registry: ComponentRegistry[F, SdkMeter[F]],
           reader: RegisteredReader[F]
       ): F[Unit] = {
-        val producers = metricProducers :+ new LeasedMetricProducer[F](
+        val producers = metricProducers :+ new SdkMetricProducer[F](
           registry,
           reader
         )
@@ -267,19 +267,17 @@ object SdkMeterProvider {
     }
   }
 
-  private final class LeasedMetricProducer[F[_]: Monad: Clock](
+  private final class SdkMetricProducer[F[_]: Monad: Clock](
       registry: ComponentRegistry[F, SdkMeter[F]],
       reader: RegisteredReader[F]
   ) extends MetricProducer[F] {
     def produce(resource: TelemetryResource): F[Vector[MetricData]] =
-      registry.components.flatMap { meters =>
-        Clock[F].realTime.flatMap { now =>
-          for {
-            result <- meters.flatTraverse(_.collectAll(reader, now))
-            _ <- reader.setLastCollectTimestamp(now)
-          } yield result
-        }
-      }
+      for {
+        meters <- registry.components
+        now <- Clock[F].realTime
+        result <- meters.flatTraverse(_.collectAll(reader, now))
+        _ <- reader.setLastCollectTimestamp(now)
+      } yield result
   }
 
   private final class SdkCollectionRegistration[F[_]: Applicative](

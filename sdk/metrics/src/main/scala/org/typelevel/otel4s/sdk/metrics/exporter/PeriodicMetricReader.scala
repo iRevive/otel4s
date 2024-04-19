@@ -20,7 +20,6 @@ package exporter
 import cats.effect.Concurrent
 import cats.effect.Fiber
 import cats.effect.Resource
-import cats.effect.Spawn
 import cats.effect.Temporal
 import cats.effect.std.AtomicCell
 import cats.effect.std.Console
@@ -55,7 +54,11 @@ private class PeriodicMetricReader[F[_]: Temporal: Console] private (
         process(registration).start.map(fiber => State.Running(fiber))
 
       case state: State.Running[F] =>
-        Spawn[F].pure(state)
+        Console[F]
+          .error(
+            "Metrics are already registered at this periodic metric reader"
+          )
+          .as(state)
     }
 
   private def process(registration: CollectionRegistration[F]): F[Unit] = {
