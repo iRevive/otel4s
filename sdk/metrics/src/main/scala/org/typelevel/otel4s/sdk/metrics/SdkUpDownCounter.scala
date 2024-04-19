@@ -44,7 +44,7 @@ private object SdkUpDownCounter {
   ](
       cast: A => Primitive,
       name: String,
-      storage: MetricStorage.Writeable[F, Primitive]
+      storage: MetricStorage.Synchronous.Writeable[F, Primitive]
   ) extends UpDownCounter.Backend[F, A] {
     def meta: InstrumentMeta[F] = InstrumentMeta.enabled
 

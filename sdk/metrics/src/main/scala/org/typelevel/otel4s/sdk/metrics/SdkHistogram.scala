@@ -48,7 +48,7 @@ private object SdkHistogram {
       cast: A => Primitive,
       castDuration: Double => Primitive,
       name: String,
-      storage: MetricStorage.Writeable[F, Primitive]
+      storage: MetricStorage.Synchronous.Writeable[F, Primitive]
   ) extends Histogram.Backend[F, A] {
     def meta: Histogram.Meta[F] = Histogram.Meta.enabled
 

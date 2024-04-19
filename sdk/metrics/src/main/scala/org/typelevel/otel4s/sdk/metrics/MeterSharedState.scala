@@ -60,7 +60,7 @@ private[metrics] final class MeterSharedState[
 
   def registerMetricStorage[A: MeasurementValue: Numeric](
       descriptor: InstrumentDescriptor.Synchronous
-  ): F[MetricStorage.Writeable[F, A]] = {
+  ): F[MetricStorage.Synchronous.Writeable[F, A]] = {
 
     def make(
         reader: RegisteredReader[F],
@@ -108,7 +108,7 @@ private[metrics] final class MeterSharedState[
           }
       }
       .map { storages =>
-        MetricStorage.Writeable.of(storages)
+        MetricStorage.Synchronous.Writeable.of(storages)
       }
   }
 
