@@ -46,7 +46,7 @@ import org.typelevel.otel4s.sdk.metrics.view.View
 private final class DefaultSynchronous[F[_]: Monad: Console, A](
     reader: RegisteredReader[F],
     val metricDescriptor: MetricDescriptor,
-    aggregator: Aggregator.Aux[F, A, PointData],
+    aggregator: DefaultSynchronous.SynchronousAggregator[F, A],
     attributesProcessor: AttributesProcessor,
     maxCardinality: Int,
     accumulators: AtomicCell[
@@ -137,6 +137,11 @@ private final class DefaultSynchronous[F[_]: Monad: Console, A](
 
 object DefaultSynchronous {
 
+  private type SynchronousAggregator[F[_], A] =
+    Aggregator.Synchronous[F, A] {
+      type Point = PointData
+    }
+
   def create[F[_]: Temporal: Console: Random, A: MeasurementValue: Numeric](
       reader: RegisteredReader[F],
       view: Option[View],
@@ -172,7 +177,7 @@ object DefaultSynchronous {
         new DefaultSynchronous(
           reader,
           descriptor,
-          aggregator.asInstanceOf[Aggregator.Aux[F, A, PointData]],
+          aggregator.asInstanceOf[SynchronousAggregator[F, A]],
           attributesProcessor,
           cardinalityLimit - 1,
           accumulators
