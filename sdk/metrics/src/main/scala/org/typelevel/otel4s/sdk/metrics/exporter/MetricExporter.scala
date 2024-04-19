@@ -20,18 +20,39 @@ import cats.Applicative
 import cats.Foldable
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 
+/** `MetricExporter` is a push based interface for exporting `MetricData`.
+  *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/metrics/sdk/#metricexporter]]
+  */
 trait MetricExporter[F[_]] {
 
+  /** The name of the exporter.
+    */
   def name: String
 
+  /** The preferred aggregation temporality for the given instrument.
+    */
   def aggregationTemporalitySelector: AggregationTemporalitySelector
 
+  /** The preferred aggregation for the given instrument.
+    */
   def defaultAggregationSelector: AggregationSelector
 
+  /** The preferred cardinality limit for the given instrument.
+    */
   def defaultCardinalityLimitSelector: CardinalityLimitSelector
 
+  /** Exports the sampled `MetricData`.
+    *
+    * @param metrics
+    *   the sampled metrics to export
+    */
   def exportMetrics[G[_]: Foldable](metrics: G[MetricData]): F[Unit]
 
+  /** Exports the collection of sampled `MetricData` that have not yet been
+    * exported.
+    */
   def flush: F[Unit]
 
   override def toString: String =
@@ -41,19 +62,30 @@ trait MetricExporter[F[_]] {
 
 object MetricExporter {
 
+  /** Creates a no-op implementation of the [[MetricExporter]].
+    *
+    * All export operations are no-op.
+    */
   def noop[F[_]: Applicative]: MetricExporter[F] =
-    new MetricExporter[F] {
-      def name: String = "Noop"
-      def aggregationTemporalitySelector: AggregationTemporalitySelector =
-        AggregationTemporalitySelector.alwaysCumulative
-      def defaultAggregationSelector: AggregationSelector =
-        AggregationSelector.default
-      def defaultCardinalityLimitSelector: CardinalityLimitSelector =
-        CardinalityLimitSelector.default
-      def exportMetrics[G[_]: Foldable](metrics: G[MetricData]): F[Unit] =
-        Applicative[F].unit
-      def flush: F[Unit] =
-        Applicative[F].unit
-    }
+    new Noop
+
+  private final class Noop[F[_]: Applicative] extends MetricExporter[F] {
+    val name: String = "MetricExporter.Noop"
+
+    def aggregationTemporalitySelector: AggregationTemporalitySelector =
+      AggregationTemporalitySelector.alwaysCumulative
+
+    def defaultAggregationSelector: AggregationSelector =
+      AggregationSelector.default
+
+    def defaultCardinalityLimitSelector: CardinalityLimitSelector =
+      CardinalityLimitSelector.default
+
+    def exportMetrics[G[_]: Foldable](metrics: G[MetricData]): F[Unit] =
+      Applicative[F].unit
+
+    def flush: F[Unit] =
+      Applicative[F].unit
+  }
 
 }

@@ -32,14 +32,37 @@ import org.typelevel.otel4s.sdk.metrics.internal.AsynchronousMeasurement
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.utils.Current
 
-object LastValueAggregator {
+private object LastValueAggregator {
 
+  /** Creates a last value aggregator for synchronous instruments. Retains the
+    * last seen measurement.
+    *
+    * @see
+    *   [[https://opentelemetry.io/docs/specs/otel/metrics/sdk/#last-value-aggregation]]
+    *
+    * @tparam F
+    *   the higher-kinded type of a polymorphic effect
+    *
+    * @tparam A
+    *   the type of the values to record
+    */
   def synchronous[
       F[_]: Concurrent,
       A: MeasurementValue
   ]: Aggregator.Synchronous[F, A] =
     new Synchronous[F, A]
 
+  /** Creates a last value aggregator for asynchronous instruments.
+    *
+    * @see
+    *   [[https://opentelemetry.io/docs/specs/otel/metrics/sdk/#last-value-aggregation]]
+    *
+    * @tparam F
+    *   the higher-kinded type of a polymorphic effect
+    *
+    * @tparam A
+    *   the type of the values to record
+    */
   def asynchronous[
       F[_]: Applicative,
       A: MeasurementValue

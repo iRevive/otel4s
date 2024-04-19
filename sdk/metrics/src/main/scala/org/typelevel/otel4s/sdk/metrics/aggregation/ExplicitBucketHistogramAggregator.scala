@@ -34,6 +34,18 @@ import org.typelevel.otel4s.sdk.metrics.exemplar.ExemplarReservoir
 import org.typelevel.otel4s.sdk.metrics.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 
+/** The histogram aggregation that aggregates values into the corresponding
+  * buckets.
+  *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/metrics/sdk/#explicit-bucket-histogram-aggregation]]
+  *
+  * @tparam F
+  *   the higher-kinded type of a polymorphic effect
+  *
+  * @tparam A
+  *   the type of the values to record
+  */
 private final class ExplicitBucketHistogramAggregator[
     F[_]: Concurrent,
     A: MeasurementValue
@@ -72,6 +84,23 @@ private final class ExplicitBucketHistogramAggregator[
 
 private object ExplicitBucketHistogramAggregator {
 
+  /** Creates a histogram aggregation with the given values.
+    *
+    * @param boundaries
+    *   the bucket boundaries to aggregate values at
+    *
+    * @param filter
+    *   filters the offered values
+    *
+    * @param lookup
+    *   extracts tracing information from the context
+    *
+    * @tparam F
+    *   the higher-kinded type of a polymorphic effect
+    *
+    * @tparam A
+    *   the type of the values to record
+    */
   def apply[F[_]: Temporal, A: MeasurementValue: Numeric](
       boundaries: BucketBoundaries,
       filter: ExemplarFilter,
@@ -89,11 +118,11 @@ private object ExplicitBucketHistogramAggregator {
       min: Double,
       max: Double,
       count: Long,
-      counts: Vector[Long] // todo use array for memory efficiency?
+      counts: Vector[Long]
   )
 
-  private def emptyState(counts: Int): State =
-    State(0, Double.MaxValue, -1, 0L, Vector.fill(counts)(0))
+  private def emptyState(buckets: Int): State =
+    State(0, Double.MaxValue, -1, 0L, Vector.fill(buckets + 1)(0))
 
   private class Accumulator[F[_]: FlatMap, A: MeasurementValue](
       stateRef: Ref[F, State],
@@ -101,19 +130,27 @@ private object ExplicitBucketHistogramAggregator {
       reservoir: ExemplarReservoir[F, A]
   ) extends Aggregator.Accumulator[F, A, PointData.Histogram] {
 
+    private val toDouble: A => Double =
+      MeasurementValue[A] match {
+        case MeasurementValue.LongMeasurementValue(cast) =>
+          cast.andThen(_.toDouble)
+        case MeasurementValue.DoubleMeasurementValue(cast) =>
+          cast
+      }
+
     def aggregate(
         timeWindow: TimeWindow,
         attributes: Attributes,
         reset: Boolean
     ): F[Option[PointData.Histogram]] =
-      reservoir.collectAndReset(attributes).flatMap { exemplars =>
+      reservoir.collectAndReset(attributes).flatMap { rawExemplars =>
         stateRef.modify { state =>
-          val e = exemplars.map { e =>
+          val exemplars = rawExemplars.map { e =>
             ExemplarData.double(
               e.filteredAttributes,
               e.timestamp,
               e.traceContext,
-              MeasurementValue[A].toDouble(e.value)
+              toDouble(e.value)
             )
           }
 
@@ -129,7 +166,7 @@ private object ExplicitBucketHistogramAggregator {
           val histogram = PointData.histogram(
             timeWindow = timeWindow,
             attributes = attributes,
-            exemplars = e,
+            exemplars = exemplars,
             stats = stats,
             boundaries = boundaries,
             counts = state.counts
@@ -142,10 +179,10 @@ private object ExplicitBucketHistogramAggregator {
       }
 
     def record(value: A, attributes: Attributes, context: Context): F[Unit] = {
-      val doubleValue = MeasurementValue[A].toDouble(value)
+      val doubleValue = toDouble(value)
 
       reservoir.offer(value, attributes, context) >> stateRef.update { state =>
-        val idx = boundaries.bucketIndex(doubleValue)
+        val idx = bucketIndex(doubleValue)
         state.copy(
           sum = state.sum + doubleValue,
           min = math.min(state.min, doubleValue),
@@ -154,6 +191,11 @@ private object ExplicitBucketHistogramAggregator {
           counts = state.counts.updated(idx, state.counts(idx) + 1)
         )
       }
+    }
+
+    private def bucketIndex(value: Double): Int = {
+      val idx = boundaries.boundaries.indexWhere(b => value <= b)
+      if (idx == -1) boundaries.length else idx
     }
 
   }
