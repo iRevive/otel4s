@@ -214,8 +214,8 @@ private[metrics] object Aggregator {
       LastValueAggregator.synchronous[F, A]
 
     def histogram: Aggregator.Synchronous[F, A] = {
-      val boundaries =
-        descriptor.advice.explicitBoundaries.getOrElse(BucketBoundaries.default)
+      val boundaries = descriptor.advice.explicitBoundaries
+        .getOrElse(Aggregation.Defaults.Boundaries)
       ExplicitBucketHistogramAggregator(boundaries, filter, traceContextLookup)
     }
 

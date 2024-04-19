@@ -21,8 +21,6 @@ package org.typelevel.otel4s.metrics
 )
 sealed trait MeasurementValue[A] {
   def contramap[B](f: B => A): MeasurementValue[B]
-  def toDouble(value: A): Double
-  def toLong(value: A): Long
 }
 
 object MeasurementValue {
@@ -51,10 +49,6 @@ Choose the type of an instrument explicitly, for example:
   ) extends MeasurementValue[A] {
     def contramap[B](f: B => A): MeasurementValue[B] =
       LongMeasurementValue(cast.compose(f))
-    def toDouble(value: A): Double =
-      cast(value).toDouble
-    def toLong(value: A): Long =
-      cast(value)
   }
 
   private[otel4s] final case class DoubleMeasurementValue[A](
@@ -62,10 +56,6 @@ Choose the type of an instrument explicitly, for example:
   ) extends MeasurementValue[A] {
     def contramap[B](f: B => A): MeasurementValue[B] =
       DoubleMeasurementValue(cast.compose(f))
-    def toDouble(value: A): Double =
-      cast(value)
-    def toLong(value: A): Long =
-      cast(value).toLong
   }
 
 }

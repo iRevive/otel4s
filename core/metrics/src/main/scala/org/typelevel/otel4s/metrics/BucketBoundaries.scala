@@ -23,7 +23,7 @@ import cats.Show
   */
 sealed trait BucketBoundaries {
   def boundaries: Vector[Double]
-  def bucketIndex(value: Double): Int
+
   final def length: Int = boundaries.length
 
   override final def hashCode(): Int =
@@ -40,13 +40,6 @@ sealed trait BucketBoundaries {
 }
 
 object BucketBoundaries {
-
-  private val Default = Impl(
-    Vector(
-      0d, 5d, 10d, 25d, 50d, 75d, 100d, 250d, 500d, 750d, 1000d, 2500d, 5000d,
-      7500d, 10000d
-    )
-  )
 
   /** Creates [[BucketBoundaries]] using the given `boundaries`.
     *
@@ -82,8 +75,6 @@ object BucketBoundaries {
     Impl(boundaries)
   }
 
-  def default: BucketBoundaries = Default
-
   implicit val bucketBoundariesHash: Hash[BucketBoundaries] =
     Hash.by(_.boundaries)
 
@@ -94,10 +85,5 @@ object BucketBoundaries {
 
   private final case class Impl(
       boundaries: Vector[Double]
-  ) extends BucketBoundaries {
-    def bucketIndex(value: Double): Int = {
-      val idx = boundaries.indexWhere(boundary => value <= boundary)
-      if (idx == -1) boundaries.length else idx
-    }
-  }
+  ) extends BucketBoundaries
 }
