@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Typelevel
+ * Copyright 2024 Typelevel
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package sdk
 package exporter.otlp.metrics
 
 import com.google.protobuf.ByteString
+import io.circe.Json
 import io.opentelemetry.proto.collector.metrics.v1.metrics_service.ExportMetricsServiceRequest
 import io.opentelemetry.proto.metrics.v1.{metrics => Proto}
 import io.opentelemetry.proto.metrics.v1.metrics.ResourceMetrics
@@ -29,13 +30,41 @@ import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.MetricPoints
 import org.typelevel.otel4s.sdk.metrics.data.PointData
+import scalapb.descriptors.FieldDescriptor
+import scalapb.descriptors.PByteString
+import scalapb.descriptors.PValue
 import scalapb_circe.Printer
+import scodec.bits.ByteVector
 
 /** @see
-  *   [[https://github.com/open-telemetry/opentelemetry-proto/blob/v1.0.0/opentelemetry/proto/common/v1/common.proto]]
+  *   [[https://github.com/open-telemetry/opentelemetry-proto/blob/v1.2.0/opentelemetry/proto/metrics/v1/metrics.proto]]
   */
 private object MetricsProtoEncoder {
-  implicit val jsonPrinter: Printer = new ProtoEncoder.JsonPrinter
+  implicit val jsonPrinter: Printer = new ProtoEncoder.JsonPrinter {
+    private val EncodeAsHex = Set("trace_id", "span_id")
+
+    /** The `traceId` and `spanId` byte arrays are represented as
+      * case-insensitive hex-encoded strings; they are not base64-encoded as is
+      * defined in the standard Protobuf JSON Mapping. Hex encoding is used for
+      * traceId and spanId fields in all OTLP Protobuf messages, e.g., the Span,
+      * Link, LogRecord, etc. messages.
+      *
+      * @see
+      *   [[https://github.com/open-telemetry/opentelemetry-proto/blob/v1.2.0/docs/specification.md#json-protobuf-encoding]]
+      */
+    override def serializeSingleValue(
+        fd: FieldDescriptor,
+        value: PValue,
+        formattingLongAsNumber: Boolean
+    ): Json = {
+      value match {
+        case PByteString(bs) if EncodeAsHex.contains(fd.name) =>
+          Json.fromString(ByteVector(bs.toByteArray()).toHex)
+        case _ =>
+          super.serializeSingleValue(fd, value, formattingLongAsNumber)
+      }
+    }
+  }
 
   implicit val aggregationTemporalityEncoder: ProtoEncoder[
     AggregationTemporality,
@@ -97,7 +126,28 @@ private object MetricsProtoEncoder {
     )
   }
 
-  implicit val dataEncoder: ProtoEncoder[MetricPoints, Proto.Metric.Data] = {
+  implicit val histogramPointEncoder: ProtoEncoder[
+    PointData.Histogram,
+    Proto.HistogramDataPoint
+  ] = { point =>
+    Proto.HistogramDataPoint(
+      attributes = ProtoEncoder.encode(point.attributes),
+      startTimeUnixNano = point.timeWindow.start.toNanos,
+      timeUnixNano = point.timeWindow.end.toNanos,
+      count = point.stats.map(_.count).getOrElse(0L),
+      sum = point.stats.map(_.sum),
+      bucketCounts = point.counts,
+      explicitBounds = point.boundaries.boundaries,
+      exemplars = point.exemplars.map(ProtoEncoder.encode(_)),
+      min = point.stats.map(_.min),
+      max = point.stats.map(_.max)
+    )
+  }
+
+  implicit val metricPointsEncoder: ProtoEncoder[
+    MetricPoints,
+    Proto.Metric.Data
+  ] = {
     case sum: MetricPoints.Sum =>
       Proto.Metric.Data.Sum(
         Proto.Sum(
@@ -134,20 +184,7 @@ private object MetricsProtoEncoder {
     case histogram: MetricPoints.Histogram =>
       Proto.Metric.Data.Histogram(
         Proto.Histogram(
-          histogram.points.map(p =>
-            Proto.HistogramDataPoint(
-              attributes = ProtoEncoder.encode(p.attributes),
-              startTimeUnixNano = p.timeWindow.start.toNanos,
-              timeUnixNano = p.timeWindow.end.toNanos,
-              count = p.stats.map(_.count).getOrElse(0L),
-              sum = p.stats.map(_.sum),
-              bucketCounts = p.counts,
-              explicitBounds = p.boundaries.boundaries,
-              exemplars = p.exemplars.map(ProtoEncoder.encode(_)),
-              min = p.stats.map(_.min),
-              max = p.stats.map(_.max)
-            )
-          ),
+          histogram.points.map(ProtoEncoder.encode(_)),
           ProtoEncoder.encode(histogram.aggregationTemporality)
         )
       )
@@ -204,17 +241,17 @@ private object MetricsProtoEncoder {
     List[MetricData],
     ExportMetricsServiceRequest
   ] = { metrics =>
-    val resourceSpans =
+    val resourceMetrics =
       metrics
         .groupBy(_.resource)
-        .map { case (resource, resourceSpans) =>
-          val scopeSpans: List[ScopeMetrics] =
-            resourceSpans
+        .map { case (resource, resourceMetrics) =>
+          val scopeMetrics: List[ScopeMetrics] =
+            resourceMetrics
               .groupBy(_.instrumentationScope)
-              .map { case (scope, spans) =>
+              .map { case (scope, metrics) =>
                 ScopeMetrics(
                   scope = Some(ProtoEncoder.encode(scope)),
-                  metrics = spans.map(metric => ProtoEncoder.encode(metric)),
+                  metrics = metrics.map(metric => ProtoEncoder.encode(metric)),
                   schemaUrl = scope.schemaUrl.getOrElse("")
                 )
               }
@@ -222,13 +259,13 @@ private object MetricsProtoEncoder {
 
           ResourceMetrics(
             Some(ProtoEncoder.encode(resource)),
-            scopeSpans,
+            scopeMetrics,
             resource.schemaUrl.getOrElse("")
           )
         }
         .toList
 
-    ExportMetricsServiceRequest(resourceSpans)
+    ExportMetricsServiceRequest(resourceMetrics)
   }
 
 }
