@@ -177,7 +177,7 @@ private[metrics] final class MeterSharedState[
           }
           .flatMap { _ =>
             for {
-              storages <- registries.get(reader).foldMapA(_.allStorages)
+              storages <- registries.get(reader).foldMapA(_.storages)
               result <- storages.traverse { storage =>
                 storage.collect(resource, scope, timeWindow)
               }

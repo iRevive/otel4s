@@ -26,7 +26,7 @@ private[metrics] final class MetricStorageRegistry[F[_]: Monad](
     registry: Ref[F, Map[MetricDescriptor, MetricStorage[F]]]
 ) {
 
-  def allStorages: F[Vector[MetricStorage[F]]] =
+  def storages: F[Vector[MetricStorage[F]]] =
     registry.get.map(_.values.toVector)
 
   def register(storage: MetricStorage[F]): F[MetricStorage[F]] = {
@@ -45,7 +45,7 @@ private[metrics] final class MetricStorageRegistry[F[_]: Monad](
 
 }
 
-object MetricStorageRegistry {
+private[metrics] object MetricStorageRegistry {
 
   def create[F[_]: Concurrent]: F[MetricStorageRegistry[F]] =
     for {

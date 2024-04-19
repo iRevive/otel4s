@@ -63,7 +63,7 @@ private[metrics] final class SdkObservableMeasurement[F[_]: Monad, A](
 
 }
 
-object SdkObservableMeasurement {
+private[metrics] object SdkObservableMeasurement {
 
   sealed trait State[F[_]]
   object State {
