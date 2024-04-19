@@ -17,11 +17,10 @@
 package org.typelevel.otel4s.sdk.metrics
 package exporter
 
-import cats.effect.Concurrent
-import cats.effect.Fiber
+import cats.data.NonEmptyVector
+import cats.effect.Ref
 import cats.effect.Resource
 import cats.effect.Temporal
-import cats.effect.std.AtomicCell
 import cats.effect.std.Console
 import cats.effect.syntax.spawn._
 import cats.effect.syntax.temporal._
@@ -29,15 +28,15 @@ import cats.syntax.applicative._
 import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
+import cats.syntax.traverse._
+import org.typelevel.otel4s.sdk.metrics.data.MetricData
 
 import scala.concurrent.duration.FiniteDuration
 
 private class PeriodicMetricReader[F[_]: Temporal: Console] private (
-    stateRef: AtomicCell[F, PeriodicMetricReader.State[F]],
-    exporter: MetricExporter[F],
-    interval: FiniteDuration
+    metricProducers: Ref[F, Vector[MetricProducer[F]]],
+    exporter: MetricExporter[F]
 ) extends MetricReader[F] {
-  import PeriodicMetricReader._
 
   def defaultAggregationSelector: AggregationSelector =
     exporter.defaultAggregationSelector
@@ -48,61 +47,63 @@ private class PeriodicMetricReader[F[_]: Temporal: Console] private (
   def defaultCardinalityLimitSelector: CardinalityLimitSelector =
     exporter.defaultCardinalityLimitSelector
 
-  def register(registration: CollectionRegistration[F]): F[Unit] =
-    stateRef.evalUpdate {
-      case State.Idle() =>
-        process(registration).start.map(fiber => State.Running(fiber))
+  def register(producers: NonEmptyVector[MetricProducer[F]]): F[Unit] = {
+    def warn =
+      Console[F].error(
+        "Metrics are already registered at this periodic metric reader"
+      )
 
-      case state: State.Running[F] =>
+    metricProducers.flatModify { current =>
+      if (current.isEmpty) (producers.toVector, Temporal[F].unit)
+      else (current, warn)
+    }
+  }
+
+  def collectAllMetrics: F[Vector[MetricData]] =
+    metricProducers.get.flatMap {
+      case producers if producers.nonEmpty =>
+        producers.flatTraverse(_.produce)
+
+      case _ =>
         Console[F]
           .error(
-            "Metrics are already registered at this periodic metric reader"
+            "The PeriodicMetricReader is running, but producers aren't configured yet. Nothing to export"
           )
-          .as(state)
+          .as(Vector.empty)
     }
 
-  private def process(registration: CollectionRegistration[F]): F[Unit] = {
+  private def exportMetrics: F[Unit] = {
     val doExport =
       for {
-        data <- registration.collectAllMetrics
-        _ <- exporter.exportMetrics(data).whenA(data.nonEmpty)
+        metrics <- collectAllMetrics
+        _ <- exporter.exportMetrics(metrics).whenA(metrics.nonEmpty)
       } yield ()
 
-    val step = doExport.handleErrorWith { e =>
+    doExport.handleErrorWith { e =>
       Console[F].error(
         s"PeriodicMetricExporter: the export has failed: ${e.getMessage}\n${e.getStackTrace.mkString("\n")}\n"
       )
     }
-
-    step.delayBy(interval).foreverM
   }
 
-  def forceFlush: F[Unit] = ???
+  def forceFlush: F[Unit] =
+    for {
+      _ <- exportMetrics
+      _ <- exporter.flush
+    } yield ()
 }
 
-object PeriodicMetricReader {
-
-  private sealed trait State[F[_]]
-  private object State {
-    final case class Idle[F[_]]() extends State[F]
-
-    final case class Running[F[_]](
-        process: Fiber[F, Throwable, Unit]
-    ) extends State[F]
-  }
+private object PeriodicMetricReader {
 
   def create[F[_]: Temporal: Console](
       exporter: MetricExporter[F],
       interval: FiniteDuration
   ): Resource[F, MetricReader[F]] =
     for {
-      ref <- Resource.eval(AtomicCell[F].of[State[F]](State.Idle()))
-      _ <- Resource.make(Concurrent[F].unit)(_ =>
-        ref.get.flatMap {
-          case State.Idle()           => Concurrent[F].unit
-          case State.Running(process) => process.cancel
-        }
-      )
-    } yield new PeriodicMetricReader(ref, exporter, interval)
+      metricProducers <- Resource.eval(Ref.empty[F, Vector[MetricProducer[F]]])
+      reader = new PeriodicMetricReader(metricProducers, exporter)
+      // start background exporter process
+      _ <- reader.exportMetrics.delayBy(interval).foreverM[Unit].background
+    } yield reader
 
 }

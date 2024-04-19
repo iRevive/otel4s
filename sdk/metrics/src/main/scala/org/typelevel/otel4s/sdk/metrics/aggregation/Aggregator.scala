@@ -20,7 +20,6 @@ import cats.Applicative
 import cats.effect.Temporal
 import cats.effect.std.Random
 import org.typelevel.otel4s.Attributes
-import org.typelevel.otel4s.metrics.BucketBoundaries
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope

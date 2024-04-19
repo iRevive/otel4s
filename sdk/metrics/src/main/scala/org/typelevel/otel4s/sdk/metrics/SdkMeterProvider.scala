@@ -18,6 +18,7 @@ package org.typelevel.otel4s.sdk.metrics
 
 import cats.Applicative
 import cats.Monad
+import cats.data.NonEmptyVector
 import cats.effect.Clock
 import cats.effect.Temporal
 import cats.effect.std.Console
@@ -35,7 +36,6 @@ import org.typelevel.otel4s.sdk.internal.ComponentRegistry
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.exemplar.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.exemplar.TraceContextLookup
-import org.typelevel.otel4s.sdk.metrics.exporter.CollectionRegistration
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricProducer
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricReader
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
@@ -238,16 +238,14 @@ object SdkMeterProvider {
           registry: ComponentRegistry[F, SdkMeter[F]],
           reader: RegisteredReader[F]
       ): F[Unit] = {
-        val producers = metricProducers :+ new SdkMetricProducer[F](
+        val sdkMetricProducer = new SdkMetricProducer[F](
           registry,
           reader
         )
 
-        for {
-          _ <- reader.reader.register(
-            new SdkCollectionRegistration[F](producers, resource)
-          )
-        } yield ()
+        reader.reader.register(
+          NonEmptyVector(sdkMetricProducer, metricProducers)
+        )
       }
 
       for {
@@ -271,21 +269,13 @@ object SdkMeterProvider {
       registry: ComponentRegistry[F, SdkMeter[F]],
       reader: RegisteredReader[F]
   ) extends MetricProducer[F] {
-    def produce(resource: TelemetryResource): F[Vector[MetricData]] =
+    def produce: F[Vector[MetricData]] =
       for {
         meters <- registry.components
         now <- Clock[F].realTime
         result <- meters.flatTraverse(_.collectAll(reader, now))
         _ <- reader.setLastCollectTimestamp(now)
       } yield result
-  }
-
-  private final class SdkCollectionRegistration[F[_]: Applicative](
-      producers: Vector[MetricProducer[F]],
-      resource: TelemetryResource
-  ) extends CollectionRegistration[F] {
-    def collectAllMetrics: F[Vector[MetricData]] =
-      producers.flatTraverse(producer => producer.produce(resource))
   }
 
 }

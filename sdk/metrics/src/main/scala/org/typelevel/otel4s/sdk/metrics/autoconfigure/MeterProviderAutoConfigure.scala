@@ -30,7 +30,6 @@ import org.typelevel.otel4s.sdk.metrics.SdkMeterProvider
 import org.typelevel.otel4s.sdk.metrics.autoconfigure.MeterProviderAutoConfigure.Customizer
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricExporter
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricReader
-import org.typelevel.otel4s.sdk.metrics.exporter.PeriodicMetricReader
 
 import scala.concurrent.duration._
 
@@ -53,7 +52,7 @@ private final class MeterProviderAutoConfigure[
       exporters <- exporterAutoConfigure.configure(config)
       readers <- configureReaders(config, exporters)
 
-      tracerProviderBuilder = {
+      meterProviderBuilder = {
         val builder = SdkMeterProvider
           .builder[F]
           .withResource(resource)
@@ -62,7 +61,7 @@ private final class MeterProviderAutoConfigure[
       }
 
       tracerProvider <- Resource.eval(
-        customizer(tracerProviderBuilder, config).build
+        customizer(meterProviderBuilder, config).build
       )
     } yield tracerProvider
   }
@@ -89,7 +88,7 @@ private final class MeterProviderAutoConfigure[
       Resource.pure(logging)
     }*/
     exporters.values.toList.traverse { exporter =>
-      PeriodicMetricReader.create(exporter, 1.minute)
+      MetricReader.periodic(exporter, 1.minute)
     }
   }
 

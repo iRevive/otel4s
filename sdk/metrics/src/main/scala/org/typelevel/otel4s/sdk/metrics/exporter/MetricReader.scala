@@ -17,12 +17,29 @@
 package org.typelevel.otel4s.sdk.metrics
 package exporter
 
+import cats.data.NonEmptyVector
+import cats.effect.Resource
+import cats.effect.Temporal
+import cats.effect.std.Console
+import org.typelevel.otel4s.sdk.metrics.data.MetricData
+
+import scala.concurrent.duration.FiniteDuration
+
 trait MetricReader[F[_]] {
   def aggregationTemporalitySelector: AggregationTemporalitySelector
   def defaultAggregationSelector: AggregationSelector
   def defaultCardinalityLimitSelector: CardinalityLimitSelector
-  def register(registration: CollectionRegistration[F]): F[Unit]
+  def register(producers: NonEmptyVector[MetricProducer[F]]): F[Unit]
+  def collectAllMetrics: F[Vector[MetricData]]
   def forceFlush: F[Unit]
 }
 
-object MetricReader {}
+object MetricReader {
+
+  def periodic[F[_]: Temporal: Console](
+      exporter: MetricExporter[F],
+      interval: FiniteDuration
+  ): Resource[F, MetricReader[F]] =
+    PeriodicMetricReader.create(exporter, interval)
+
+}
