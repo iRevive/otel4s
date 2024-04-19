@@ -44,5 +44,5 @@ private[metrics] final class CallbackRegistration[F[_]: MonadCancelThrow](
       .whenA(hasStorages)
 
   override def toString: String =
-    s"CallbackRegistration{instrumentDescription=${measurements.map(_.descriptor).mkString_("[", ", ", "]")}"
+    s"CallbackRegistration{instrumentDescriptors=${measurements.map(_.descriptor).mkString_("[", ", ", "]")}"
 }
