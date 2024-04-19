@@ -20,6 +20,7 @@ import cats.Applicative
 import cats.effect.Temporal
 import cats.effect.std.Random
 import org.typelevel.otel4s.Attributes
+import org.typelevel.otel4s.metrics.BucketBoundaries
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
@@ -141,10 +142,6 @@ private[metrics] object Aggregator {
     ): F[MetricData]
   }
 
-  type Aux[F[_], A, P <: PointData] = Aggregator.Synchronous[F, A] {
-    type Point = P
-  }
-
   /** Records incoming raw values (measurements) and aggregates them into the
     * `P` (PointData).
     *
@@ -196,6 +193,27 @@ private[metrics] object Aggregator {
     ): F[Unit]
   }
 
+  /** Creates a [[Synchronous]] aggregator based on the given `aggregation`.
+    *
+    * @param aggregation
+    *   the aggregation to use
+    *
+    * @param descriptor
+    *   the descriptor of the instrument
+    *
+    * @param filter
+    *   used by the exemplar reservoir to filter the offered values
+    *
+    * @param traceContextLookup
+    *   used by the exemplar reservoir to extract tracing information from the
+    *   context
+    *
+    * @tparam F
+    *   the higher-kinded type of a polymorphic effect
+    *
+    * @tparam A
+    *   the type of the values to record
+    */
   def synchronous[F[_]: Temporal: Random, A: MeasurementValue: Numeric](
       aggregation: Aggregation.Synchronous,
       descriptor: InstrumentDescriptor.Synchronous,
@@ -212,35 +230,45 @@ private[metrics] object Aggregator {
     def lastValue: Aggregator.Synchronous[F, A] =
       LastValueAggregator.synchronous[F, A]
 
-    def histogram: Aggregator.Synchronous[F, A] = {
-      val boundaries = descriptor.advice.explicitBoundaries
-        .getOrElse(Aggregation.Defaults.Boundaries)
+    def histogram(boundaries: BucketBoundaries): Aggregator.Synchronous[F, A] =
       ExplicitBucketHistogramAggregator(boundaries, filter, traceContextLookup)
-    }
 
     aggregation match {
       case Aggregation.Default =>
         descriptor.instrumentType match {
           case InstrumentType.Counter       => sum
           case InstrumentType.UpDownCounter => sum
-          case InstrumentType.Histogram     => histogram
+          case InstrumentType.Histogram =>
+            val boundaries = descriptor.advice.explicitBoundaries
+              .getOrElse(Aggregation.Defaults.Boundaries)
+            histogram(boundaries)
         }
 
       case Aggregation.Sum       => sum
       case Aggregation.LastValue => lastValue
 
       case Aggregation.ExplicitBucketHistogram(boundaries) =>
-        ExplicitBucketHistogramAggregator(
-          boundaries,
-          filter,
-          traceContextLookup
-        )
+        histogram(boundaries)
 
       case Aggregation.Base2ExponentialHistogram(_, _) =>
         ???
     }
   }
 
+  /** Creates an [[Asynchronous]] aggregator based on the given `aggregation`.
+    *
+    * @param aggregation
+    *   the aggregation to use
+    *
+    * @param descriptor
+    *   the descriptor of the instrument
+    *
+    * @tparam F
+    *   the higher-kinded type of a polymorphic effect
+    *
+    * @tparam A
+    *   the type of the values to record
+    */
   def asynchronous[F[_]: Applicative, A: MeasurementValue: Numeric](
       aggregation: Aggregation.Asynchronous,
       descriptor: InstrumentDescriptor.Asynchronous
