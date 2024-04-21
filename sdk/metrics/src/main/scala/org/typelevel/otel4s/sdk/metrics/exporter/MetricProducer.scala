@@ -18,6 +18,19 @@ package org.typelevel.otel4s.sdk.metrics.exporter
 
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 
+/** Represents an export state of a MetricReader.
+  *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/metrics/sdk/#metricproducer]]
+  *
+  * @tparam F
+  *   the higher-kinded type of a polymorphic effect
+  */
 trait MetricProducer[F[_]] {
+
+  /** Produces metrics by collecting them from the SDK. If there are
+    * asynchronous instruments involved, their callback functions will be
+    * evaluated.
+    */
   def produce: F[Vector[MetricData]]
 }
