@@ -32,7 +32,7 @@ import org.typelevel.otel4s.sdk.common.InstrumentationScope
   * @tparam A
   *   the type of the component
   */
-trait ComponentRegistry[F[_], A] {
+private[sdk] sealed trait ComponentRegistry[F[_], A] {
 
   /** Returns the component associated with the `name`, `version`, and
     * `schemaUrl`.
@@ -61,11 +61,13 @@ trait ComponentRegistry[F[_], A] {
       attributes: Attributes
   ): F[A]
 
+  /** Returns the collection of the registered components.
+    */
   def components: F[Vector[A]]
 
 }
 
-object ComponentRegistry {
+private[sdk] object ComponentRegistry {
 
   /** Creates a [[ComponentRegistry]] that uses `buildComponent` to build a
     * component if it is not already present in the cache.
