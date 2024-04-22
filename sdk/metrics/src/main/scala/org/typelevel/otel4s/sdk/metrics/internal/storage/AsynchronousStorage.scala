@@ -65,25 +65,25 @@ private final class AsynchronousStorage[
       start <- collector.startTimestamp(measurement)
       points <- collector.currentPoints
       _ <- {
-        val attributes =
+        val processed =
           attributesProcessor.process(measurement.attributes, context)
 
-        if (points.contains(attributes)) {
+        if (points.contains(processed)) {
           Console[F].errorln(
-            s"Instrument ${metricDescriptor.sourceInstrument.name} has recorded multiple values for the same attributes $attributes"
+            s"Instrument [${metricDescriptor.sourceInstrument.name}] has recorded multiple values for the same attributes $processed"
           )
         } else {
           val timeWindow = TimeWindow(start, measurement.timeWindow.end)
           if (points.sizeIs >= maxCardinality) {
             cardinalityWarning >> collector.record(
               measurement.copy(
-                attributes = attributes.added(MetricStorage.OverflowAttribute),
+                attributes = processed.added(MetricStorage.OverflowAttribute),
                 timeWindow = timeWindow
               )
             )
           } else {
             collector.record(
-              measurement.copy(attributes = attributes, timeWindow = timeWindow)
+              measurement.copy(attributes = processed, timeWindow = timeWindow)
             )
           }
         }
@@ -95,16 +95,20 @@ private final class AsynchronousStorage[
       scope: InstrumentationScope,
       timeWindow: TimeWindow
   ): F[Option[MetricData]] =
-    collector.collectPoints.flatMap { measurements =>
-      aggregator
-        .toMetricData(
-          resource,
-          scope,
-          metricDescriptor,
-          measurements,
-          aggregationTemporality
-        )
-        .map(Some(_))
+    collector.collectPoints.flatMap {
+      case measurements if measurements.nonEmpty =>
+        aggregator
+          .toMetricData(
+            resource,
+            scope,
+            metricDescriptor,
+            measurements,
+            aggregationTemporality
+          )
+          .map(Some(_))
+
+      case _ =>
+        Monad[F].pure(None)
     }
 
   private def cardinalityWarning: F[Unit] =
@@ -116,6 +120,26 @@ private final class AsynchronousStorage[
 
 private object AsynchronousStorage {
 
+  /** Creates a metric storage for an asynchronous instrument.
+    *
+    * @param reader
+    *   the reader the storage must use to collect metrics
+    *
+    * @param view
+    *   the optional view associated with the instrument
+    *
+    * @param instrumentDescriptor
+    *   the descriptor of the instrument
+    *
+    * @param aggregation
+    *   the preferred aggregation
+    *
+    * @tparam F
+    *   the higher-kinded type of a polymorphic effect
+    *
+    * @tparam A
+    *   the type of the values to store
+    */
   def create[
       F[_]: Temporal: Console: AskContext,
       A: MeasurementValue: Numeric
@@ -158,7 +182,7 @@ private object AsynchronousStorage {
       aggregationTemporality,
       aggregator,
       attributesProcessor,
-      cardinalityLimit - 1,
+      cardinalityLimit - 1, // -1 so we have space for the 'overflow' attribute
       collector
     )
   }

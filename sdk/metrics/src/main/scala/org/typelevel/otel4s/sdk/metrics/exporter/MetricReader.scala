@@ -77,7 +77,7 @@ trait MetricReader[F[_]] {
 
 object MetricReader {
 
-  /** Creates a period metric reader that collect and exports metrics with the
+  /** Creates a period metric reader that collects and exports metrics with the
     * given interval.
     *
     * @param exporter
@@ -86,13 +86,17 @@ object MetricReader {
     * @param interval
     *   how often to export the metrics
     *
+    * @param timeout
+    *   how long the export can run before it is cancelled
+    *
     * @tparam F
     *   the higher-kinded type of a polymorphic effect
     */
   def periodic[F[_]: Temporal: Console](
       exporter: MetricExporter[F],
-      interval: FiniteDuration
+      interval: FiniteDuration,
+      timeout: FiniteDuration
   ): Resource[F, MetricReader[F]] =
-    PeriodicMetricReader.create(exporter, interval)
+    PeriodicMetricReader.create(exporter, interval, timeout)
 
 }

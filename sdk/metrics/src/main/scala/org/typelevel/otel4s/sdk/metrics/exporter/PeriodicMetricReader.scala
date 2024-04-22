@@ -33,9 +33,27 @@ import org.typelevel.otel4s.sdk.metrics.data.MetricData
 
 import scala.concurrent.duration.FiniteDuration
 
+/** A metric reader that collects and exports metrics with the given interval.
+  *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/metrics/sdk/#periodic-exporting-metricreader]]
+  *
+  * @param metricProducers
+  *   the metric producers to collect metrics from
+  *
+  * @param exporter
+  *   the exporter to send the collected metrics to
+  *
+  * @param config
+  *   the interval and timeout configurations
+  *
+  * @tparam F
+  *   the higher-kinded type of a polymorphic effect
+  */
 private class PeriodicMetricReader[F[_]: Temporal: Console] private (
     metricProducers: Ref[F, Vector[MetricProducer[F]]],
-    exporter: MetricExporter[F]
+    exporter: MetricExporter[F],
+    config: PeriodicMetricReader.Config
 ) extends MetricReader[F] {
 
   def defaultAggregationSelector: AggregationSelector =
@@ -49,8 +67,8 @@ private class PeriodicMetricReader[F[_]: Temporal: Console] private (
 
   def register(producers: NonEmptyVector[MetricProducer[F]]): F[Unit] = {
     def warn =
-      Console[F].error(
-        "Metrics are already registered at this periodic metric reader"
+      Console[F].errorln(
+        "MetricProducers are already registered at this periodic metric reader"
       )
 
     metricProducers.flatModify { current =>
@@ -66,11 +84,23 @@ private class PeriodicMetricReader[F[_]: Temporal: Console] private (
 
       case _ =>
         Console[F]
-          .error(
+          .errorln(
             "The PeriodicMetricReader is running, but producers aren't configured yet. Nothing to export"
           )
           .as(Vector.empty)
     }
+
+  def forceFlush: F[Unit] =
+    for {
+      _ <- exportMetrics
+      _ <- exporter.flush
+    } yield ()
+
+  override def toString: String =
+    s"PeriodicMetricReader{exporter=$exporter, interval=${config.exportInterval}, timeout=${config.exportTimeout}}"
+
+  private def worker: F[Unit] =
+    exportMetrics.delayBy(config.exportInterval).foreverM[Unit]
 
   private def exportMetrics: F[Unit] = {
     val doExport =
@@ -79,31 +109,57 @@ private class PeriodicMetricReader[F[_]: Temporal: Console] private (
         _ <- exporter.exportMetrics(metrics).whenA(metrics.nonEmpty)
       } yield ()
 
-    doExport.handleErrorWith { e =>
-      Console[F].error(
-        s"PeriodicMetricExporter: the export has failed: ${e.getMessage}\n${e.getStackTrace.mkString("\n")}\n"
+    doExport
+      .timeoutTo(
+        config.exportTimeout,
+        Console[F].errorln(
+          s"PeriodicMetricReader: the export attempt has been canceled after [${config.exportTimeout}]"
+        )
       )
-    }
+      .handleErrorWith { e =>
+        Console[F].errorln(
+          s"PeriodicMetricReader: the export has failed: ${e.getMessage}\n${e.getStackTrace.mkString("\n")}\n"
+        )
+      }
   }
 
-  def forceFlush: F[Unit] =
-    for {
-      _ <- exportMetrics
-      _ <- exporter.flush
-    } yield ()
 }
 
 private object PeriodicMetricReader {
 
+  private final case class Config(
+      exportInterval: FiniteDuration,
+      exportTimeout: FiniteDuration
+  )
+
+  /** Creates a period metric reader that collects and exports metrics with the
+    * given interval.
+    *
+    * @param exporter
+    *   the exporter to send the collected metrics to
+    *
+    * @param interval
+    *   how often to export the metrics
+    *
+    * @param timeout
+    *   how long the export can run before it is cancelled
+    *
+    * @tparam F
+    *   the higher-kinded type of a polymorphic effect
+    */
   def create[F[_]: Temporal: Console](
       exporter: MetricExporter[F],
-      interval: FiniteDuration
+      interval: FiniteDuration,
+      timeout: FiniteDuration
   ): Resource[F, MetricReader[F]] =
     for {
       metricProducers <- Resource.eval(Ref.empty[F, Vector[MetricProducer[F]]])
-      reader = new PeriodicMetricReader(metricProducers, exporter)
-      // start background exporter process
-      _ <- reader.exportMetrics.delayBy(interval).foreverM[Unit].background
+      reader = new PeriodicMetricReader(
+        metricProducers,
+        exporter,
+        Config(interval, timeout)
+      )
+      _ <- reader.worker.background
     } yield reader
 
 }

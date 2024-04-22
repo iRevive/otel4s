@@ -35,7 +35,7 @@ private[metrics] final class RegisteredReader[F[_]](
     lastCollectTimestampRef.set(timestamp)
 }
 
-object RegisteredReader {
+private[metrics] object RegisteredReader {
 
   def create[F[_]: Concurrent](
       start: FiniteDuration,
