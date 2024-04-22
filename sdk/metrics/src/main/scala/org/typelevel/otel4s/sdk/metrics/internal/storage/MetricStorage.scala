@@ -191,7 +191,7 @@ private[metrics] object MetricStorage {
       traceContextLookup: TraceContextLookup,
       aggregation: Aggregation.Synchronous
   ): F[Synchronous[F, A]] =
-    DefaultSynchronous.create(
+    SynchronousStorage.create(
       reader,
       view,
       instrumentDescriptor,
@@ -229,7 +229,7 @@ private[metrics] object MetricStorage {
       instrumentDescriptor: InstrumentDescriptor.Asynchronous,
       aggregation: Aggregation.Asynchronous
   ): F[Asynchronous[F, A]] =
-    DefaultAsynchronous.create(
+    AsynchronousStorage.create(
       reader,
       view,
       instrumentDescriptor,

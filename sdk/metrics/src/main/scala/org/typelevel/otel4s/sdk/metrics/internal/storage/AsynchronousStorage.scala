@@ -44,7 +44,9 @@ import org.typelevel.otel4s.sdk.metrics.view.View
 
 import scala.concurrent.duration.FiniteDuration
 
-private final class DefaultAsynchronous[
+/** Stores aggregated metrics for asynchronous instruments.
+  */
+private final class AsynchronousStorage[
     F[_]: Monad: Console: AskContext,
     A
 ] private (
@@ -54,7 +56,7 @@ private final class DefaultAsynchronous[
     aggregator: Aggregator.Asynchronous[F, A],
     attributesProcessor: AttributesProcessor,
     maxCardinality: Int,
-    collector: DefaultAsynchronous.Collector[F, A]
+    collector: AsynchronousStorage.Collector[F, A]
 ) extends MetricStorage.Asynchronous[F, A] {
 
   def record(measurement: AsynchronousMeasurement[A]): F[Unit] =
@@ -106,10 +108,13 @@ private final class DefaultAsynchronous[
     }
 
   private def cardinalityWarning: F[Unit] =
-    MetricStorage.cardinalityWarning[F](metricDescriptor.sourceInstrument, maxCardinality)
+    MetricStorage.cardinalityWarning(
+      metricDescriptor.sourceInstrument,
+      maxCardinality
+    )
 }
 
-private object DefaultAsynchronous {
+private object AsynchronousStorage {
 
   def create[
       F[_]: Temporal: Console: AskContext,
@@ -147,7 +152,7 @@ private object DefaultAsynchronous {
         reader,
         aggregator
       )
-    } yield new DefaultAsynchronous[F, A](
+    } yield new AsynchronousStorage[F, A](
       reader,
       descriptor,
       aggregationTemporality,

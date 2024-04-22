@@ -43,10 +43,12 @@ import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.view.AttributesProcessor
 import org.typelevel.otel4s.sdk.metrics.view.View
 
-private final class DefaultSynchronous[F[_]: Monad: Console, A](
+/** Stores aggregated metrics for synchronous instruments.
+  */
+private final class SynchronousStorage[F[_]: Monad: Console, A](
     reader: RegisteredReader[F],
     val metricDescriptor: MetricDescriptor,
-    aggregator: DefaultSynchronous.SynchronousAggregator[F, A],
+    aggregator: SynchronousStorage.SynchronousAggregator[F, A],
     attributesProcessor: AttributesProcessor,
     maxCardinality: Int,
     accumulators: AtomicCell[
@@ -129,11 +131,14 @@ private final class DefaultSynchronous[F[_]: Monad: Console, A](
     }
 
   private def cardinalityWarning: F[Unit] =
-    MetricStorage.cardinalityWarning[F](metricDescriptor.sourceInstrument, maxCardinality)
+    MetricStorage.cardinalityWarning(
+      metricDescriptor.sourceInstrument,
+      maxCardinality
+    )
 
 }
 
-object DefaultSynchronous {
+object SynchronousStorage {
 
   private type SynchronousAggregator[F[_], A] =
     Aggregator.Synchronous[F, A] {
@@ -172,7 +177,7 @@ object DefaultSynchronous {
     AtomicCell[F]
       .of(Map.empty[Attributes, Aggregator.Accumulator[F, A, PointData]])
       .map { accumulators =>
-        new DefaultSynchronous(
+        new SynchronousStorage(
           reader,
           descriptor,
           aggregator.asInstanceOf[SynchronousAggregator[F, A]],
