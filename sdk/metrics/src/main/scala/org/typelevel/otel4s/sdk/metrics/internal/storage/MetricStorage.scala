@@ -78,6 +78,14 @@ private[metrics] object MetricStorage {
   private[storage] val OverflowAttribute: Attribute[Boolean] =
     Attribute("otel.metric.overflow", true)
 
+  private[storage] def cardinalityWarning[F[_]: Console](
+      instrument: InstrumentDescriptor,
+      maxCardinality: Int
+  ): F[Unit] =
+    Console[F].errorln(
+      s"Instrument [${instrument.name}] has exceeded the maximum allowed cardinality [$maxCardinality]"
+    )
+
   /** A storage for the metrics from the synchronous instruments.
     *
     * @tparam F

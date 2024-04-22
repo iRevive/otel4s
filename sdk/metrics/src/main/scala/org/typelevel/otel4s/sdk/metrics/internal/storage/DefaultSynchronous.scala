@@ -129,9 +129,7 @@ private final class DefaultSynchronous[F[_]: Monad: Console, A](
     }
 
   private def cardinalityWarning: F[Unit] =
-    Console[F].errorln(
-      s"Instrument [${metricDescriptor.sourceInstrument.name}] has exceeded the maximum allowed cardinality [$maxCardinality]"
-    )
+    MetricStorage.cardinalityWarning[F](metricDescriptor.sourceInstrument, maxCardinality)
 
 }
 
