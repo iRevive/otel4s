@@ -78,7 +78,7 @@ private[metrics] object InstrumentDescriptor {
       description: Option[String],
       unit: Option[String],
       instrumentType: InstrumentType.Synchronous,
-      advice: Advice
+      advice: Advice = Advice.empty
   ): InstrumentDescriptor.Synchronous =
     SynchronousImpl(name, description, unit, instrumentType, advice)
 
@@ -89,7 +89,7 @@ private[metrics] object InstrumentDescriptor {
       description: Option[String],
       unit: Option[String],
       instrumentType: InstrumentType.Asynchronous,
-      advice: Advice
+      advice: Advice = Advice.empty
   ): InstrumentDescriptor.Asynchronous =
     AsynchronousImpl(name, description, unit, instrumentType, advice)
 

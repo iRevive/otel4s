@@ -29,7 +29,6 @@ import org.typelevel.otel4s.metrics.Counter
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.context.Context
-import org.typelevel.otel4s.sdk.metrics.internal.Advice
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.MeterSharedState
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
@@ -97,8 +96,7 @@ private object SdkCounter {
         name = CIString(name),
         description = description,
         unit = unit,
-        instrumentType = InstrumentType.Counter,
-        advice = Advice.empty
+        instrumentType = InstrumentType.Counter
       )
 
       MeasurementValue[A] match {

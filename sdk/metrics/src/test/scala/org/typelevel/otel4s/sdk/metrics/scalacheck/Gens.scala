@@ -26,7 +26,6 @@ import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.MetricPoints
 import org.typelevel.otel4s.sdk.metrics.data.PointData
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
-import org.typelevel.otel4s.sdk.metrics.internal.Advice
 import org.typelevel.otel4s.sdk.metrics.internal.AsynchronousMeasurement
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.view.InstrumentSelector
@@ -67,13 +66,7 @@ trait Gens extends org.typelevel.otel4s.sdk.scalacheck.Gens {
       name <- Gens.ciString
       description <- Gen.option(Gen.alphaNumStr)
       unit <- Gen.option(Gen.alphaNumStr)
-    } yield InstrumentDescriptor.synchronous(
-      name,
-      description,
-      unit,
-      tpe,
-      Advice.empty
-    )
+    } yield InstrumentDescriptor.synchronous(name, description, unit, tpe)
 
   val asynchronousInstrumentDescriptor: Gen[InstrumentDescriptor.Asynchronous] =
     for {
@@ -81,13 +74,7 @@ trait Gens extends org.typelevel.otel4s.sdk.scalacheck.Gens {
       name <- Gens.ciString
       description <- Gen.option(Gen.alphaNumStr)
       unit <- Gen.option(Gen.alphaNumStr)
-    } yield InstrumentDescriptor.asynchronous(
-      name,
-      description,
-      unit,
-      tpe,
-      Advice.empty
-    )
+    } yield InstrumentDescriptor.asynchronous(name, description, unit, tpe)
 
   val instrumentDescriptor: Gen[InstrumentDescriptor] =
     Gen.oneOf(synchronousInstrumentDescriptor, asynchronousInstrumentDescriptor)
