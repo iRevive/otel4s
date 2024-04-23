@@ -16,38 +16,69 @@
 
 package org.typelevel.otel4s.sdk.metrics.internal
 
-import cats.Monad
 import cats.effect.Concurrent
+import cats.effect.MonadCancelThrow
 import cats.effect.Ref
+import cats.effect.std.Console
 import cats.syntax.functor._
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
 
-private[metrics] final class MetricStorageRegistry[F[_]: Monad](
+/** Stores metric storages using metric descriptor as a key.
+  */
+private[metrics] final class MetricStorageRegistry[
+    F[_]: MonadCancelThrow: Console
+](
     registry: Ref[F, Map[MetricDescriptor, MetricStorage[F]]]
 ) {
 
+  /** Returns all registered storages.
+    */
   def storages: F[Vector[MetricStorage[F]]] =
     registry.get.map(_.values.toVector)
 
-  def register(storage: MetricStorage[F]): F[MetricStorage[F]] = {
-    val descriptor = storage.metricDescriptor
-    registry.modify { map =>
+  /** Registers a storage to this registry.
+    *
+    * If a metric with compatible identity was previously registered, returns
+    * the previously registered storage.
+    *
+    * If a metric with the same name (case-insensitive) but incompatible
+    * descriptor was previously registered, logs a diagnostic warning.
+    *
+    * @param storage
+    *   the metric storage to register
+    */
+  def register(storage: MetricStorage[F]): F[MetricStorage[F]] =
+    registry.flatModify { map =>
+      val descriptor = storage.metricDescriptor
+
       map.get(descriptor) match {
         case Some(value) =>
-          // todo: if (value != storage) log warning
-          (map, value)
+          (map, MonadCancelThrow[F].pure(value))
 
         case None =>
-          (map.updated(descriptor, storage), storage)
+          val updated = map.updated(descriptor, storage)
+
+          // run a duplicate check
+          map.find(_._1.name == descriptor.name) match {
+            case Some((duplicate, _)) =>
+              def warn: F[Unit] =
+                Console[F].errorln(
+                  s"MetricStorageRegistry: found a duplicate $duplicate, source $descriptor"
+                )
+
+              (updated, warn.as(storage))
+
+            case None =>
+              (updated, MonadCancelThrow[F].pure(storage))
+          }
       }
     }
-  }
 
 }
 
 private[metrics] object MetricStorageRegistry {
 
-  def create[F[_]: Concurrent]: F[MetricStorageRegistry[F]] =
+  def create[F[_]: Concurrent: Console]: F[MetricStorageRegistry[F]] =
     for {
       registry <- Ref.of[F, Map[MetricDescriptor, MetricStorage[F]]](Map.empty)
     } yield new MetricStorageRegistry[F](registry)
