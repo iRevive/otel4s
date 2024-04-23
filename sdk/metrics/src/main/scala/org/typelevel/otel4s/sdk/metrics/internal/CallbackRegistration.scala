@@ -33,14 +33,22 @@ private[metrics] final class CallbackRegistration[F[_]: MonadCancelThrow](
   private val hasStorages: Boolean =
     measurements.exists(_.storages.nonEmpty)
 
+  /** Set the active reader on each observable measurement so that measurements
+    * are only recorded to relevant storages.
+    *
+    * @param reader
+    *   the reader to use
+    *
+    * @param timeWindow
+    *   the time window of the measurement
+    */
   def invokeCallback(
       reader: RegisteredReader[F],
       timeWindow: TimeWindow
   ): F[Unit] =
     measurements
-      .traverse_(_.setActiveReader(reader, timeWindow))
-      .flatMap(_ => callback)
-      .guarantee(measurements.traverse_(_.unsetActiveReader))
+      .traverse_(_.withActiveReader(reader, timeWindow))
+      .surround(callback)
       .whenA(hasStorages)
 
   override def toString: String =

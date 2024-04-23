@@ -19,7 +19,8 @@ package org.typelevel.otel4s.sdk.metrics.internal
 import cats.Monad
 import cats.effect.Concurrent
 import cats.effect.Ref
-import cats.syntax.applicative._
+import cats.effect.Resource
+import cats.effect.std.Console
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.functor._
@@ -30,7 +31,7 @@ import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
 
-private[metrics] final class SdkObservableMeasurement[F[_]: Monad, A](
+private[metrics] final class SdkObservableMeasurement[F[_]: Monad: Console, A](
     stateRef: Ref[F, SdkObservableMeasurement.State[F]],
     val scope: InstrumentationScope,
     val descriptor: InstrumentDescriptor,
@@ -38,35 +39,37 @@ private[metrics] final class SdkObservableMeasurement[F[_]: Monad, A](
 ) extends ObservableMeasurement[F, A] {
   import SdkObservableMeasurement._
 
-  def setActiveReader(
+  def withActiveReader(
       reader: RegisteredReader[F],
       timeWindow: TimeWindow
-  ): F[Unit] =
-    stateRef.set(State.WithReader(reader, timeWindow))
+  ): Resource[F, Unit] =
+    Resource.make(stateRef.set(State.WithReader(reader, timeWindow))) { _ =>
+      stateRef.set(State.Empty())
+    }
 
-  def unsetActiveReader: F[Unit] =
-    stateRef.set(State.Empty())
-
-  def record(value: A, attributes: Attributes): F[Unit] = {
+  def record(value: A, attributes: Attributes): F[Unit] =
     stateRef.get.flatMap {
       case State.Empty() =>
-        Monad[F].unit // todo: log warning
+        Console[F].errorln(
+          "SdkObservableMeasurement: " +
+            s"trying to record a measurement for an instrument [${descriptor.name}] while the active reader is unset. " +
+            "Dropping the measurement."
+        )
 
       case State.WithReader(reader, timeWindow) =>
         val measurement = AsynchronousMeasurement(timeWindow, attributes, value)
 
-        storages.traverse_ { storage =>
-          storage.record(measurement).whenA(storage.reader == reader)
-        }
+        storages
+          .filter(_.reader == reader)
+          .traverse_(storage => storage.record(measurement))
     }
-  }
 
 }
 
 private[metrics] object SdkObservableMeasurement {
 
-  sealed trait State[F[_]]
-  object State {
+  private sealed trait State[F[_]]
+  private object State {
     final case class Empty[F[_]]() extends State[F]
 
     final case class WithReader[F[_]](
@@ -75,7 +78,7 @@ private[metrics] object SdkObservableMeasurement {
     ) extends State[F]
   }
 
-  def create[F[_]: Concurrent, A](
+  def create[F[_]: Concurrent: Console, A](
       storages: Vector[MetricStorage.Asynchronous[F, A]],
       scope: InstrumentationScope,
       descriptor: InstrumentDescriptor
