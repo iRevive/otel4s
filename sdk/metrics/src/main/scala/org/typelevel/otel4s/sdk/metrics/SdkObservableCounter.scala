@@ -30,6 +30,7 @@ import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.metrics.ObservableCounter
 import org.typelevel.otel4s.metrics.ObservableMeasurement
 import org.typelevel.otel4s.sdk.context.AskContext
+import org.typelevel.otel4s.sdk.metrics.internal.Advice
 import org.typelevel.otel4s.sdk.metrics.internal.CallbackRegistration
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.MeterSharedState
@@ -135,7 +136,8 @@ private object SdkObservableCounter {
         name = CIString(name),
         description = description,
         unit = unit,
-        instrumentType = InstrumentType.ObservableCounter
+        instrumentType = InstrumentType.ObservableCounter,
+        advice = Advice.empty
       )
   }
 
