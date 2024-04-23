@@ -44,7 +44,7 @@ import scala.concurrent.duration.FiniteDuration
 
 private[metrics] final class MeterSharedState[
     F[_]: Temporal: Random: Console: AskContext
-](
+] private (
     mutex: Mutex[F],
     viewRegistry: ViewRegistry[F],
     resource: TelemetryResource,
@@ -195,19 +195,14 @@ private[metrics] final class MeterSharedState[
     callbacks.get.flatMap { currentCallbacks =>
       mutex.lock.surround {
         val timeWindow = TimeWindow(startTimestamp, collectTimestamp)
-        currentCallbacks
-          .traverse_ { callback =>
-            callback.invokeCallback(reader, timeWindow)
-          }
-          .flatMap { _ =>
-            for {
-              storages <- registries.get(reader).foldMapA(_.storages)
-              result <- storages.traverse { storage =>
-                storage.collect(resource, scope, timeWindow)
-              }
-            } yield result.flatten.filter(_.nonEmpty)
-          }
 
+        for {
+          _ <- currentCallbacks.traverse_(_.invokeCallback(reader, timeWindow))
+          storages <- registries.get(reader).foldMapA(_.storages)
+          result <- storages.traverse { storage =>
+            storage.collect(resource, scope, timeWindow)
+          }
+        } yield result.flatten.filter(_.nonEmpty)
       }
     }
 
@@ -258,4 +253,5 @@ private[metrics] object MeterSharedState {
       callbacks,
       registries.toMap
     )
+
 }
