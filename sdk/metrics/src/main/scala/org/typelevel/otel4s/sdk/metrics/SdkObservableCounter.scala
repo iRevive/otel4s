@@ -30,11 +30,16 @@ import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.metrics.ObservableCounter
 import org.typelevel.otel4s.metrics.ObservableMeasurement
 import org.typelevel.otel4s.sdk.context.AskContext
-import org.typelevel.otel4s.sdk.metrics.internal.Advice
 import org.typelevel.otel4s.sdk.metrics.internal.CallbackRegistration
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.MeterSharedState
 
+/** An asynchronous instrument that reports monotonically increasing value(s)
+  * when the instrument is being observed.
+  *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/metrics/api/#asynchronous-counter]]
+  */
 private object SdkObservableCounter {
 
   final case class Builder[
@@ -64,13 +69,13 @@ private object SdkObservableCounter {
             sharedState
               .registerObservableMeasurement[Long](descriptor)
               .map { observable =>
-                val runnable = cb { (value, attributes) =>
+                val callback = cb { (value, attributes) =>
                   observable.record(cast(value), attributes)
                 }
 
                 new CallbackRegistration[F](
                   NonEmptyList.one(observable),
-                  runnable
+                  callback
                 )
               }
 
@@ -78,13 +83,13 @@ private object SdkObservableCounter {
             sharedState
               .registerObservableMeasurement[Double](descriptor)
               .map { observable =>
-                val runnable = cb { (value, attributes) =>
+                val callback = cb { (value, attributes) =>
                   observable.record(cast(value), attributes)
                 }
 
                 new CallbackRegistration[F](
                   NonEmptyList.one(observable),
-                  runnable
+                  callback
                 )
               }
         }
@@ -127,11 +132,10 @@ private object SdkObservableCounter {
 
     private def makeDescriptor: InstrumentDescriptor.Asynchronous =
       InstrumentDescriptor.asynchronous(
-        CIString(name),
-        unit,
-        description,
-        InstrumentType.ObservableCounter,
-        Advice.empty
+        name = CIString(name),
+        description = description,
+        unit = unit,
+        instrumentType = InstrumentType.ObservableCounter
       )
   }
 

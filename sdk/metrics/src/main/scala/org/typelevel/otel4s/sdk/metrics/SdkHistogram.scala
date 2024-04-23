@@ -31,7 +31,6 @@ import org.typelevel.otel4s.metrics.Histogram
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.context.Context
-import org.typelevel.otel4s.sdk.metrics.internal.Advice
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.MeterSharedState
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
@@ -39,6 +38,12 @@ import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
 import scala.collection.immutable
 import scala.concurrent.duration.TimeUnit
 
+/** A synchronous instrument that can be used to report arbitrary values that
+  * are likely to be statistically meaningful.
+  *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/metrics/api/#histogram]]
+  */
 private object SdkHistogram {
 
   private final class Backend[
@@ -69,9 +74,7 @@ private object SdkHistogram {
             end <- Clock[F].monotonic
             _ <- doRecord(
               castDuration((end - start).toUnit(timeUnit)),
-              Attributes.fromSpecific(
-                attributes ++ Histogram.causeAttributes(ec)
-              )
+              (attributes ++ Histogram.causeAttributes(ec)).to(Attributes)
             )
           } yield ()
         }
@@ -79,8 +82,8 @@ private object SdkHistogram {
 
     private def doRecord(value: Primitive, attributes: Attributes): F[Unit] =
       if (Numeric[Primitive].lt(value, Numeric[Primitive].zero)) {
-        Console[F].println(
-          s"Histograms can only record non-negative values. Instrument $name has tried to record a negative value."
+        Console[F].errorln(
+          s"SdkHistogram: histograms can only record non-negative values. Instrument [$name] has tried to record a negative value [$value]."
         )
       } else {
         for {
@@ -114,11 +117,10 @@ private object SdkHistogram {
 
     def create: F[Histogram[F, A]] = {
       val descriptor = InstrumentDescriptor.synchronous(
-        CIString(name),
-        unit,
-        description,
-        InstrumentType.Histogram,
-        Advice(boundaries)
+        name = CIString(name),
+        description = description,
+        unit = unit,
+        instrumentType = InstrumentType.Histogram
       )
 
       MeasurementValue[A] match {

@@ -29,13 +29,17 @@ import org.typelevel.otel4s.metrics.Counter
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.context.Context
-import org.typelevel.otel4s.sdk.metrics.internal.Advice
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.MeterSharedState
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
 
 import scala.collection.immutable
 
+/** A synchronous instrument that supports non-negative increments.
+  *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/metrics/api/#counter]]
+  */
 private object SdkCounter {
 
   private final class Backend[
@@ -60,8 +64,8 @@ private object SdkCounter {
         attributes: immutable.Iterable[Attribute[_]]
     ): F[Unit] =
       if (Numeric[Primitive].lt(value, Numeric[Primitive].zero)) {
-        Console[F].println(
-          s"Counters can only increase. Instrument $name has tried to record a negative value."
+        Console[F].errorln(
+          s"SdkCounter: counters can only increase. Instrument [$name] has tried to record a negative value [$value]."
         )
       } else {
         for {
@@ -89,11 +93,10 @@ private object SdkCounter {
 
     def create: F[Counter[F, A]] = {
       val descriptor = InstrumentDescriptor.synchronous(
-        CIString(name),
-        unit,
-        description,
-        InstrumentType.Counter,
-        Advice.empty
+        name = CIString(name),
+        description = description,
+        unit = unit,
+        instrumentType = InstrumentType.Counter
       )
 
       MeasurementValue[A] match {
