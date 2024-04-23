@@ -38,6 +38,7 @@ import org.typelevel.otel4s.sdk.metrics.exemplar.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricProducer
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricReader
+import org.typelevel.otel4s.sdk.metrics.internal.MeterSharedState
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 import org.typelevel.otel4s.sdk.metrics.view.InstrumentSelector
 import org.typelevel.otel4s.sdk.metrics.view.RegisteredView

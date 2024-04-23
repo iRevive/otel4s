@@ -33,6 +33,7 @@ import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.metrics.internal.Advice
 import org.typelevel.otel4s.sdk.metrics.internal.CallbackRegistration
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.MeterSharedState
 
 private object SdkObservableGauge {
 

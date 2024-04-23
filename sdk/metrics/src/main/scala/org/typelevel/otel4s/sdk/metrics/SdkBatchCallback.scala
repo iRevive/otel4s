@@ -25,6 +25,7 @@ import cats.syntax.traverse._
 import org.typelevel.otel4s.metrics.BatchCallback
 import org.typelevel.otel4s.metrics.ObservableMeasurement
 import org.typelevel.otel4s.sdk.metrics.internal.CallbackRegistration
+import org.typelevel.otel4s.sdk.metrics.internal.MeterSharedState
 import org.typelevel.otel4s.sdk.metrics.internal.SdkObservableMeasurement
 
 private class SdkBatchCallback[F[_]: MonadCancelThrow: Console](

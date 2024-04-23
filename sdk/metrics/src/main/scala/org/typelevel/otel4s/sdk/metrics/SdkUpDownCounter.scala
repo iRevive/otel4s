@@ -31,6 +31,7 @@ import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.internal.Advice
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
+import org.typelevel.otel4s.sdk.metrics.internal.MeterSharedState
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
 
 import scala.collection.immutable
@@ -38,12 +39,11 @@ import scala.collection.immutable
 private object SdkUpDownCounter {
 
   private final class Backend[
-      F[_]: Monad: Console: AskContext,
+      F[_]: Monad: AskContext,
       A,
       Primitive: Numeric
   ](
       cast: A => Primitive,
-      name: String,
       storage: MetricStorage.Synchronous.Writeable[F, Primitive]
   ) extends UpDownCounter.Backend[F, A] {
     def meta: InstrumentMeta[F] = InstrumentMeta.enabled
@@ -60,18 +60,11 @@ private object SdkUpDownCounter {
     private def record(
         value: Primitive,
         attributes: immutable.Iterable[Attribute[_]]
-    ): F[Unit] = {
-      if (Numeric[Primitive].lt(value, Numeric[Primitive].zero)) {
-        Console[F].println(
-          s"Counters can only increase. Instrument $name has tried to record a negative value."
-        )
-      } else {
-        for {
-          ctx <- Ask[F, Context].ask
-          _ <- storage.record(value, attributes.to(Attributes), ctx)
-        } yield ()
-      }
-    }
+    ): F[Unit] =
+      for {
+        ctx <- Ask[F, Context].ask
+        _ <- storage.record(value, attributes.to(Attributes), ctx)
+      } yield ()
   }
 
   final case class Builder[
@@ -105,7 +98,7 @@ private object SdkUpDownCounter {
             .registerMetricStorage[Long](descriptor)
             .map { storage =>
               UpDownCounter.fromBackend(
-                new Backend[F, A, Long](cast, name, storage)
+                new Backend[F, A, Long](cast, storage)
               )
             }
 
@@ -114,7 +107,7 @@ private object SdkUpDownCounter {
             .registerMetricStorage[Double](descriptor)
             .map { storage =>
               UpDownCounter.fromBackend(
-                new Backend[F, A, Double](cast, name, storage)
+                new Backend[F, A, Double](cast, storage)
               )
             }
       }
