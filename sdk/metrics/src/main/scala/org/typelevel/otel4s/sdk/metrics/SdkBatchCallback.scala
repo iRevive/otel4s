@@ -61,12 +61,9 @@ private class SdkBatchCallback[F[_]: MonadCancelThrow: Console](
     Resource.eval(all).flatMap { sdkMeasurements =>
       NonEmptyList.fromList(sdkMeasurements) match {
         case Some(measurements) =>
-          val cr = new CallbackRegistration(measurements, callback)
-          Resource
-            .make(sharedState.registerCallback(cr)) { _ =>
-              sharedState.removeCallback(cr)
-            }
-            .void
+          sharedState.withCallback(
+            new CallbackRegistration(measurements, callback)
+          )
 
         case None =>
           Resource.unit

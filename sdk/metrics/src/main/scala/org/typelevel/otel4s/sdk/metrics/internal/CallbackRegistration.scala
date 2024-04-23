@@ -18,9 +18,7 @@ package org.typelevel.otel4s.sdk.metrics.internal
 
 import cats.data.NonEmptyList
 import cats.effect.MonadCancelThrow
-import cats.effect.syntax.monadCancel._
 import cats.syntax.applicative._
-import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
 import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader

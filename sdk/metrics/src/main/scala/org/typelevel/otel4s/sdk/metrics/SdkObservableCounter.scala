@@ -87,13 +87,10 @@ private object SdkObservableCounter {
               }
         }
 
-      Resource.eval(makeCallbackRegistration).flatMap { cr =>
-        Resource
-          .make(sharedState.registerCallback(cr))(_ =>
-            sharedState.removeCallback(cr)
-          )
-          .as(new ObservableCounter {})
-      }
+      for {
+        cr <- Resource.eval(makeCallbackRegistration)
+        _ <- sharedState.withCallback(cr)
+      } yield new ObservableCounter {}
     }
 
     def create(

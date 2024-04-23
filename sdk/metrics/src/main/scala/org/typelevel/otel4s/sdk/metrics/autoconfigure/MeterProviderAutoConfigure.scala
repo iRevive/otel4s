@@ -88,7 +88,7 @@ private final class MeterProviderAutoConfigure[
       Resource.pure(logging)
     }*/
     exporters.values.toList.traverse { exporter =>
-      MetricReader.periodic(exporter, 1.minute)
+      MetricReader.periodic(exporter, 1.minute, 30.seconds)
     }
   }
 

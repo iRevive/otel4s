@@ -17,6 +17,7 @@
 package org.typelevel.otel4s.sdk.metrics
 
 import cats.effect.Ref
+import cats.effect.Resource
 import cats.effect.Temporal
 import cats.effect.std.Console
 import cats.effect.std.Mutex
@@ -58,6 +59,15 @@ private[metrics] final class MeterSharedState[
     registries: Map[RegisteredReader[F], MetricStorageRegistry[F]]
 ) {
 
+  /** Creates a metric storage for the given descriptor of a synchronous
+    * instrument.
+    *
+    * @param descriptor
+    *   a descriptor to create a storage for
+    *
+    * @tparam A
+    *   the type of the values to record
+    */
   def registerMetricStorage[A: MeasurementValue: Numeric](
       descriptor: InstrumentDescriptor.Synchronous
   ): F[MetricStorage.Synchronous.Writeable[F, A]] = {
@@ -112,6 +122,15 @@ private[metrics] final class MeterSharedState[
       }
   }
 
+  /** Creates an observable measurement for the given descriptor of an
+    * asynchronous instrument.
+    *
+    * @param descriptor
+    *   a descriptor to create an observable measurement for
+    *
+    * @tparam A
+    *   the type of the values to record
+    */
   def registerObservableMeasurement[A: MeasurementValue: Numeric](
       descriptor: InstrumentDescriptor.Asynchronous
   ): F[SdkObservableMeasurement[F, A]] = {
@@ -164,6 +183,14 @@ private[metrics] final class MeterSharedState[
       }
   }
 
+  /** Collects all metrics.
+    *
+    * @param reader
+    *   the reader to use
+    *
+    * @param collectTimestamp
+    *   the timestamp of the collection
+    */
   def collectAll(
       reader: RegisteredReader[F],
       collectTimestamp: FiniteDuration
@@ -187,10 +214,21 @@ private[metrics] final class MeterSharedState[
       }
     }
 
-  def removeCallback(callback: CallbackRegistration[F]): F[Unit] =
+  /** Registers a callback and removes it from the state upon resource
+    * finalization.
+    *
+    * @param callback
+    *   a callback to register
+    */
+  def withCallback(callback: CallbackRegistration[F]): Resource[F, Unit] =
+    Resource
+      .make(registerCallback(callback))(_ => removeCallback(callback))
+      .void
+
+  private def removeCallback(callback: CallbackRegistration[F]): F[Unit] =
     callbacks.update(_.filter(_ != callback))
 
-  def registerCallback(callback: CallbackRegistration[F]): F[Unit] =
+  private def registerCallback(callback: CallbackRegistration[F]): F[Unit] =
     callbacks.update(_ :+ callback)
 
 }

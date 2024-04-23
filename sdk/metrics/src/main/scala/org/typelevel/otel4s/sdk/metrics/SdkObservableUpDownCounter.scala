@@ -89,13 +89,10 @@ private object SdkObservableUpDownCounter {
               }
         }
 
-      Resource.eval(makeCallbackRegistration).flatMap { cr =>
-        Resource
-          .make(sharedState.registerCallback(cr))(_ =>
-            sharedState.removeCallback(cr)
-          )
-          .as(new ObservableUpDownCounter {})
-      }
+      for {
+        cr <- Resource.eval(makeCallbackRegistration)
+        _ <- sharedState.withCallback(cr)
+      } yield new ObservableUpDownCounter {}
     }
 
     def create(

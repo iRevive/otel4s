@@ -90,10 +90,6 @@ private final class SynchronousStorage[
       window: TimeWindow
   ): F[Option[MetricData]] = {
     val isDelta = aggregationTemporality == AggregationTemporality.Delta
-    val reset = isDelta
-    val getStart =
-      if (isDelta) reader.lastCollectTimestamp
-      else Monad[F].pure(timeWindow.start)
 
     def toMetricData(points: Vector[PointData]): F[Option[MetricData]] =
       if (points.isEmpty)
