@@ -44,9 +44,6 @@ class SdkObservableMeasurementSuite
     extends CatsEffectSuite
     with ScalaCheckEffectSuite {
 
-  override def scalaCheckInitialSeed =
-    "JzbNab7748vUF4-GQunGLyY4VoVp0gqbRVsFf27he_I="
-
   test("log an error when reader is unset") {
     PropF.forAllF(
       Gens.instrumentationScope,
