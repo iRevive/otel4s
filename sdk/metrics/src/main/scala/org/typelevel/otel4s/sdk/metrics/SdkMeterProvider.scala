@@ -67,8 +67,8 @@ private final class SdkMeterProvider[F[_]: Applicative](
   override def toString: String =
     "SdkMeterProvider{" +
       s"resource=$resource, " +
-      s"metricsReads=${readers.map(_.reader).mkString("[", ", ", "]")} " +
-      s"metricsProducers=${producers.mkString("[", ", ", "]")} " +
+      s"metricsReaders=${readers.map(_.reader).mkString("[", ", ", "]")}, " +
+      s"metricsProducers=${producers.mkString("[", ", ", "]")}, " +
       s"views=${views.mkString("[", ", ", "]")}" +
       "}"
 
@@ -108,31 +108,44 @@ object SdkMeterProvider {
       */
     def addResource(resource: TelemetryResource): Builder[F]
 
-    /** Sets an [[ExemplarFilter]] to be used by all metrics.
+    /** Sets an
+      * [[org.typelevel.otel4s.sdk.metrics.exemplar.ExemplarFilter ExemplarFilter]]
+      * to be used by all metrics.
       *
       * @param filter
-      *   the [[ExemplarFilter]] to register
+      *   the
+      *   [[org.typelevel.otel4s.sdk.metrics.exemplar.ExemplarFilter ExemplarFilter]]
+      *   to register
       */
-    def withExemplarFilter(filter: ExemplarFilter): Builder[F]
+    private[metrics] def withExemplarFilter(filter: ExemplarFilter): Builder[F]
 
-    /** Sets a [[TraceContextLookup TraceContextLookup]] to be used by
-      * exemplars.
+    /** Sets a
+      * [[org.typelevel.otel4s.sdk.metrics.exemplar.TraceContextLookup TraceContextLookup]]
+      * to be used by exemplars.
       *
       * @param lookup
-      *   the [[TraceContextLookup]] to use
+      *   the
+      *   [[org.typelevel.otel4s.sdk.metrics.exemplar.TraceContextLookup TraceContextLookup]]
+      *   to use
       */
-    def withTraceContextLookup(lookup: TraceContextLookup): Builder[F]
+    private[metrics] def withTraceContextLookup(
+        lookup: TraceContextLookup
+    ): Builder[F]
 
-    /** Registers a [[View]] for the given [[InstrumentSelector]].
+    /** Registers a [[org.typelevel.otel4s.sdk.metrics.view.View View]] for the
+      * given
+      * [[org.typelevel.otel4s.sdk.metrics.view.InstrumentSelector InstrumentSelector]].
       *
-      * [[View]] affects aggregation and export of the instruments that match
-      * the given `selector`.
+      * `View` affects aggregation and export of the instruments that match the
+      * given `selector`.
       *
       * @param selector
-      *   the [[InstrumentSelector]] to filter instruments with
+      *   the
+      *   [[org.typelevel.otel4s.sdk.metrics.view.InstrumentSelector InstrumentSelector]]
+      *   to filter instruments with
       *
       * @param view
-      *   the [[View]] to register
+      *   the [[org.typelevel.otel4s.sdk.metrics.view.View View]] to register
       */
     def registerView(selector: InstrumentSelector, view: View): Builder[F]
 
@@ -144,7 +157,9 @@ object SdkMeterProvider {
       *   [[org.typelevel.otel4s.sdk.metrics.exporter.MetricReader MetricReader]]
       *   to register
       */
-    def registerMetricReader(reader: MetricReader[F]): Builder[F]
+    private[metrics] def registerMetricReader(
+        reader: MetricReader[F]
+    ): Builder[F]
 
     /** Registers a
       * [[org.typelevel.otel4s.sdk.metrics.exporter.MetricProducer MetricProducer]].
@@ -251,9 +266,7 @@ object SdkMeterProvider {
 
       for {
         now <- Clock[F].realTime
-        readers <- metricReaders.traverse { reader =>
-          RegisteredReader.create(now, reader)
-        }
+        readers <- metricReaders.traverse(r => RegisteredReader.create(now, r))
         registry <- ComponentRegistry.create(s => createMeter(now, s, readers))
         _ <- readers.traverse_(reader => configureReader(registry, reader))
       } yield new SdkMeterProvider(

@@ -101,6 +101,14 @@ private class SdkMeter[F[_]: MonadCancelThrow: Clock: Console: AskContext](
   val batchCallback: BatchCallback[F] =
     new SdkBatchCallback[F](sharedState)
 
+  private[metrics] def collectAll(
+      reader: RegisteredReader[F],
+      collectTimestamp: FiniteDuration
+  ): F[Vector[MetricData]] =
+    sharedState.collectAll(reader, collectTimestamp)
+
+  override def toString: String =
+    s"SdkMeter{instrumentationScope=${sharedState.scope}}"
 }
 
 private object SdkMeter {
