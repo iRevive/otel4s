@@ -92,12 +92,6 @@ private class SdkMeter[F[_]: MonadCancelThrow: Clock: Console: AskContext](
     else
       NoopInstrumentBuilder.observableUpDownCounter(name)
 
-  def collectAll(
-      reader: RegisteredReader[F],
-      collectTimestamp: FiniteDuration
-  ): F[Vector[MetricData]] =
-    sharedState.collectAll(reader, collectTimestamp)
-
   val batchCallback: BatchCallback[F] =
     new SdkBatchCallback[F](sharedState)
 
