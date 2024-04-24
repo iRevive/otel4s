@@ -47,14 +47,14 @@ private class SdkBatchCallback[F[_]: MonadCancelThrow: Console](
         case _: SdkObservableMeasurement[F, _] =>
           Console[F]
             .errorln(
-              "BatchCallback called with instruments that belong to a different Meter."
+              "SdkBatchCallback: called with instruments that belong to a different Meter."
             )
             .as(Nil)
 
         case _ =>
           Console[F]
             .errorln(
-              "BatchCallback called with instruments that were not created by the SDK."
+              "SdkBatchCallback: called with instruments that were not created by the SDK."
             )
             .as(Nil)
       }
@@ -71,4 +71,5 @@ private class SdkBatchCallback[F[_]: MonadCancelThrow: Console](
       }
     }
   }
+
 }
