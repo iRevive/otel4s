@@ -35,6 +35,11 @@ import org.typelevel.otel4s.sdk.metrics.internal.exporter.RegisteredReader
 
 import scala.concurrent.duration.FiniteDuration
 
+/** The meter is responsible for creating instruments.
+  *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/metrics/api/#meter]]
+  */
 private class SdkMeter[F[_]: MonadCancelThrow: Clock: Console: AskContext](
     sharedState: MeterSharedState[F]
 ) extends Meter[F] {
@@ -42,7 +47,7 @@ private class SdkMeter[F[_]: MonadCancelThrow: Clock: Console: AskContext](
   def counter[A: MeasurementValue](
       name: String
   ): Counter.Builder[F, A] =
-    if (isValidName(name))
+    if (SdkMeter.isValidName(name))
       SdkCounter.Builder(name, sharedState)
     else
       NoopInstrumentBuilder.counter(name)
@@ -50,7 +55,7 @@ private class SdkMeter[F[_]: MonadCancelThrow: Clock: Console: AskContext](
   def histogram[A: MeasurementValue](
       name: String
   ): Histogram.Builder[F, A] =
-    if (isValidName(name))
+    if (SdkMeter.isValidName(name))
       SdkHistogram.Builder(name, sharedState)
     else
       NoopInstrumentBuilder.histogram(name)
@@ -58,7 +63,7 @@ private class SdkMeter[F[_]: MonadCancelThrow: Clock: Console: AskContext](
   def upDownCounter[A: MeasurementValue](
       name: String
   ): UpDownCounter.Builder[F, A] =
-    if (isValidName(name))
+    if (SdkMeter.isValidName(name))
       SdkUpDownCounter.Builder(name, sharedState)
     else
       NoopInstrumentBuilder.upDownCounter(name)
@@ -66,7 +71,7 @@ private class SdkMeter[F[_]: MonadCancelThrow: Clock: Console: AskContext](
   def observableGauge[A: MeasurementValue](
       name: String
   ): ObservableGauge.Builder[F, A] =
-    if (isValidName(name))
+    if (SdkMeter.isValidName(name))
       SdkObservableGauge.Builder(name, sharedState)
     else
       NoopInstrumentBuilder.observableGauge(name)
@@ -74,7 +79,7 @@ private class SdkMeter[F[_]: MonadCancelThrow: Clock: Console: AskContext](
   def observableCounter[A: MeasurementValue](
       name: String
   ): ObservableCounter.Builder[F, A] =
-    if (isValidName(name))
+    if (SdkMeter.isValidName(name))
       SdkObservableCounter.Builder(name, sharedState)
     else
       NoopInstrumentBuilder.observableCounter(name)
@@ -82,7 +87,7 @@ private class SdkMeter[F[_]: MonadCancelThrow: Clock: Console: AskContext](
   def observableUpDownCounter[A: MeasurementValue](
       name: String
   ): ObservableUpDownCounter.Builder[F, A] =
-    if (isValidName(name))
+    if (SdkMeter.isValidName(name))
       SdkObservableUpDownCounter.Builder(name, sharedState)
     else
       NoopInstrumentBuilder.observableUpDownCounter(name)
@@ -102,7 +107,11 @@ private class SdkMeter[F[_]: MonadCancelThrow: Clock: Console: AskContext](
 
 object SdkMeter {
 
+  // see https://opentelemetry.io/docs/specs/otel/metrics/api/#instrument-name-syntax
   private val InstrumentNamePattern =
     "([A-Za-z]){1}([A-Za-z0-9\\_\\-\\./]){0,254}".r
+
+  private def isValidName(name: String): Boolean =
+    name != null && SdkMeter.InstrumentNamePattern.matches(name)
 
 }
