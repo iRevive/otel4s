@@ -103,11 +103,11 @@ private class SdkMeter[F[_]: MonadCancelThrow: Clock: Console: AskContext](
 
 }
 
-object SdkMeter {
+private object SdkMeter {
 
   // see https://opentelemetry.io/docs/specs/otel/metrics/api/#instrument-name-syntax
   private val InstrumentNamePattern =
-    "([A-Za-z]){1}([A-Za-z0-9\\_\\-\\./]){0,254}".r
+    "([A-Za-z]){1}([A-Za-z0-9_\\-./]){0,254}".r
 
   private def isValidName(name: String): Boolean =
     name != null && SdkMeter.InstrumentNamePattern.matches(name)
