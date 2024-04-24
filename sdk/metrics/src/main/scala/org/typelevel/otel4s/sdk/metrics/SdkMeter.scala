@@ -101,8 +101,6 @@ private class SdkMeter[F[_]: MonadCancelThrow: Clock: Console: AskContext](
   val batchCallback: BatchCallback[F] =
     new SdkBatchCallback[F](sharedState)
 
-  private def isValidName(name: String): Boolean =
-    name != null && SdkMeter.InstrumentNamePattern.matches(name)
 }
 
 object SdkMeter {
