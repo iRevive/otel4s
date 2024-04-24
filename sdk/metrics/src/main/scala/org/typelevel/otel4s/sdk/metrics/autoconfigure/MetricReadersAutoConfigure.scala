@@ -107,7 +107,7 @@ private final class MetricReadersAutoConfigure[F[_]: Temporal: Console](
 
 }
 
-object MetricReadersAutoConfigure {
+private[sdk] object MetricReadersAutoConfigure {
 
   private object ConfigKeys {
     val ExportInterval: Config.Key[FiniteDuration] =

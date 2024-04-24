@@ -402,10 +402,8 @@ object OpenTelemetrySdk {
               propagatorsConfigure.configure(config).flatMap { propagators =>
                 val meterProviderConfigure = MeterProviderAutoConfigure[F](
                   resource,
-                  merge(
-                    (a, _) => a.withTraceContextLookup(traceContextLookup),
-                    meterProviderCustomizer
-                  ),
+                  traceContextLookup,
+                  meterProviderCustomizer,
                   metricExporterConfigurers
                 )
 
