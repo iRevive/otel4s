@@ -26,9 +26,22 @@ import cats.syntax.functor._
 import org.typelevel.otel4s.sdk.autoconfigure.AutoConfigure
 import org.typelevel.otel4s.sdk.autoconfigure.Config
 import org.typelevel.otel4s.sdk.autoconfigure.ConfigurationError
+import org.typelevel.otel4s.sdk.metrics.exporter.ConsoleMetricExporter
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricExporter
 
-class MetricExportersAutoConfigure[F[_]: MonadThrow: Console](
+/** Autoconfigures [[MetricExporter]]s.
+  *
+  * The configuration options:
+  * {{{
+  * | System property       | Environment variable  | Description                                                                                 |
+  * |-----------------------|-----------------------|---------------------------------------------------------------------------------------------|
+  * | otel.metrics.exporter | OTEL_METRICS_EXPORTER | The exporters to use. Use a comma-separated list for multiple exporters. Default is `otlp`. |
+  * }}}
+  *
+  * @see
+  *   [[https://github.com/open-telemetry/opentelemetry-java/blob/main/sdk-extensions/autoconfigure/README.md#metric-exporters]]
+  */
+private final class MetricExportersAutoConfigure[F[_]: MonadThrow: Console](
     extra: Set[AutoConfigure.Named[F, MetricExporter[F]]]
 ) extends AutoConfigure.WithHint[F, Map[String, MetricExporter[F]]](
       "MetricExporters",
@@ -40,8 +53,8 @@ class MetricExportersAutoConfigure[F[_]: MonadThrow: Console](
 
   private val configurers = {
     val default: Set[AutoConfigure.Named[F, MetricExporter[F]]] = Set(
-      AutoConfigure.Named.const(Const.NoneExporter, MetricExporter.noop[F]) /*,
-      AutoConfigure.Named.const(Const.LoggingExporter, LoggingMetricExporter[F])*/
+      AutoConfigure.Named.const(Const.NoneExporter, MetricExporter.noop[F]),
+      AutoConfigure.Named.const(Const.ConsoleExporter, ConsoleMetricExporter[F])
     )
 
     default ++ extra
@@ -97,7 +110,7 @@ class MetricExportersAutoConfigure[F[_]: MonadThrow: Console](
          |
          |libraryDependencies += "org.typelevel" %%% "otel4s-sdk-exporter" % "x.x.x"
          |
-         |and register the configurer:
+         |and register the configurer via OpenTelemetrySdk:
          |
          |import org.typelevel.otel4s.sdk.OpenTelemetrySdk
          |import org.typelevel.otel4s.sdk.exporter.otlp.metrics.autoconfigure.OtlpMetricExporterAutoConfigure
@@ -105,13 +118,22 @@ class MetricExportersAutoConfigure[F[_]: MonadThrow: Console](
          |OpenTelemetrySdk.autoConfigured[IO](
          |  _.addMetricExporterConfigurer(OtlpMetricExporterAutoConfigure[IO])
          |)
+         |
+         |or via SdkMetrics:
+         |
+         |import org.typelevel.otel4s.sdk.metrics.SdkMetrics
+         |import org.typelevel.otel4s.sdk.exporter.otlp.metrics.autoconfigure.OtlpMetricExporterAutoConfigure
+         |
+         |SdkMetrics.autoConfigured[IO](
+         |  _.addExporterConfigurer(OtlpMetricExporterAutoConfigure[IO])
+         |)
          |""".stripMargin
     )
   }
 
 }
 
-object MetricExportersAutoConfigure {
+private[sdk] object MetricExportersAutoConfigure {
 
   private object ConfigKeys {
     val Exporter: Config.Key[Set[String]] = Config.Key("otel.metrics.exporter")
@@ -122,9 +144,24 @@ object MetricExportersAutoConfigure {
   private[metrics] object Const {
     val OtlpExporter = "otlp"
     val NoneExporter = "none"
-    // val LoggingExporter = "logging"
+    val ConsoleExporter = "console"
   }
 
+  /** Autoconfigures [[MetricExporter]]s.
+    *
+    * The configuration options:
+    * {{{
+    * | System property       | Environment variable  | Description                                                                                 |
+    * |-----------------------|-----------------------|---------------------------------------------------------------------------------------------|
+    * | otel.metrics.exporter | OTEL_METRICS_EXPORTER | The exporters to use. Use a comma-separated list for multiple exporters. Default is `otlp`. |
+    * }}}
+    *
+    * @see
+    *   [[https://github.com/open-telemetry/opentelemetry-java/blob/main/sdk-extensions/autoconfigure/README.md#metric-exporters]]
+    *
+    * @param configurers
+    *   the configurers to use
+    */
   def apply[F[_]: MonadThrow: Console](
       configurers: Set[AutoConfigure.Named[F, MetricExporter[F]]]
   ): AutoConfigure[F, Map[String, MetricExporter[F]]] =
