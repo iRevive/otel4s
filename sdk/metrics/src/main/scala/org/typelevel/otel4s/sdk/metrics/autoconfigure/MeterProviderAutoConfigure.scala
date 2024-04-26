@@ -24,16 +24,36 @@ import org.typelevel.otel4s.metrics.MeterProvider
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.autoconfigure.AutoConfigure
 import org.typelevel.otel4s.sdk.autoconfigure.Config
-import org.typelevel.otel4s.sdk.autoconfigure.ConfigurationError
 import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.metrics.SdkMeterProvider
 import org.typelevel.otel4s.sdk.metrics.autoconfigure.MeterProviderAutoConfigure.Customizer
-import org.typelevel.otel4s.sdk.metrics.exemplar.ExemplarFilter
 import org.typelevel.otel4s.sdk.metrics.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricExporter
 
-import java.util.Locale
-
+/** Autoconfigures [[org.typelevel.otel4s.metrics.MeterProvider MeterProvider]].
+  *
+  * @see
+  *   [[MetricReadersAutoConfigure]]
+  *
+  * @see
+  *   [[MetricExportersAutoConfigure]]
+  *
+  * @see
+  *   [[ExemplarFilterAutoConfigure]]
+  *
+  * @param resource
+  *   the resource to use
+  *
+  * @param traceContextLookup
+  *   used by the exemplar reservoir to extract tracing information from the
+  *   context
+  *
+  * @param customizer
+  *   the function to customize the builder
+  *
+  * @param exporterConfigurers
+  *   the extra exporter configurers
+  */
 private final class MeterProviderAutoConfigure[
     F[_]: Temporal: Random: Console: AskContext
 ](
@@ -43,23 +63,13 @@ private final class MeterProviderAutoConfigure[
     exporterConfigurers: Set[AutoConfigure.Named[F, MetricExporter[F]]]
 ) extends AutoConfigure.WithHint[F, MeterProvider[F]](
       "MeterProvider",
-      MeterProviderAutoConfigure.ConfigKeys.All
+      Set.empty
     ) {
 
-  import MeterProviderAutoConfigure.ConfigKeys
-  import MeterProviderAutoConfigure.Defaults
-
-  private val exemplarFilterConfigurer
-      : Set[AutoConfigure.Named[F, ExemplarFilter]] = Set(
-    AutoConfigure.Named.const("always_on", ExemplarFilter.alwaysOn),
-    AutoConfigure.Named.const("always_off", ExemplarFilter.alwaysOff),
-    AutoConfigure.Named.const(
-      "trace_based",
-      ExemplarFilter.traceBased(traceContextLookup)
-    )
-  )
-
   protected def fromConfig(config: Config): Resource[F, MeterProvider[F]] = {
+    val exemplarFilterAutoConfigure =
+      ExemplarFilterAutoConfigure[F](traceContextLookup)
+
     val exportersAutoConfigure =
       MetricExportersAutoConfigure[F](exporterConfigurers)
 
@@ -67,7 +77,7 @@ private final class MeterProviderAutoConfigure[
       MetricReadersAutoConfigure[F](exporters)
 
     for {
-      filter <- exemplarFilter(config)
+      exemplarFilter <- exemplarFilterAutoConfigure.configure(config)
       exporters <- exportersAutoConfigure.configure(config)
       readers <- readersAutoConfigure(exporters.values.toSet).configure(config)
 
@@ -75,7 +85,7 @@ private final class MeterProviderAutoConfigure[
         val builder = SdkMeterProvider
           .builder[F]
           .withResource(resource)
-          .withExemplarFilter(filter)
+          .withExemplarFilter(exemplarFilter)
           .withTraceContextLookup(traceContextLookup)
 
         readers.foldLeft(builder)(_.registerMetricReader(_))
@@ -85,45 +95,9 @@ private final class MeterProviderAutoConfigure[
     } yield provider
   }
 
-  private def exemplarFilter(config: Config): Resource[F, ExemplarFilter] = {
-    val value = config
-      .getOrElse(ConfigKeys.ExemplarFilter, Defaults.ExemplarFilter)
-      .map(_.toLowerCase(Locale.ROOT))
-
-    value match {
-      case Right(name) =>
-        exemplarFilterConfigurer.find(_.name == name) match {
-          case Some(configure) =>
-            configure.configure(config)
-
-          case None =>
-            Resource.raiseError(
-              ConfigurationError.unrecognized(
-                ConfigKeys.ExemplarFilter.name,
-                name,
-                exemplarFilterConfigurer.map(_.name)
-              ): Throwable
-            )
-        }
-
-      case Left(error) =>
-        Resource.raiseError(error: Throwable)
-    }
-  }
 }
 
 private[sdk] object MeterProviderAutoConfigure {
-
-  private object ConfigKeys {
-    val ExemplarFilter: Config.Key[String] =
-      Config.Key("otel.metrics.exemplar.filter")
-
-    val All: Set[Config.Key[_]] = Set(ExemplarFilter)
-  }
-
-  private object Defaults {
-    val ExemplarFilter: String = "trace_based"
-  }
 
   type Customizer[A] = (A, Config) => A
 
@@ -131,10 +105,20 @@ private[sdk] object MeterProviderAutoConfigure {
     * [[org.typelevel.otel4s.metrics.MeterProvider MeterProvider]].
     *
     * @see
+    *   [[MetricReadersAutoConfigure]]
+    *
+    * @see
     *   [[MetricExportersAutoConfigure]]
+    *
+    * @see
+    *   [[ExemplarFilterAutoConfigure]]
     *
     * @param resource
     *   the resource to use
+    *
+    * @param traceContextLookup
+    *   used by the exemplar reservoir to extract tracing information from the
+    *   context
     *
     * @param meterProviderBuilderCustomizer
     *   the function to customize the builder
