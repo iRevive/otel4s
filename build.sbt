@@ -224,7 +224,6 @@ lazy val `sdk-common` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
 
 lazy val `sdk-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
-  .enablePlugins(NoPublishPlugin)
   .in(file("sdk/metrics"))
   .dependsOn(`sdk-common` % "compile->compile;test->test", `core-metrics`)
   .settings(
@@ -245,7 +244,6 @@ lazy val `sdk-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
 lazy val `sdk-metrics-testkit` =
   crossProject(JVMPlatform, JSPlatform, NativePlatform)
     .crossType(CrossType.Pure)
-    .enablePlugins(NoPublishPlugin)
     .in(file("sdk/metrics-testkit"))
     .dependsOn(`sdk-metrics`)
     .settings(
@@ -288,7 +286,6 @@ lazy val `sdk-trace-testkit` =
 
 lazy val `sdk-testkit` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
-  .enablePlugins(NoPublishPlugin)
   .in(file("sdk/testkit"))
   .dependsOn(core, `sdk-metrics-testkit`, `sdk-trace-testkit`)
   .settings(
