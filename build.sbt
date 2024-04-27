@@ -45,7 +45,8 @@ val CatsVersion = "2.10.0"
 val CatsEffectVersion = "3.5.4"
 val CatsMtlVersion = "1.4.0"
 val FS2Version = "3.10.2"
-val MUnitVersion = "1.0.0-M11"
+val MUnitVersion = "1.0.0-RC1"
+val MUnitScalaCheckVersion = "1.0.0-M11"
 val MUnitCatsEffectVersion = "2.0.0-M5"
 val MUnitDisciplineVersion = "2.0.0-M3"
 val MUnitScalaCheckEffectVersion = "2.0.0-M2"
@@ -60,7 +61,7 @@ val PlatformVersion = "1.0.2"
 val ScodecVersion = "1.1.38"
 val VaultVersion = "3.5.0"
 val Http4sVersion = "0.23.26"
-val CirceVersion = "0.14.6"
+val CirceVersion = "0.14.7"
 val EpollcatVersion = "0.1.6"
 val ScalaPBCirceVersion = "0.15.1"
 val CaseInsensitiveVersion = "1.4.0"
@@ -75,7 +76,7 @@ lazy val scalaReflectDependency = Def.settings(
 lazy val munitDependencies = Def.settings(
   libraryDependencies ++= Seq(
     "org.scalameta" %%% "munit" % MUnitVersion % Test,
-    "org.scalameta" %%% "munit-scalacheck" % MUnitVersion % Test,
+    "org.scalameta" %%% "munit-scalacheck" % MUnitScalaCheckVersion % Test,
     "org.typelevel" %%% "munit-cats-effect" % MUnitCatsEffectVersion % Test
   )
 )
@@ -97,8 +98,10 @@ lazy val root = tlCrossRootProject
     core,
     `sdk-common`,
     `sdk-metrics`,
+    `sdk-metrics-testkit`,
     `sdk-trace`,
     `sdk-trace-testkit`,
+    `sdk-testkit`,
     sdk,
     `sdk-exporter-common`,
     `sdk-exporter-proto`,
@@ -232,13 +235,24 @@ lazy val `sdk-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "org.scodec" %%% "scodec-bits" % ScodecVersion,
       "org.typelevel" %%% "case-insensitive" % CaseInsensitiveVersion,
       "org.typelevel" %%% "cats-laws" % CatsVersion % Test,
-      "org.typelevel" %%% "cats-effect-testkit" % CatsEffectVersion % Test,
       "org.typelevel" %%% "discipline-munit" % MUnitDisciplineVersion % Test,
       "org.typelevel" %%% "scalacheck-effect-munit" % MUnitScalaCheckEffectVersion % Test
     )
   )
   .settings(munitDependencies)
   .settings(scalafixSettings)
+
+lazy val `sdk-metrics-testkit` =
+  crossProject(JVMPlatform, JSPlatform, NativePlatform)
+    .crossType(CrossType.Pure)
+    .enablePlugins(NoPublishPlugin)
+    .in(file("sdk/metrics-testkit"))
+    .dependsOn(`sdk-metrics`)
+    .settings(
+      name := "otel4s-sdk-metrics-testkit",
+      startYear := Some(2024)
+    )
+    .settings(scalafixSettings)
 
 lazy val `sdk-trace` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
@@ -272,15 +286,26 @@ lazy val `sdk-trace-testkit` =
     )
     .settings(scalafixSettings)
 
+lazy val `sdk-testkit` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
+  .crossType(CrossType.Pure)
+  .enablePlugins(NoPublishPlugin)
+  .in(file("sdk/testkit"))
+  .dependsOn(core, `sdk-metrics-testkit`, `sdk-trace-testkit`)
+  .settings(
+    name := "otel4s-sdk-testkit",
+    startYear := Some(2024)
+  )
+  .settings(scalafixSettings)
+
 lazy val sdk = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
   .in(file("sdk/all"))
   .dependsOn(
     core,
     `sdk-common`,
+    `sdk-metrics`,
     `sdk-trace` % "compile->compile;test->test",
-    `sdk-trace-testkit` % Test,
-    `sdk-metrics`
+    `sdk-trace-testkit` % Test
   )
   .settings(
     name := "otel4s-sdk"
@@ -344,7 +369,7 @@ lazy val `sdk-exporter-metrics` =
   crossProject(JVMPlatform, JSPlatform, NativePlatform)
     .crossType(CrossType.Pure)
     .in(file("sdk-exporter/metrics"))
-    .enablePlugins(NoPublishPlugin/*, DockerComposeEnvPlugin*/)
+    .enablePlugins(NoPublishPlugin, DockerComposeEnvPlugin)
     .dependsOn(
       `sdk-exporter-common` % "compile->compile;test->test",
       `sdk-metrics` % "compile->compile;test->test"
@@ -352,7 +377,7 @@ lazy val `sdk-exporter-metrics` =
     .settings(
       name := "otel4s-sdk-exporter-metrics",
       startYear := Some(2024),
-      // dockerComposeEnvFile := crossProjectBaseDirectory.value / "docker" / "docker-compose.yml"
+      dockerComposeEnvFile := crossProjectBaseDirectory.value / "docker" / "docker-compose.yml"
     )
     .jsSettings(scalaJSLinkerSettings)
     .nativeEnablePlugins(ScalaNativeBrewedConfigPlugin)
@@ -372,7 +397,11 @@ lazy val `sdk-exporter-trace` =
     .settings(
       name := "otel4s-sdk-exporter-trace",
       startYear := Some(2023),
-      dockerComposeEnvFile := crossProjectBaseDirectory.value / "docker" / "docker-compose.yml"
+      dockerComposeEnvFile := crossProjectBaseDirectory.value / "docker" / "docker-compose.yml",
+      Test / scalacOptions ++= {
+        // see https://github.com/circe/circe/issues/2162
+        if (tlIsScala3.value) Seq("-Xmax-inlines", "64") else Nil
+      }
     )
     .jsSettings(scalaJSLinkerSettings)
     .nativeEnablePlugins(ScalaNativeBrewedConfigPlugin)
@@ -660,8 +689,10 @@ lazy val unidocs = project
       core.jvm,
       `sdk-common`.jvm,
       `sdk-metrics`.jvm,
+      `sdk-metrics-testkit`.jvm,
       `sdk-trace`.jvm,
       `sdk-trace-testkit`.jvm,
+      `sdk-testkit`.jvm,
       sdk.jvm,
       `sdk-exporter-common`.jvm,
       `sdk-exporter-metrics`.jvm,

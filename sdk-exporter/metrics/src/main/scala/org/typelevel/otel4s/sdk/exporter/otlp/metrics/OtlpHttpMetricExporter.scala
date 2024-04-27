@@ -27,11 +27,9 @@ import fs2.compression.Compression
 import fs2.io.net.Network
 import fs2.io.net.tls.TLSContext
 import org.http4s.Headers
-import org.http4s.ProductId
 import org.http4s.Uri
-import org.http4s.headers.`User-Agent`
+import org.http4s.client.Client
 import org.http4s.syntax.literals._
-import org.typelevel.otel4s.sdk.BuildInfo
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.exporter.AggregationSelector
 import org.typelevel.otel4s.sdk.metrics.exporter.AggregationTemporalitySelector
@@ -40,7 +38,7 @@ import org.typelevel.otel4s.sdk.metrics.exporter.MetricExporter
 
 import scala.concurrent.duration._
 
-/** Exports spans via HTTP. Support `json` and `protobuf` encoding.
+/** Exports metrics via HTTP. Support `json` and `protobuf` encoding.
   *
   * @see
   *   [[https://opentelemetry.io/docs/specs/otel/protocol/exporter/]]
@@ -53,24 +51,21 @@ private final class OtlpHttpMetricExporter[F[_]: Applicative] private (
     val aggregationTemporalitySelector: AggregationTemporalitySelector,
     val defaultAggregationSelector: AggregationSelector,
     val defaultCardinalityLimitSelector: CardinalityLimitSelector
-) extends MetricExporter[F] {
-
+) extends MetricExporter.Push[F] {
   val name: String = s"OtlpHttpMetricExporter{client=$client}"
 
   def exportMetrics[G[_]: Foldable](metrics: G[MetricData]): F[Unit] =
     client.doExport(metrics)
 
   def flush: F[Unit] = Applicative[F].unit
-
 }
 
 object OtlpHttpMetricExporter {
 
-  private object Defaults {
+  private[otlp] object Defaults {
     val Endpoint: Uri = uri"http://localhost:4318/v1/metrics"
     val Timeout: FiniteDuration = 10.seconds
     val GzipCompression: Boolean = false
-    val UserAgentName: String = "OTel-OTLP-Exporter-Scala-Otel4s"
   }
 
   /** A builder of [[OtlpHttpMetricExporter]] */
@@ -120,22 +115,54 @@ object OtlpHttpMetricExporter {
       */
     def withEncoding(encoding: HttpPayloadEncoding): Builder[F]
 
+    /** Sets the aggregation temporality selector to use.
+      *
+      * Default selector is
+      * [[org.typelevel.otel4s.sdk.metrics.exporter.AggregationTemporalitySelector.alwaysCumulative AggregationTemporalitySelector.alwaysCumulative]].
+      */
     def withAggregationTemporalitySelector(
         selector: AggregationTemporalitySelector
     ): Builder[F]
 
+    /** Sets the default aggregation selector to use.
+      *
+      * If no views are configured for a metric instrument, an aggregation
+      * provided by the selector will be used.
+      *
+      * Default selector is
+      * [[org.typelevel.otel4s.sdk.metrics.exporter.AggregationSelector.default AggregationSelector.default]].
+      */
     def withDefaultAggregationSelector(
         selector: AggregationSelector
     ): Builder[F]
 
+    /** Sets the default cardinality limit selector to use.
+      *
+      * If no views are configured for a metric instrument, a limit provided by
+      * the selector will be used.
+      *
+      * Default selector is
+      * [[org.typelevel.otel4s.sdk.metrics.exporter.CardinalityLimitSelector.default CardinalityLimitSelector.default]].
+      */
     def withDefaultCardinalityLimitSelector(
         selector: CardinalityLimitSelector
     ): Builder[F]
 
+    /** Configures the exporter to use the given client.
+      *
+      * @note
+      *   the 'timeout' and 'tlsContext' settings will be ignored. You must
+      *   preconfigure the client manually.
+      *
+      * @param client
+      *   the custom http4s client to use
+      */
+    def withClient(client: Client[F]): Builder[F]
+
     /** Creates a [[OtlpHttpMetricExporter]] using the configuration of this
       * builder.
       */
-    def build: Resource[F, MetricExporter[F]]
+    def build: Resource[F, MetricExporter.Push[F]]
   }
 
   /** Creates a [[Builder]] of [[OtlpHttpMetricExporter]] with the default
@@ -152,17 +179,14 @@ object OtlpHttpMetricExporter {
       endpoint = Defaults.Endpoint,
       gzipCompression = Defaults.GzipCompression,
       timeout = Defaults.Timeout,
-      headers = Headers(
-        `User-Agent`(
-          ProductId(Defaults.UserAgentName, version = Some(BuildInfo.version))
-        )
-      ),
+      headers = Headers.empty,
       retryPolicy = RetryPolicy.default,
       aggregationTemporalitySelector =
         AggregationTemporalitySelector.alwaysCumulative,
       defaultAggregationSelector = AggregationSelector.default,
       defaultCardinalityLimitSelector = CardinalityLimitSelector.default,
-      tlsContext = None
+      tlsContext = None,
+      client = None
     )
 
   private final case class BuilderImpl[
@@ -177,7 +201,8 @@ object OtlpHttpMetricExporter {
       aggregationTemporalitySelector: AggregationTemporalitySelector,
       defaultAggregationSelector: AggregationSelector,
       defaultCardinalityLimitSelector: CardinalityLimitSelector,
-      tlsContext: Option[TLSContext[F]]
+      tlsContext: Option[TLSContext[F]],
+      client: Option[Client[F]]
   ) extends Builder[F] {
 
     def withTimeout(timeout: FiniteDuration): Builder[F] =
@@ -219,7 +244,10 @@ object OtlpHttpMetricExporter {
     ): Builder[F] =
       copy(defaultCardinalityLimitSelector = selector)
 
-    def build: Resource[F, MetricExporter[F]] = {
+    def withClient(client: Client[F]): Builder[F] =
+      copy(client = Some(client))
+
+    def build: Resource[F, MetricExporter.Push[F]] = {
       import MetricsProtoEncoder.exportMetricsRequest
       import MetricsProtoEncoder.jsonPrinter
 
@@ -232,7 +260,7 @@ object OtlpHttpMetricExporter {
           gzipCompression,
           retryPolicy,
           tlsContext,
-          None
+          client
         )
       } yield new OtlpHttpMetricExporter[F](
         client,

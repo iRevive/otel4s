@@ -149,7 +149,7 @@ object SdkMetrics {
         * import org.typelevel.otel4s.sdk.metrics.SdkMetrics
         * import org.typelevel.otel4s.sdk.exporter.otlp.metric.autoconfigure.OtlpMetricExporterAutoConfigure
         *
-        * SdkMetrics.autoConfigured[IO](_.addExporterConfigurer(OtlpSpanExporterAutoConfigure[IO]))
+        * SdkMetrics.autoConfigured[IO](_.addExporterConfigurer(OtlpMetricExporterAutoConfigure[IO]))
         *   }}}
         *
         * @param configurer
@@ -230,7 +230,7 @@ object SdkMetrics {
               .println(
                 s"SdkMetrics: the '${CommonConfigKeys.SdkDisabled}' set to 'true'. Using no-op implementation"
               )
-              .as(SdkMetrics.noop[F](Async[F]))
+              .as(SdkMetrics.noop[F])
           )
 
         def loadMetrics(
