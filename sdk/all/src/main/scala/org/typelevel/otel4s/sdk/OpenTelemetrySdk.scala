@@ -30,13 +30,11 @@ import org.typelevel.otel4s.context.LocalProvider
 import org.typelevel.otel4s.context.propagation.ContextPropagators
 import org.typelevel.otel4s.context.propagation.TextMapPropagator
 import org.typelevel.otel4s.metrics.MeterProvider
-import org.typelevel.otel4s.sdk.autoconfigure.{
-  AutoConfigure,
-  CommonConfigKeys,
-  Config,
-  ExporterAutoConfigure,
-  TelemetryResourceAutoConfigure
-}
+import org.typelevel.otel4s.sdk.autoconfigure.AutoConfigure
+import org.typelevel.otel4s.sdk.autoconfigure.CommonConfigKeys
+import org.typelevel.otel4s.sdk.autoconfigure.Config
+import org.typelevel.otel4s.sdk.autoconfigure.ExporterAutoConfigure
+import org.typelevel.otel4s.sdk.autoconfigure.TelemetryResourceAutoConfigure
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.context.LocalContext
 import org.typelevel.otel4s.sdk.context.LocalContextProvider

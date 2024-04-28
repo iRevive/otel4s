@@ -27,10 +27,8 @@ import org.http4s.client.Client
 import org.typelevel.otel4s.sdk.autoconfigure.AutoConfigure
 import org.typelevel.otel4s.sdk.autoconfigure.Config
 import org.typelevel.otel4s.sdk.exporter.otlp.Protocol
-import org.typelevel.otel4s.sdk.exporter.otlp.autoconfigure.{
-  OtlpHttpClientAutoConfigure,
-  ProtocolAutoConfigure
-}
+import org.typelevel.otel4s.sdk.exporter.otlp.autoconfigure.OtlpHttpClientAutoConfigure
+import org.typelevel.otel4s.sdk.exporter.otlp.autoconfigure.ProtocolAutoConfigure
 import org.typelevel.otel4s.sdk.trace.data.SpanData
 import org.typelevel.otel4s.sdk.trace.exporter.SpanExporter
 
