@@ -1,0 +1,145 @@
+package org.typelevel.otel4s.sdk.exporter.otlp
+package autoconfigure
+
+import cats.MonadThrow
+import cats.effect.Resource
+import org.typelevel.otel4s.sdk.autoconfigure.{
+  AutoConfigure,
+  Config,
+  ConfigurationError
+}
+
+/** Autoconfigures OTLP
+  * [[org.typelevel.otel4s.sdk.exporter.otlp.Protocol Protocol]].
+  *
+  * The general configuration options:
+  * {{{
+  * | System property             | Environment variable        | Description                                                                                                 |
+  * |-----------------------------|-----------------------------|-------------------------------------------------------------------------------------------------------------|
+  * | otel.exporter.otlp.protocol | OTEL_EXPORTER_OTLP_PROTOCOL | The transport protocol to use. Options include `http/protobuf` and `http/json`. Default is `http/protobuf`. |
+  * }}}
+  *
+  * The metrics-specific configuration options:
+  * {{{
+  * | System property                     | Environment variable                | Description                                                                                                 |
+  * |-------------------------------------|-------------------------------------|-------------------------------------------------------------------------------------------------------------|
+  * | otel.exporter.otlp.metrics.protocol | OTEL_EXPORTER_OTLP_METRICS_PROTOCOL | The transport protocol to use. Options include `http/protobuf` and `http/json`. Default is `http/protobuf`. |
+  * }}}
+  *
+  * The traces-specific configuration options:
+  * {{{
+  * | System property                    | Environment variable               | Description                                                                                                 |
+  * |------------------------------------|------------------------------------|-------------------------------------------------------------------------------------------------------------|
+  * | otel.exporter.otlp.traces.protocol | OTEL_EXPORTER_OTLP_TRACES_PROTOCOL | The transport protocol to use. Options include `http/protobuf` and `http/json`. Default is `http/protobuf`. |
+  * }}}
+  *
+  * @see
+  *   [[https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/#otel_exporter_otlp_protocol]]
+  */
+private final class ProtocolAutoConfigure[F[_]: MonadThrow](
+    targetSpecificKey: Config.Key[Protocol]
+) extends AutoConfigure.WithHint[F, Protocol](
+      "Protocol",
+      Set(ProtocolAutoConfigure.ConfigKeys.GeneralProtocol, targetSpecificKey)
+    ) {
+
+  import ProtocolAutoConfigure.ConfigKeys
+  import ProtocolAutoConfigure.Defaults
+
+  protected def fromConfig(config: Config): Resource[F, Protocol] = {
+    val protocol = config
+      .get(targetSpecificKey)
+      .flatMap {
+        case Some(value) =>
+          Right(value)
+
+        case None =>
+          config.getOrElse(ConfigKeys.GeneralProtocol, Defaults.OtlpProtocol)
+      }
+
+    Resource.eval(MonadThrow[F].fromEither(protocol))
+  }
+
+  private implicit val protocolReader: Config.Reader[Protocol] =
+    Config.Reader.decodeWithHint("Protocol") { s =>
+      s.trim.toLowerCase match {
+        case "http/json" =>
+          Right(Protocol.Http(HttpPayloadEncoding.Json))
+
+        case "http/protobuf" =>
+          Right(Protocol.Http(HttpPayloadEncoding.Protobuf))
+
+        case _ =>
+          Left(
+            ConfigurationError(
+              s"Unrecognized protocol [$s]. Supported options [http/json, http/protobuf]"
+            )
+          )
+      }
+    }
+
+}
+
+private[exporter] object ProtocolAutoConfigure {
+
+  private object ConfigKeys {
+    val GeneralProtocol: Config.Key[Protocol] =
+      Config.Key("otel.exporter.otlp.protocol")
+
+    val MetricsProtocol: Config.Key[Protocol] =
+      Config.Key("otel.exporter.otlp.metrics.protocol")
+
+    val TracesProtocol: Config.Key[Protocol] =
+      Config.Key("otel.exporter.otlp.traces.protocol")
+  }
+
+  private object Defaults {
+    val OtlpProtocol: Protocol = Protocol.Http(HttpPayloadEncoding.Protobuf)
+  }
+
+  /** Autoconfigures OTLP
+    * [[org.typelevel.otel4s.sdk.exporter.otlp.Protocol Protocol]].
+    *
+    * The general configuration options:
+    * {{{
+    * | System property             | Environment variable        | Description                                                                                                 |
+    * |-----------------------------|-----------------------------|-------------------------------------------------------------------------------------------------------------|
+    * | otel.exporter.otlp.protocol | OTEL_EXPORTER_OTLP_PROTOCOL | The transport protocol to use. Options include `http/protobuf` and `http/json`. Default is `http/protobuf`. |
+    * }}}
+    *
+    * The metrics-specific configuration options:
+    * {{{
+    * | System property                     | Environment variable                | Description                                                                                                 |
+    * |-------------------------------------|-------------------------------------|-------------------------------------------------------------------------------------------------------------|
+    * | otel.exporter.otlp.metrics.protocol | OTEL_EXPORTER_OTLP_METRICS_PROTOCOL | The transport protocol to use. Options include `http/protobuf` and `http/json`. Default is `http/protobuf`. |
+    * }}}
+    *
+    * @see
+    *   [[https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/#otel_exporter_otlp_protocol]]
+    */
+  def metrics[F[_]: MonadThrow]: AutoConfigure[F, Protocol] =
+    new ProtocolAutoConfigure[F](ConfigKeys.MetricsProtocol)
+
+  /** Autoconfigures OTLP
+    * [[org.typelevel.otel4s.sdk.exporter.otlp.Protocol Protocol]].
+    *
+    * The general configuration options:
+    * {{{
+    * | System property             | Environment variable        | Description                                                                                                 |
+    * |-----------------------------|-----------------------------|-------------------------------------------------------------------------------------------------------------|
+    * | otel.exporter.otlp.protocol | OTEL_EXPORTER_OTLP_PROTOCOL | The transport protocol to use. Options include `http/protobuf` and `http/json`. Default is `http/protobuf`. |
+    * }}}
+    *
+    * The traces-specific configuration options:
+    * {{{
+    * | System property                    | Environment variable               | Description                                                                                                 |
+    * |------------------------------------|------------------------------------|-------------------------------------------------------------------------------------------------------------|
+    * | otel.exporter.otlp.traces.protocol | OTEL_EXPORTER_OTLP_TRACES_PROTOCOL | The transport protocol to use. Options include `http/protobuf` and `http/json`. Default is `http/protobuf`. |
+    * }}}
+    *
+    * @see
+    *   [[https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/#otel_exporter_otlp_protocol]]
+    */
+  def traces[F[_]: MonadThrow]: AutoConfigure[F, Protocol] =
+    new ProtocolAutoConfigure[F](ConfigKeys.TracesProtocol)
+}

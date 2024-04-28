@@ -30,10 +30,13 @@ import org.typelevel.otel4s.context.LocalProvider
 import org.typelevel.otel4s.context.propagation.ContextPropagators
 import org.typelevel.otel4s.context.propagation.TextMapPropagator
 import org.typelevel.otel4s.metrics.MeterProvider
-import org.typelevel.otel4s.sdk.autoconfigure.AutoConfigure
-import org.typelevel.otel4s.sdk.autoconfigure.CommonConfigKeys
-import org.typelevel.otel4s.sdk.autoconfigure.Config
-import org.typelevel.otel4s.sdk.autoconfigure.TelemetryResourceAutoConfigure
+import org.typelevel.otel4s.sdk.autoconfigure.{
+  AutoConfigure,
+  CommonConfigKeys,
+  Config,
+  ExporterAutoConfigure,
+  TelemetryResourceAutoConfigure
+}
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.context.LocalContext
 import org.typelevel.otel4s.sdk.context.LocalContextProvider
@@ -190,6 +193,29 @@ object OpenTelemetrySdk {
           customizer: Customizer[TelemetryResource]
       ): Builder[F]
 
+      /** Adds both metric and span exporter configurers. Can be used to
+        * register exporters that aren't included in the SDK.
+        *
+        * @example
+        *   Add the `otel4s-sdk-exporter` dependency to the build file:
+        *   {{{
+        * libraryDependencies += "org.typelevel" %%% "otel4s-sdk-exporter" % "x.x.x"
+        *   }}}
+        *   and register the configurer manually:
+        *   {{{
+        * import org.typelevel.otel4s.sdk.OpenTelemetrySdk
+        * import org.typelevel.otel4s.sdk.exporter.otlp.autoconfigure.OtlpExporterAutoConfigure
+        *
+        * OpenTelemetrySdk.autoConfigured[IO](_.addExporterConfigurer(OtlpExporterAutoConfigure[IO]))
+        *   }}}
+        *
+        * @param configurer
+        *   the configurer to add
+        */
+      def addExporterConfigurer(
+          configurer: ExporterAutoConfigure[F]
+      ): Builder[F]
+
       /** Adds the exporter configurer. Can be used to register exporters that
         * aren't included in the SDK.
         *
@@ -328,6 +354,16 @@ object OpenTelemetrySdk {
       ): Builder[F] =
         copy(tracerProviderCustomizer =
           merge(this.tracerProviderCustomizer, customizer)
+        )
+
+      def addExporterConfigurer(
+          configurer: ExporterAutoConfigure[F]
+      ): Builder[F] =
+        copy(
+          metricExporterConfigurers =
+            metricExporterConfigurers + configurer.metricExporterAutoConfigure,
+          spanExporterConfigurers =
+            spanExporterConfigurers + configurer.spanExporterAutoConfigure
         )
 
       def addMetricExporterConfigurer(

@@ -80,7 +80,7 @@ object MetricPoints {
   }
 
   sealed trait Summary extends MetricPoints {
-    def points: Vector[PointData.Summary]
+    def points: NonEmptyVector[PointData.Summary]
   }
 
   /** Histogram represents the type of a metric that is calculated by
@@ -99,7 +99,7 @@ object MetricPoints {
   }
 
   sealed trait ExponentialHistogram extends MetricPoints {
-    def points: Vector[PointData.ExponentialHistogram]
+    def points: NonEmptyVector[PointData.ExponentialHistogram]
     def aggregationTemporality: AggregationTemporality
   }
 
@@ -120,7 +120,7 @@ object MetricPoints {
     GaugeImpl(points)
 
   def summary(
-      points: Vector[PointData.Summary]
+      points: NonEmptyVector[PointData.Summary]
   ): Summary =
     SummaryImpl(points)
 
@@ -133,7 +133,7 @@ object MetricPoints {
     HistogramImpl(points, aggregationTemporality)
 
   def exponentialHistogram(
-      points: Vector[PointData.ExponentialHistogram],
+      points: NonEmptyVector[PointData.ExponentialHistogram],
       aggregationTemporality: AggregationTemporality
   ): ExponentialHistogram =
     ExponentialHistogramImpl(points, aggregationTemporality)
@@ -208,7 +208,7 @@ object MetricPoints {
   ) extends Gauge { type Point = A }
 
   private final case class SummaryImpl(
-      points: Vector[PointData.Summary]
+      points: NonEmptyVector[PointData.Summary]
   ) extends Summary
 
   private final case class HistogramImpl(
@@ -217,7 +217,7 @@ object MetricPoints {
   ) extends Histogram
 
   private final case class ExponentialHistogramImpl(
-      points: Vector[PointData.ExponentialHistogram],
+      points: NonEmptyVector[PointData.ExponentialHistogram],
       aggregationTemporality: AggregationTemporality
   ) extends ExponentialHistogram
 

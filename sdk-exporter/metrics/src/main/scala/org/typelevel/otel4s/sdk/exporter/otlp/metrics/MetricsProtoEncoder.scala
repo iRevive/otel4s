@@ -165,7 +165,7 @@ private object MetricsProtoEncoder {
     case summary: MetricPoints.Summary =>
       Proto.Metric.Data.Summary(
         Proto.Summary(
-          summary.points.map(p =>
+          summary.points.toVector.map(p =>
             Proto.SummaryDataPoint(
               ProtoEncoder.encode(p.attributes),
               p.timeWindow.start.toNanos,
@@ -192,7 +192,7 @@ private object MetricsProtoEncoder {
     case exponentialHistogram: MetricPoints.ExponentialHistogram =>
       Proto.Metric.Data.ExponentialHistogram(
         Proto.ExponentialHistogram(
-          exponentialHistogram.points.map(p =>
+          exponentialHistogram.points.toVector.map(p =>
             Proto
               .ExponentialHistogramDataPoint(
                 attributes = ProtoEncoder.encode(p.attributes),
