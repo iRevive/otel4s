@@ -60,6 +60,12 @@ private final class ProtocolAutoConfigure[F[_]: MonadThrow](
   import ProtocolAutoConfigure.ConfigKeys
   import ProtocolAutoConfigure.Defaults
 
+  private val protocols: Map[String, Protocol] =
+    Map(
+      "http/json" -> Protocol.Http(HttpPayloadEncoding.Json),
+      "http/protobuf" -> Protocol.Http(HttpPayloadEncoding.Protobuf)
+    )
+
   protected def fromConfig(config: Config): Resource[F, Protocol] = {
     val protocol = config
       .get(targetSpecificKey)
@@ -76,20 +82,13 @@ private final class ProtocolAutoConfigure[F[_]: MonadThrow](
 
   private implicit val protocolReader: Config.Reader[Protocol] =
     Config.Reader.decodeWithHint("Protocol") { s =>
-      s.trim.toLowerCase match {
-        case "http/json" =>
-          Right(Protocol.Http(HttpPayloadEncoding.Json))
-
-        case "http/protobuf" =>
-          Right(Protocol.Http(HttpPayloadEncoding.Protobuf))
-
-        case _ =>
-          Left(
-            ConfigurationError(
-              s"Unrecognized protocol [$s]. Supported options [http/json, http/protobuf]"
-            )
+      protocols
+        .get(s.trim.toLowerCase)
+        .toRight(
+          ConfigurationError(
+            s"Unrecognized protocol [$s]. Supported options [${protocols.keys.mkString(", ")}]"
           )
-      }
+        )
     }
 
 }

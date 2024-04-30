@@ -30,7 +30,8 @@ class ProtocolAutoConfigureSuite extends CatsEffectSuite {
     val config = Config.ofProps(Map.empty)
     val expected = Protocol.Http(HttpPayloadEncoding.Protobuf)
 
-    ProtocolAutoConfigure.metrics[IO]
+    ProtocolAutoConfigure
+      .metrics[IO]
       .configure(config)
       .use(protocol => IO(assertEquals(protocol, expected)))
   }
@@ -45,11 +46,12 @@ class ProtocolAutoConfigureSuite extends CatsEffectSuite {
 
     val expected = Protocol.Http(HttpPayloadEncoding.Protobuf)
 
-    ProtocolAutoConfigure.metrics[IO]
+    ProtocolAutoConfigure
+      .metrics[IO]
       .configure(config)
       .use(protocol => IO(assertEquals(protocol, expected)))
   }
-  
+
   test("metrics - load from the config - prioritize 'metrics' properties") {
     val config = Config.ofProps(
       Map(
@@ -60,7 +62,8 @@ class ProtocolAutoConfigureSuite extends CatsEffectSuite {
 
     val expected = Protocol.Http(HttpPayloadEncoding.Json)
 
-    ProtocolAutoConfigure.metrics[IO]
+    ProtocolAutoConfigure
+      .metrics[IO]
       .configure(config)
       .use(protocol => IO(assertEquals(protocol, expected)))
   }
@@ -68,7 +71,8 @@ class ProtocolAutoConfigureSuite extends CatsEffectSuite {
   test("metrics - load from the config - unknown protocol - fail") {
     val config = Config.ofProps(Map("otel.exporter.otlp.protocol" -> "grpc"))
 
-    ProtocolAutoConfigure.metrics[IO]
+    ProtocolAutoConfigure
+      .metrics[IO]
       .configure(config)
       .use_
       .attempt
@@ -81,12 +85,13 @@ class ProtocolAutoConfigureSuite extends CatsEffectSuite {
                |2) `otel.exporter.otlp.protocol` - grpc""".stripMargin)
       )
   }
-  
+
   test("traces - load from the config - empty config - load default") {
     val config = Config.ofProps(Map.empty)
     val expected = Protocol.Http(HttpPayloadEncoding.Protobuf)
 
-    ProtocolAutoConfigure.traces[IO]
+    ProtocolAutoConfigure
+      .traces[IO]
       .configure(config)
       .use(protocol => IO(assertEquals(protocol, expected)))
   }
@@ -101,11 +106,12 @@ class ProtocolAutoConfigureSuite extends CatsEffectSuite {
 
     val expected = Protocol.Http(HttpPayloadEncoding.Protobuf)
 
-    ProtocolAutoConfigure.traces[IO]
+    ProtocolAutoConfigure
+      .traces[IO]
       .configure(config)
       .use(protocol => IO(assertEquals(protocol, expected)))
   }
-  
+
   test("traces - load from the config - prioritize 'traces' properties") {
     val config = Config.ofProps(
       Map(
@@ -116,7 +122,8 @@ class ProtocolAutoConfigureSuite extends CatsEffectSuite {
 
     val expected = Protocol.Http(HttpPayloadEncoding.Json)
 
-    ProtocolAutoConfigure.traces[IO]
+    ProtocolAutoConfigure
+      .traces[IO]
       .configure(config)
       .use(protocol => IO(assertEquals(protocol, expected)))
   }
@@ -124,7 +131,8 @@ class ProtocolAutoConfigureSuite extends CatsEffectSuite {
   test("traces - load from the config - unknown protocol - fail") {
     val config = Config.ofProps(Map("otel.exporter.otlp.protocol" -> "grpc"))
 
-    ProtocolAutoConfigure.traces[IO]
+    ProtocolAutoConfigure
+      .traces[IO]
       .configure(config)
       .use_
       .attempt
