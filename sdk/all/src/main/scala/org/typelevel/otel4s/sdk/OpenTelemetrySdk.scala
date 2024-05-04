@@ -33,7 +33,7 @@ import org.typelevel.otel4s.metrics.MeterProvider
 import org.typelevel.otel4s.sdk.autoconfigure.AutoConfigure
 import org.typelevel.otel4s.sdk.autoconfigure.CommonConfigKeys
 import org.typelevel.otel4s.sdk.autoconfigure.Config
-import org.typelevel.otel4s.sdk.autoconfigure.ExporterAutoConfigure
+import org.typelevel.otel4s.sdk.autoconfigure.ExportersAutoConfigure
 import org.typelevel.otel4s.sdk.autoconfigure.TelemetryResourceAutoConfigure
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.context.LocalContext
@@ -77,9 +77,9 @@ object OpenTelemetrySdk {
     *   and register the configurer manually:
     *   {{{
     * import org.typelevel.otel4s.sdk.OpenTelemetrySdk
-    * import org.typelevel.otel4s.sdk.exporter.otlp.trace.autoconfigure.OtlpSpanExporterAutoConfigure
+    * import org.typelevel.otel4s.sdk.exporter.otlp.autoconfigure.OtlpExportersAutoConfigure
     *
-    * OpenTelemetrySdk.autoConfigured[IO](_.addSpanExporterConfigurer(OtlpSpanExporterAutoConfigure[IO]))
+    * OpenTelemetrySdk.autoConfigured[IO](_.addExportersConfigurer(OtlpExporterAutoConfigure[IO]))
     *   }}}
     *
     * @param customize
@@ -210,8 +210,8 @@ object OpenTelemetrySdk {
         * @param configurer
         *   the configurer to add
         */
-      def addExporterConfigurer(
-          configurer: ExporterAutoConfigure[F]
+      def addExportersConfigurer(
+          configurer: ExportersAutoConfigure[F]
       ): Builder[F]
 
       /** Adds the exporter configurer. Can be used to register exporters that
@@ -354,8 +354,8 @@ object OpenTelemetrySdk {
           merge(this.tracerProviderCustomizer, customizer)
         )
 
-      def addExporterConfigurer(
-          configurer: ExporterAutoConfigure[F]
+      def addExportersConfigurer(
+          configurer: ExportersAutoConfigure[F]
       ): Builder[F] =
         copy(
           metricExporterConfigurers =
