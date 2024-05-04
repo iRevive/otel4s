@@ -240,7 +240,9 @@ private[metrics] object Aggregator {
           case InstrumentType.Counter       => sum
           case InstrumentType.UpDownCounter => sum
           case InstrumentType.Histogram =>
-            histogram(Aggregation.Defaults.Boundaries)
+            val boundaries = descriptor.advice.explicitBoundaries
+              .getOrElse(Aggregation.Defaults.Boundaries)
+            histogram(boundaries)
         }
 
       case Aggregation.Sum       => sum
@@ -248,6 +250,9 @@ private[metrics] object Aggregator {
 
       case Aggregation.ExplicitBucketHistogram(boundaries) =>
         histogram(boundaries)
+
+      case Aggregation.Base2ExponentialHistogram(_, _) =>
+        ???
     }
   }
 
