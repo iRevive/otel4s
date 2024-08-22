@@ -25,6 +25,8 @@ import org.typelevel.otel4s.AttributeKey.KeySelect
 import scala.collection.IterableOps
 import scala.collection.SpecificIterableFactory
 import scala.collection.immutable
+import scala.collection.immutable.ListMap
+import scala.collection.immutable.SeqMap
 import scala.collection.mutable
 
 /** An immutable collection of [[Attribute]]s. It contains only unique keys.
@@ -99,7 +101,7 @@ sealed trait Attributes
     * @return
     *   the `Map` representation of these `Attributes`
     */
-  private[otel4s] def toMap: Map[String, Attribute[_]]
+  private[otel4s] def toMap: SeqMap[String, Attribute[_]]
 
   /** A factory for creating `Attributes`. */
   def attributesFactory: SpecificIterableFactory[Attribute[_], Attributes]
@@ -128,7 +130,7 @@ sealed trait Attributes
 }
 
 object Attributes extends SpecificIterableFactory[Attribute[_], Attributes] {
-  private val Empty = new MapAttributes(Map.empty)
+  private val Empty = new MapAttributes(ListMap.empty)
 
   /** Creates [[Attributes]] with the given `attributes`.
     *
@@ -172,7 +174,7 @@ object Attributes extends SpecificIterableFactory[Attribute[_], Attributes] {
   }
 
   implicit val hashAttributes: Hash[Attributes] =
-    Hash.by(_.toMap)
+    Hash.by(_.toMap: Map[String, Attribute[_]])
 
   implicit val monoidAttributes: Monoid[Attributes] =
     new Monoid[Attributes] {
@@ -186,7 +188,7 @@ object Attributes extends SpecificIterableFactory[Attribute[_], Attributes] {
   /** A '''mutable''' builder of [[Attributes]].
     */
   final class Builder extends mutable.Builder[Attribute[_], Attributes] {
-    private val builder = Map.newBuilder[String, Attribute[_]]
+    private val builder = ListMap.newBuilder[String, Attribute[_]]
 
     /** Adds the attribute with the given `key` and `value` to the builder.
       *
@@ -269,7 +271,7 @@ object Attributes extends SpecificIterableFactory[Attribute[_], Attributes] {
   }
 
   private final class MapAttributes(
-      private[Attributes] val m: Map[String, Attribute[_]]
+      private[Attributes] val m: ListMap[String, Attribute[_]]
   ) extends Attributes {
     def get[T](key: AttributeKey[T]): Option[Attribute[T]] =
       m.get(key.name)
@@ -285,7 +287,7 @@ object Attributes extends SpecificIterableFactory[Attribute[_], Attributes] {
           new MapAttributes(m ++ other.iterator.map(a => a.key.name -> a))
       }
 
-    private[otel4s] def toMap: Map[String, Attribute[_]] = m
+    private[otel4s] def toMap: SeqMap[String, Attribute[_]] = m
     def iterator: Iterator[Attribute[_]] = m.valuesIterator
 
     def attributesFactory: Attributes.type = Attributes
