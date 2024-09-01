@@ -158,7 +158,7 @@ object SdkMeterProvider {
       *   [[org.typelevel.otel4s.sdk.metrics.exporter.MetricReader MetricReader]]
       *   to register
       */
-    private[sdk] def registerMetricReader(reader: MetricReader[F]): Builder[F]
+    def registerMetricReader(reader: MetricReader[F]): Builder[F]
 
     /** Registers a
       * [[org.typelevel.otel4s.sdk.metrics.exporter.MetricProducer MetricProducer]].
