@@ -382,7 +382,10 @@ lazy val `sdk-exporter-metrics` =
     .settings(
       name := "otel4s-sdk-exporter-metrics",
       startYear := Some(2024),
-      dockerComposeEnvFile := crossProjectBaseDirectory.value / "docker" / "docker-compose.yml"
+      dockerComposeEnvFile := crossProjectBaseDirectory.value / "docker" / "docker-compose.yml",
+      libraryDependencies ++= Seq(
+        "org.http4s" %%% "http4s-ember-server" % Http4sVersion
+      )
     )
     .jsSettings(scalaJSLinkerSettings)
     .nativeEnablePlugins(ScalaNativeBrewedConfigPlugin)
