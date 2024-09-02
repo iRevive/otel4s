@@ -41,11 +41,13 @@ private[metrics] sealed trait InstrumentDescriptor {
     */
   def unit: Option[String]
 
+  /** The advisory options influencing aggregation configuration parameters.
+    */
+  def advice: Option[Advice]
+
   /** The type of the instrument.
     */
   def instrumentType: InstrumentType
-
-  def advice: Advice
 
   override final def hashCode(): Int =
     Hash[InstrumentDescriptor].hash(this)
@@ -77,10 +79,10 @@ private[metrics] object InstrumentDescriptor {
       name: CIString,
       description: Option[String],
       unit: Option[String],
+      advice: Option[Advice],
       instrumentType: InstrumentType.Synchronous,
-      advice: Advice = Advice.empty
   ): InstrumentDescriptor.Synchronous =
-    SynchronousImpl(name, description, unit, instrumentType, advice)
+    SynchronousImpl(name, description, unit, advice, instrumentType)
 
   /** Creates an [[InstrumentDescriptor]] for a asynchronous instrument.
     */
@@ -88,18 +90,17 @@ private[metrics] object InstrumentDescriptor {
       name: CIString,
       description: Option[String],
       unit: Option[String],
-      instrumentType: InstrumentType.Asynchronous,
-      advice: Advice = Advice.empty
+      instrumentType: InstrumentType.Asynchronous
   ): InstrumentDescriptor.Asynchronous =
-    AsynchronousImpl(name, description, unit, instrumentType, advice)
+    AsynchronousImpl(name, description, unit, None, instrumentType)
 
-  // advice is not a part of the hash, it's intended
   implicit val instrumentDescriptorHash: Hash[InstrumentDescriptor] =
     Hash.by { descriptor =>
       (
         descriptor.name,
         descriptor.description,
         descriptor.unit,
+        descriptor.advice,
         descriptor.instrumentType
       )
     }
@@ -108,25 +109,24 @@ private[metrics] object InstrumentDescriptor {
     Show.show { descriptor =>
       val description = descriptor.description.foldMap(d => s"description=$d, ")
       val unit = descriptor.unit.foldMap(d => s"unit=$d, ")
-      s"InstrumentDescriptor{name=${descriptor.name}, $description$unit" +
-        s"type=${descriptor.instrumentType}, " +
-        s"advice=${descriptor.advice}}"
+      val advice = descriptor.advice.foldMap(a => s"advice=$a, ")
+      s"InstrumentDescriptor{name=${descriptor.name}, $description$unit${advice}type=${descriptor.instrumentType}}"
     }
 
   private final case class SynchronousImpl(
       name: CIString,
       description: Option[String],
       unit: Option[String],
-      instrumentType: InstrumentType.Synchronous,
-      advice: Advice
+      advice: Option[Advice],
+      instrumentType: InstrumentType.Synchronous
   ) extends InstrumentDescriptor.Synchronous
 
   private final case class AsynchronousImpl(
       name: CIString,
       description: Option[String],
       unit: Option[String],
-      instrumentType: InstrumentType.Asynchronous,
-      advice: Advice
+      advice: Option[Advice],
+      instrumentType: InstrumentType.Asynchronous
   ) extends InstrumentDescriptor.Asynchronous
 
 }

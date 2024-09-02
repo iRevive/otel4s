@@ -20,7 +20,6 @@ import cats.Monad
 import cats.data.NonEmptyVector
 import cats.effect.Concurrent
 import cats.effect.Ref
-import cats.effect.Temporal
 import cats.effect.std.Console
 import cats.mtl.Ask
 import cats.syntax.flatMap._
@@ -71,7 +70,7 @@ private final class AsynchronousStorage[
 
         if (points.contains(processed)) {
           Console[F].errorln(
-            s"Instrument [${metricDescriptor.sourceInstrument.name}] has recorded multiple values for the same attributes $processed"
+            s"AsynchronousStorage: instrument [${metricDescriptor.sourceInstrument.name}] has recorded multiple values for the same attributes $processed"
           )
         } else {
           val timeWindow = TimeWindow(start, measurement.timeWindow.end)
@@ -117,6 +116,7 @@ private final class AsynchronousStorage[
 
   private def cardinalityWarning: F[Unit] =
     MetricStorage.cardinalityWarning(
+      "AsynchronousStorage",
       metricDescriptor.sourceInstrument,
       maxCardinality
     )
@@ -145,7 +145,7 @@ private object AsynchronousStorage {
     *   the type of the values to store
     */
   def create[
-      F[_]: Temporal: Console: AskContext,
+      F[_]: Concurrent: Console: AskContext,
       A: MeasurementValue: Numeric
   ](
       reader: RegisteredReader[F],

@@ -1,4 +1,4 @@
-ThisBuild / tlBaseVersion := "0.7"
+ThisBuild / tlBaseVersion := "0.9"
 
 ThisBuild / organization := "org.typelevel"
 ThisBuild / organizationName := "Typelevel"
@@ -41,27 +41,27 @@ ThisBuild / scalaVersion := Scala213 // the default Scala
 
 ThisBuild / githubWorkflowBuildPreamble ++= nativeBrewInstallWorkflowSteps.value
 
-val CatsVersion = "2.10.0"
+val CatsVersion = "2.11.0"
 val CatsEffectVersion = "3.5.4"
 val CatsMtlVersion = "1.4.0"
-val FS2Version = "3.10.2"
-val MUnitVersion = "1.0.0-RC1"
+val FS2Version = "3.11.0"
+val MUnitVersion = "1.0.0"
 val MUnitScalaCheckVersion = "1.0.0-M11"
-val MUnitCatsEffectVersion = "2.0.0-M5"
+val MUnitCatsEffectVersion = "2.0.0"
 val MUnitDisciplineVersion = "2.0.0-M3"
 val MUnitScalaCheckEffectVersion = "2.0.0-M2"
-val OpenTelemetryVersion = "1.37.0"
-val OpenTelemetryInstrumentationVersion = "2.3.0"
-val OpenTelemetryInstrumentationAlphaVersion = "2.2.0-alpha"
-val OpenTelemetrySemConvVersion = "1.25.0-alpha"
+val OpenTelemetryVersion = "1.41.0"
+val OpenTelemetryInstrumentationVersion = "2.7.0"
+val OpenTelemetryInstrumentationAlphaVersion = "2.5.0-alpha"
+val OpenTelemetrySemConvVersion = "1.27.0-alpha"
 val OpenTelemetryProtoVersion = "1.1.0-alpha"
-val PekkoStreamVersion = "1.0.2"
+val PekkoStreamVersion = "1.0.3"
 val PekkoHttpVersion = "1.0.1"
 val PlatformVersion = "1.0.2"
 val ScodecVersion = "1.1.38"
-val VaultVersion = "3.5.0"
+val VaultVersion = "3.6.0"
 val Http4sVersion = "0.23.27"
-val CirceVersion = "0.14.7"
+val CirceVersion = "0.14.8"
 val EpollcatVersion = "0.1.6"
 val ScalaPBCirceVersion = "0.15.1"
 val CaseInsensitiveVersion = "1.4.0"
@@ -200,7 +200,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
 //
 
 lazy val `sdk-common` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
-  .crossType(CrossType.Pure)
+  .crossType(CrossType.Full)
   .enablePlugins(BuildInfoPlugin)
   .in(file("sdk/common"))
   .dependsOn(`core-common` % "compile->compile;test->test", `semconv-stable`)
@@ -221,6 +221,7 @@ lazy val `sdk-common` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   )
   .settings(munitDependencies)
   .settings(scalafixSettings)
+  .jsSettings(scalaJSLinkerSettings)
 
 lazy val `sdk-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
@@ -243,6 +244,7 @@ lazy val `sdk-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   )
   .settings(munitDependencies)
   .settings(scalafixSettings)
+  .jsSettings(scalaJSLinkerSettings)
 
 lazy val `sdk-metrics-testkit` =
   crossProject(JVMPlatform, JSPlatform, NativePlatform)
@@ -275,6 +277,7 @@ lazy val `sdk-trace` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   )
   .settings(munitDependencies)
   .settings(scalafixSettings)
+  .jsSettings(scalaJSLinkerSettings)
 
 lazy val `sdk-trace-testkit` =
   crossProject(JVMPlatform, JSPlatform, NativePlatform)
@@ -313,6 +316,7 @@ lazy val sdk = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   )
   .settings(munitDependencies)
   .settings(scalafixSettings)
+  .jsSettings(scalaJSLinkerSettings)
 
 //
 // SDK exporter
@@ -370,7 +374,7 @@ lazy val `sdk-exporter-metrics` =
   crossProject(JVMPlatform, JSPlatform, NativePlatform)
     .crossType(CrossType.Pure)
     .in(file("sdk-exporter/metrics"))
-    .enablePlugins(NoPublishPlugin, DockerComposeEnvPlugin)
+    .enablePlugins(DockerComposeEnvPlugin)
     .dependsOn(
       `sdk-exporter-common` % "compile->compile;test->test",
       `sdk-metrics` % "compile->compile;test->test"
@@ -576,6 +580,7 @@ lazy val `semconv-experimental` =
       startYear := Some(2023),
       // We use opentelemetry-semconv dependency to track releases of the OpenTelemetry semantic convention spec
       libraryDependencies += "io.opentelemetry.semconv" % "opentelemetry-semconv-incubating" % OpenTelemetrySemConvVersion % "compile-internal" intransitive (),
+      mimaPreviousArtifacts := Set.empty
     )
     .settings(munitDependencies)
     .settings(scalafixSettings)
@@ -647,6 +652,7 @@ lazy val docs = project
   .settings(
     libraryDependencies ++= Seq(
       "org.apache.pekko" %% "pekko-http" % PekkoHttpVersion,
+      "org.http4s" %% "http4s-client" % Http4sVersion,
       "io.opentelemetry" % "opentelemetry-sdk-extension-autoconfigure" % OpenTelemetryVersion,
       "io.opentelemetry.instrumentation" % "opentelemetry-instrumentation-annotations" % OpenTelemetryInstrumentationVersion,
       "io.opentelemetry.instrumentation" % "opentelemetry-runtime-telemetry-java8" % OpenTelemetryInstrumentationAlphaVersion,
@@ -676,6 +682,11 @@ lazy val docs = project
             "scala-version",
             ChoiceConfig("scala-2", "Scala 2"),
             ChoiceConfig("scala-3", "Scala 3")
+          ).withSeparateEbooks,
+          SelectionConfig(
+            "otel-backend",
+            ChoiceConfig("oteljava", "OpenTelemetry Java"),
+            ChoiceConfig("sdk", "SDK")
           ).withSeparateEbooks
         )
       )

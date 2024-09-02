@@ -38,7 +38,18 @@ object MessagingExperimentalAttributes {
 
   /** A unique identifier for the client that consumes or produces a message.
     */
-  val MessagingClientId: AttributeKey[String] = string("messaging.client_id")
+  val MessagingClientId: AttributeKey[String] = string("messaging.client.id")
+
+  /** The name of the consumer group with which a consumer is associated.
+    *
+    * @note
+    *   - Semantic conventions for individual messaging systems SHOULD document
+    *     whether `messaging.consumer.group.name` is applicable and what it
+    *     means in the context of that system.
+    */
+  val MessagingConsumerGroupName: AttributeKey[String] = string(
+    "messaging.consumer.group.name"
+  )
 
   /** A boolean that is true if the message destination is anonymous (could be
     * unnamed or have auto-generated name).
@@ -65,6 +76,17 @@ object MessagingExperimentalAttributes {
     "messaging.destination.partition.id"
   )
 
+  /** The name of the destination subscription from which a message is consumed.
+    *
+    * @note
+    *   - Semantic conventions for individual messaging systems SHOULD document
+    *     whether `messaging.destination.subscription.name` is applicable and
+    *     what it means in the context of that system.
+    */
+  val MessagingDestinationSubscriptionName: AttributeKey[String] = string(
+    "messaging.destination.subscription.name"
+  )
+
   /** Low cardinality representation of the messaging destination name
     *
     * @note
@@ -85,26 +107,23 @@ object MessagingExperimentalAttributes {
     "messaging.destination.temporary"
   )
 
-  /** A boolean that is true if the publish message destination is anonymous
-    * (could be unnamed or have auto-generated name).
+  /** Deprecated, no replacement at this time.
     */
+  @deprecated("No replacement at this time", "0.5.0")
   val MessagingDestinationPublishAnonymous: AttributeKey[Boolean] = boolean(
     "messaging.destination_publish.anonymous"
   )
 
-  /** The name of the original destination the message was published to
-    *
-    * @note
-    *   - The name SHOULD uniquely identify a specific queue, topic, or other
-    *     entity within the broker. If the broker doesn't have such notion, the
-    *     original destination name SHOULD uniquely identify the broker.
+  /** Deprecated, no replacement at this time.
     */
+  @deprecated("No replacement at this time", "0.5.0")
   val MessagingDestinationPublishName: AttributeKey[String] = string(
     "messaging.destination_publish.name"
   )
 
-  /** The name of the consumer group the event consumer is associated with.
+  /** Deprecated, use `messaging.consumer.group.name` instead.
     */
+  @deprecated("Use `messaging.consumer.group.name` instead", "0.5.0")
   val MessagingEventhubsConsumerGroup: AttributeKey[String] = string(
     "messaging.eventhubs.consumer.group"
   )
@@ -116,6 +135,24 @@ object MessagingExperimentalAttributes {
     "messaging.eventhubs.message.enqueued_time"
   )
 
+  /** The ack deadline in seconds set for the modify ack deadline request.
+    */
+  val MessagingGcpPubsubMessageAckDeadline: AttributeKey[Long] = long(
+    "messaging.gcp_pubsub.message.ack_deadline"
+  )
+
+  /** The ack id for a given message.
+    */
+  val MessagingGcpPubsubMessageAckId: AttributeKey[String] = string(
+    "messaging.gcp_pubsub.message.ack_id"
+  )
+
+  /** The delivery attempt for a given message.
+    */
+  val MessagingGcpPubsubMessageDeliveryAttempt: AttributeKey[Long] = long(
+    "messaging.gcp_pubsub.message.delivery_attempt"
+  )
+
   /** The ordering key for a given message. If the attribute is not present, the
     * message does not have an ordering key.
     */
@@ -123,16 +160,16 @@ object MessagingExperimentalAttributes {
     "messaging.gcp_pubsub.message.ordering_key"
   )
 
-  /** Name of the Kafka Consumer Group that is handling the message. Only
-    * applies to consumers, not producers.
+  /** Deprecated, use `messaging.consumer.group.name` instead.
     */
+  @deprecated("Use `messaging.consumer.group.name` instead", "0.5.0")
   val MessagingKafkaConsumerGroup: AttributeKey[String] = string(
     "messaging.kafka.consumer.group"
   )
 
-  /** &quot;Deprecated, use `messaging.destination.partition.id` instead.&quot;
+  /** Deprecated, use `messaging.destination.partition.id` instead.
     */
-  @deprecated("'use `messaging.destination.partition.id` instead.'", "0.5.0")
+  @deprecated("Use `messaging.destination.partition.id` instead", "0.5.0")
   val MessagingKafkaDestinationPartition: AttributeKey[Long] = long(
     "messaging.kafka.destination.partition"
   )
@@ -151,8 +188,9 @@ object MessagingExperimentalAttributes {
     "messaging.kafka.message.key"
   )
 
-  /** The offset of a record in the corresponding Kafka partition.
+  /** Deprecated, use `messaging.kafka.offset` instead.
     */
+  @deprecated("Use `messaging.kafka.offset` instead", "0.5.0")
   val MessagingKafkaMessageOffset: AttributeKey[Long] = long(
     "messaging.kafka.message.offset"
   )
@@ -162,6 +200,10 @@ object MessagingExperimentalAttributes {
   val MessagingKafkaMessageTombstone: AttributeKey[Boolean] = boolean(
     "messaging.kafka.message.tombstone"
   )
+
+  /** The offset of a record in the corresponding Kafka partition.
+    */
+  val MessagingKafkaOffset: AttributeKey[Long] = long("messaging.kafka.offset")
 
   /** The size of the message body in bytes.
     *
@@ -196,12 +238,25 @@ object MessagingExperimentalAttributes {
     */
   val MessagingMessageId: AttributeKey[String] = string("messaging.message.id")
 
-  /** A string identifying the kind of messaging operation.
+  /** Deprecated, use `messaging.operation.type` instead.
+    */
+  @deprecated("Use `messaging.operation.type` instead", "0.5.0")
+  val MessagingOperation: AttributeKey[String] = string("messaging.operation")
+
+  /** The system-specific name of the messaging operation.
+    */
+  val MessagingOperationName: AttributeKey[String] = string(
+    "messaging.operation.name"
+  )
+
+  /** A string identifying the type of the messaging operation.
     *
     * @note
     *   - If a custom value is used, it MUST be of low cardinality.
     */
-  val MessagingOperation: AttributeKey[String] = string("messaging.operation")
+  val MessagingOperationType: AttributeKey[String] = string(
+    "messaging.operation.type"
+  )
 
   /** RabbitMQ message routing key.
     */
@@ -215,9 +270,9 @@ object MessagingExperimentalAttributes {
     "messaging.rabbitmq.message.delivery_tag"
   )
 
-  /** Name of the RocketMQ producer/consumer group that is handling the message.
-    * The client type is identified by the SpanKind.
+  /** Deprecated, use `messaging.consumer.group.name` instead.
     */
+  @deprecated("Use `messaging.consumer.group.name` instead", "0.5.0")
   val MessagingRocketmqClientGroup: AttributeKey[String] = string(
     "messaging.rocketmq.client_group"
   )
@@ -274,10 +329,17 @@ object MessagingExperimentalAttributes {
     "messaging.rocketmq.namespace"
   )
 
-  /** The name of the subscription in the topic messages are received from.
+  /** Deprecated, use `messaging.servicebus.destination.subscription_name`
+    * instead.
     */
+  @deprecated(
+    "Use `messaging.servicebus.destination.subscription_name` instead",
+    "0.5.0"
+  )
   val MessagingServicebusDestinationSubscriptionName: AttributeKey[String] =
-    string("messaging.servicebus.destination.subscription_name")
+    string(
+      "messaging.servicebus.destination.subscription_name"
+    )
 
   /** Describes the <a
     * href="https://learn.microsoft.com/azure/service-bus-messaging/message-transfers-locks-settlement#peeklock">settlement
@@ -300,41 +362,49 @@ object MessagingExperimentalAttributes {
     "messaging.servicebus.message.enqueued_time"
   )
 
-  /** An identifier for the messaging system being used. See below for a list of
-    * well-known identifiers.
+  /** The messaging system as identified by the client instrumentation.
+    *
+    * @note
+    *   - The actual messaging system may differ from the one known by the
+    *     client. For example, when using Kafka client libraries to communicate
+    *     with Azure Event Hubs, the `messaging.system` is set to `kafka` based
+    *     on the instrumentation's best knowledge.
     */
   val MessagingSystem: AttributeKey[String] = string("messaging.system")
   // Enum definitions
 
-  /** Values for [[MessagingOperation]].
+  /** Values for [[MessagingOperationType]].
     */
-  abstract class MessagingOperationValue(val value: String)
-  object MessagingOperationValue {
+  abstract class MessagingOperationTypeValue(val value: String)
+  object MessagingOperationTypeValue {
 
     /** One or more messages are provided for publishing to an intermediary. If
       * a single message is published, the context of the &#34;Publish&#34; span
       * can be used as the creation context and no &#34;Create&#34; span needs
       * to be created.
       */
-    case object Publish extends MessagingOperationValue("publish")
+    case object Publish extends MessagingOperationTypeValue("publish")
 
     /** A message is created. &#34;Create&#34; spans always refer to a single
       * message and are used to provide a unique creation context for messages
       * in batch publishing scenarios.
       */
-    case object Create extends MessagingOperationValue("create")
+    case object Create extends MessagingOperationTypeValue("create")
 
     /** One or more messages are requested by a consumer. This operation refers
       * to pull-based scenarios, where consumers explicitly call methods of
       * messaging SDKs to receive messages.
       */
-    case object Receive extends MessagingOperationValue("receive")
+    case object Receive extends MessagingOperationTypeValue("receive")
 
-    /** One or more messages are delivered to or processed by a consumer. */
-    case object Deliver extends MessagingOperationValue("process")
+    /** One or more messages are processed by a consumer. */
+    case object Process extends MessagingOperationTypeValue("process")
 
     /** One or more messages are settled. */
-    case object Settle extends MessagingOperationValue("settle")
+    case object Settle extends MessagingOperationTypeValue("settle")
+
+    /** Deprecated. Use `process` instead. */
+    case object Deliver extends MessagingOperationTypeValue("deliver")
   }
 
   /** Values for [[MessagingRocketmqConsumptionModel]].
@@ -425,6 +495,9 @@ object MessagingExperimentalAttributes {
 
     /** Apache RocketMQ. */
     case object Rocketmq extends MessagingSystemValue("rocketmq")
+
+    /** Apache Pulsar. */
+    case object Pulsar extends MessagingSystemValue("pulsar")
   }
 
 }

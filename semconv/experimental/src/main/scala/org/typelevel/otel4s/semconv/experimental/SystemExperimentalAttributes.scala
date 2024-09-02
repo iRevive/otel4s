@@ -28,10 +28,9 @@ object SystemExperimentalAttributes {
     "system.cpu.logical_number"
   )
 
-  /** The CPU state for this data point. A system's CPU SHOULD be characterized
-    * <em>either</em> by data points with no `state` labels, <em>or only</em>
-    * data points with `state` labels.
+  /** Deprecated, use `cpu.mode` instead.
     */
+  @deprecated("Use `cpu.mode` instead", "0.5.0")
   val SystemCpuState: AttributeKey[String] = string("system.cpu.state")
 
   /** The device identifier
@@ -102,7 +101,9 @@ object SystemExperimentalAttributes {
 
   /** Values for [[SystemCpuState]].
     */
+  @deprecated("Use `cpu.mode` instead", "0.5.0")
   abstract class SystemCpuStateValue(val value: String)
+  @annotation.nowarn("cat=deprecation")
   object SystemCpuStateValue {
 
     /** user. */

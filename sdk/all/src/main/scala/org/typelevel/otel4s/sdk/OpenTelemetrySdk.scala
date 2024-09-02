@@ -43,6 +43,7 @@ import org.typelevel.otel4s.sdk.metrics.autoconfigure.MeterProviderAutoConfigure
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData
 import org.typelevel.otel4s.sdk.metrics.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricExporter
+import org.typelevel.otel4s.sdk.resource.TelemetryResourceDetector
 import org.typelevel.otel4s.sdk.trace.SdkContextKeys
 import org.typelevel.otel4s.sdk.trace.SdkTracerProvider
 import org.typelevel.otel4s.sdk.trace.autoconfigure.ContextPropagatorsAutoConfigure
@@ -79,7 +80,7 @@ object OpenTelemetrySdk {
     * import org.typelevel.otel4s.sdk.OpenTelemetrySdk
     * import org.typelevel.otel4s.sdk.exporter.otlp.autoconfigure.OtlpExportersAutoConfigure
     *
-    * OpenTelemetrySdk.autoConfigured[IO](_.addExportersConfigurer(OtlpExporterAutoConfigure[IO]))
+    * OpenTelemetrySdk.autoConfigured[IO](_.addExportersConfigurer(OtlpExportersAutoConfigure[IO]))
     *   }}}
     *
     * @param customize
@@ -105,7 +106,7 @@ object OpenTelemetrySdk {
   /** The auto-configured [[OpenTelemetrySdk]].
     *
     * @see
-    *   [[https://github.com/open-telemetry/opentelemetry-java/blob/main/sdk-extensions/autoconfigure/README.md]]
+    *   [[https://typelevel.org/otel4s/sdk/configuration.html]]
     *
     * @tparam F
     *   the higher-kinded type of a polymorphic effect
@@ -191,6 +192,25 @@ object OpenTelemetrySdk {
           customizer: Customizer[TelemetryResource]
       ): Builder[F]
 
+      /** Adds the telemetry resource detector. Multiple detectors can be added,
+        * and the detected telemetry resources will be merged.
+        *
+        * By default, the following detectors are enabled:
+        *   - host: `host.arch`, `host.name`
+        *   - os: `os.type`, `os.description`
+        *   - process: `process.command`, `process.command_args`,
+        *     `process.command_line`, `process.executable.name`,
+        *     `process.executable.path`, `process.pid`, `process.owner`
+        *   - process_runtime: `process.runtime.name`,
+        *     `process.runtime.version`, `process.runtime.description`
+        *
+        * @param detector
+        *   the detector to add
+        */
+      def addResourceDetector(
+          detector: TelemetryResourceDetector[F]
+      ): Builder[F]
+
       /** Adds both metric and span exporter configurers. Can be used to
         * register exporters that aren't included in the SDK.
         *
@@ -202,9 +222,9 @@ object OpenTelemetrySdk {
         *   and register the configurer manually:
         *   {{{
         * import org.typelevel.otel4s.sdk.OpenTelemetrySdk
-        * import org.typelevel.otel4s.sdk.exporter.otlp.autoconfigure.OtlpExporterAutoConfigure
+        * import org.typelevel.otel4s.sdk.exporter.otlp.autoconfigure.OtlpExportersAutoConfigure
         *
-        * OpenTelemetrySdk.autoConfigured[IO](_.addExporterConfigurer(OtlpExporterAutoConfigure[IO]))
+        * OpenTelemetrySdk.autoConfigured[IO](_.addExportersConfigurer(OtlpExportersAutoConfigure[IO]))
         *   }}}
         *
         * @param configurer
@@ -297,6 +317,7 @@ object OpenTelemetrySdk {
         resourceCustomizer = (a, _) => a,
         meterProviderCustomizer = (a: SdkMeterProvider.Builder[F], _) => a,
         tracerProviderCustomizer = (a: SdkTracerProvider.Builder[F], _) => a,
+        resourceDetectors = Set.empty,
         metricExporterConfigurers = Set.empty,
         spanExporterConfigurers = Set.empty,
         samplerConfigurers = Set.empty,
@@ -312,6 +333,7 @@ object OpenTelemetrySdk {
         resourceCustomizer: Customizer[TelemetryResource],
         meterProviderCustomizer: Customizer[SdkMeterProvider.Builder[F]],
         tracerProviderCustomizer: Customizer[SdkTracerProvider.Builder[F]],
+        resourceDetectors: Set[TelemetryResourceDetector[F]],
         metricExporterConfigurers: Set[
           AutoConfigure.Named[F, MetricExporter[F]]
         ],
@@ -353,6 +375,11 @@ object OpenTelemetrySdk {
         copy(tracerProviderCustomizer =
           merge(this.tracerProviderCustomizer, customizer)
         )
+
+      def addResourceDetector(
+          detector: TelemetryResourceDetector[F]
+      ): Builder[F] =
+        copy(resourceDetectors = this.resourceDetectors + detector)
 
       def addExportersConfigurer(
           configurer: ExportersAutoConfigure[F]
@@ -466,7 +493,7 @@ object OpenTelemetrySdk {
         for {
           config <- Resource.eval(customConfig.fold(loadConfig)(Async[F].pure))
 
-          resource <- TelemetryResourceAutoConfigure[F]
+          resource <- TelemetryResourceAutoConfigure[F](resourceDetectors)
             .configure(config)
             .map(resourceCustomizer(_, config))
 

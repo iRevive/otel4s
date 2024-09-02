@@ -35,6 +35,7 @@ import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.metrics.autoconfigure.MeterProviderAutoConfigure
 import org.typelevel.otel4s.sdk.metrics.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricExporter
+import org.typelevel.otel4s.sdk.resource.TelemetryResourceDetector
 
 /** The configured metrics module.
   *
@@ -136,6 +137,25 @@ object SdkMetrics {
           customizer: Customizer[TelemetryResource]
       ): Builder[F]
 
+      /** Adds the telemetry resource detector. Multiple detectors can be added,
+        * and the detected telemetry resources will be merged.
+        *
+        * By default, the following detectors are enabled:
+        *   - host: `host.arch`, `host.name`
+        *   - os: `os.type`, `os.description`
+        *   - process: `process.command`, `process.command_args`,
+        *     `process.command_line`, `process.executable.name`,
+        *     `process.executable.path`, `process.pid`, `process.owner`
+        *   - process_runtime: `process.runtime.name`,
+        *     `process.runtime.version`, `process.runtime.description`
+        *
+        * @param detector
+        *   the detector to add
+        */
+      def addResourceDetector(
+          detector: TelemetryResourceDetector[F]
+      ): Builder[F]
+
       /** Adds the exporter configurer. Can be used to register exporters that
         * aren't included in the SDK.
         *
@@ -173,6 +193,7 @@ object SdkMetrics {
         propertiesCustomizers = Nil,
         resourceCustomizer = (a, _) => a,
         meterProviderCustomizer = (a: SdkMeterProvider.Builder[F], _) => a,
+        resourceDetectors = Set.empty,
         exporterConfigurers = Set.empty
       )
 
@@ -182,6 +203,7 @@ object SdkMetrics {
         propertiesCustomizers: List[Config => Map[String, String]],
         resourceCustomizer: Customizer[TelemetryResource],
         meterProviderCustomizer: Customizer[SdkMeterProvider.Builder[F]],
+        resourceDetectors: Set[TelemetryResourceDetector[F]],
         exporterConfigurers: Set[AutoConfigure.Named[F, MetricExporter[F]]]
     ) extends Builder[F] {
 
@@ -210,10 +232,15 @@ object SdkMetrics {
           merge(this.meterProviderCustomizer, customizer)
         )
 
+      def addResourceDetector(
+          detector: TelemetryResourceDetector[F]
+      ): Builder[F] =
+        copy(resourceDetectors = this.resourceDetectors + detector)
+
       def addExporterConfigurer(
           configurer: AutoConfigure.Named[F, MetricExporter[F]]
       ): Builder[F] =
-        copy(exporterConfigurers = exporterConfigurers + configurer)
+        copy(exporterConfigurers = this.exporterConfigurers + configurer)
 
       def build: Resource[F, SdkMetrics[F]] = {
         def loadConfig: F[Config] =
@@ -256,7 +283,7 @@ object SdkMetrics {
         for {
           config <- Resource.eval(customConfig.fold(loadConfig)(Async[F].pure))
 
-          resource <- TelemetryResourceAutoConfigure[F]
+          resource <- TelemetryResourceAutoConfigure[F](resourceDetectors)
             .configure(config)
             .map(resourceCustomizer(_, config))
 

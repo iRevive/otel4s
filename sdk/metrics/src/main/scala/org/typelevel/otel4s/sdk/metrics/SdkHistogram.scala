@@ -26,11 +26,13 @@ import cats.syntax.functor._
 import org.typelevel.ci.CIString
 import org.typelevel.otel4s.Attribute
 import org.typelevel.otel4s.Attributes
+import org.typelevel.otel4s.meta.InstrumentMeta
 import org.typelevel.otel4s.metrics.BucketBoundaries
 import org.typelevel.otel4s.metrics.Histogram
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.context.Context
+import org.typelevel.otel4s.sdk.metrics.internal.Advice
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.MeterSharedState
 import org.typelevel.otel4s.sdk.metrics.internal.storage.MetricStorage
@@ -56,7 +58,7 @@ private object SdkHistogram {
       name: String,
       storage: MetricStorage.Synchronous.Writeable[F, Primitive]
   ) extends Histogram.Backend[F, A] {
-    def meta: Histogram.Meta[F] = Histogram.Meta.enabled
+    val meta: InstrumentMeta[F] = InstrumentMeta.enabled
 
     def record(
         value: A,
@@ -120,6 +122,7 @@ private object SdkHistogram {
         name = CIString(name),
         description = description,
         unit = unit,
+        advice = boundaries.map(b => Advice(Some(b))),
         instrumentType = InstrumentType.Histogram
       )
 

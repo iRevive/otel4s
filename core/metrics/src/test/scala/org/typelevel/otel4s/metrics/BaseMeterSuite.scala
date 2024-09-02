@@ -65,6 +65,17 @@ abstract class BaseMeterSuite extends CatsEffectSuite {
     } yield assertEquals(metrics, List(expected))
   }
 
+  sdkTest("Gauge - record values") { sdk =>
+    val expected = MetricData.gauge("gauge", 1L, Some(1L))
+
+    for {
+      meter <- sdk.provider.get("meter")
+      gauge <- meter.gauge[Long]("gauge").create
+      _ <- gauge.record(1L)
+      metrics <- sdk.collectMetrics
+    } yield assertEquals(metrics, List(expected))
+  }
+
   sdkTest("UpDownCounter - record values") { sdk =>
     val expected = MetricData.sum("counter", monotonic = false, 3L, Some(3L))
 
@@ -109,7 +120,11 @@ abstract class BaseMeterSuite extends CatsEffectSuite {
 
   sdkTest("Histogram - record values") { sdk =>
     val values = List(1.0, 2.0, 3.0)
-    val expected = MetricData.histogram("histogram", values, Some(3.0))
+    val expected = MetricData.histogram(
+      "histogram",
+      values,
+      exemplarValue = Some(3.0)
+    )
 
     for {
       meter <- sdk.provider.get("meter")
@@ -136,6 +151,26 @@ abstract class BaseMeterSuite extends CatsEffectSuite {
         metrics <- sdk.collectMetrics
       } yield assertEquals(metrics, List(expected))
     }
+  }
+
+  sdkTest("Histogram - use explicit bucket boundaries") { sdk =>
+    val boundaries = BucketBoundaries(1.0, 2.0, 3.0)
+    val expected = MetricData.histogram(
+      name = "histogram",
+      values = List(1.0),
+      boundaries = boundaries,
+      exemplarValue = Some(1.0)
+    )
+
+    for {
+      meter <- sdk.provider.get("meter")
+      histogram <- meter
+        .histogram[Double]("histogram")
+        .withExplicitBucketBoundaries(boundaries)
+        .create
+      _ <- histogram.record(1.0)
+      metrics <- sdk.collectMetrics
+    } yield assertEquals(metrics, List(expected))
   }
 
   sdkTest("ObservableCounter - record values") { sdk =>
@@ -313,10 +348,8 @@ object BaseMeterSuite {
 
   object MetricData {
     private val DefaultBoundaries = BucketBoundaries(
-      Vector(
-        0.0, 5.0, 10.0, 25.0, 50.0, 75.0, 100.0, 250.0, 500.0, 750.0, 1000.0,
-        2500.0, 5000.0, 7500.0, 10000.0
-      )
+      0.0, 5.0, 10.0, 25.0, 50.0, 75.0, 100.0, 250.0, 500.0, 750.0, 1000.0,
+      2500.0, 5000.0, 7500.0, 10000.0
     )
 
     def sum(
@@ -352,7 +385,11 @@ object BaseMeterSuite {
         )
       )
 
-    def gauge(name: String, value: Long): MetricData =
+    def gauge(
+        name: String,
+        value: Long,
+        exemplarValue: Option[Long] = None
+    ): MetricData =
       MetricData(
         name,
         None,
@@ -364,7 +401,15 @@ object BaseMeterSuite {
               Duration.Zero,
               Attributes.empty,
               Left(value),
-              Vector.empty
+              exemplarValue.toVector.map { exemplar =>
+                Exemplar(
+                  Attributes.empty,
+                  Duration.Zero,
+                  Some(TraceId),
+                  Some(SpanId),
+                  Left(exemplar)
+                )
+              }
             )
           )
         )
@@ -373,10 +418,9 @@ object BaseMeterSuite {
     def histogram(
         name: String,
         values: List[Double],
+        boundaries: BucketBoundaries = DefaultBoundaries,
         exemplarValue: Option[Double] = None
     ): MetricData = {
-      val boundaries = DefaultBoundaries
-
       val counts: Vector[Long] =
         values.foldLeft(Vector.fill(boundaries.length + 1)(0L)) {
           case (acc, value) =>

@@ -19,8 +19,11 @@ package metrics
 
 import cats.effect.IO
 import cats.effect.Ref
+import cats.effect.Resource
 import cats.effect.testkit.TestControl
+import cats.syntax.functor._
 import munit.CatsEffectSuite
+import org.typelevel.otel4s.meta.InstrumentMeta
 
 import java.util.concurrent.TimeUnit
 import scala.collection.immutable
@@ -111,14 +114,30 @@ object HistogramSuite {
       extends Histogram[IO, Double] {
 
     val backend: Histogram.Backend[IO, Double] =
-      new Histogram.DoubleBackend[IO] {
-        val meta: Histogram.Meta[IO] = Histogram.Meta.enabled
+      new Histogram.Backend[IO, Double] {
+        val meta: InstrumentMeta[IO] = InstrumentMeta.enabled
 
         def record(
             value: Double,
             attributes: immutable.Iterable[Attribute[_]]
         ): IO[Unit] =
           ref.update(_.appended(Record(value, attributes.to(Attributes))))
+
+        def recordDuration(
+            timeUnit: TimeUnit,
+            attributes: immutable.Iterable[Attribute[_]]
+        ): Resource[IO, Unit] =
+          Resource
+            .makeCase(IO.monotonic) { case (start, ec) =>
+              for {
+                end <- IO.monotonic
+                _ <- record(
+                  (end - start).toUnit(timeUnit),
+                  attributes ++ Histogram.causeAttributes(ec)
+                )
+              } yield ()
+            }
+            .void
       }
 
     def records: IO[List[Record[Double]]] =

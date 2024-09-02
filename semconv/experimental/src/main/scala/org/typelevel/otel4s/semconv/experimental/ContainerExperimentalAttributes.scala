@@ -44,8 +44,9 @@ object ContainerExperimentalAttributes {
     "container.command_line"
   )
 
-  /** The CPU state for this data point.
+  /** Deprecated, use `cpu.mode` instead.
     */
+  @deprecated("Use `cpu.mode` instead", "0.5.0")
   val ContainerCpuState: AttributeKey[String] = string("container.cpu.state")
 
   /** Container ID. Usually a UUID, as for example used to <a
@@ -64,7 +65,7 @@ object ContainerExperimentalAttributes {
     *     endpoint. K8s defines a link to the container registry repository with
     *     digest `"imageID": "registry.azurecr.io
     *     /namespace/service/dockerfile@sha256:bdeabd40c3a8a492eaf9e8e44d0ebbb84bac7ee25ac0cf8a7159d25f62555625"`.
-    *     The ID is assinged by the container runtime and can vary in different
+    *     The ID is assigned by the container runtime and can vary in different
     *     environments. Consider using `oci.manifest.digest` if it is important
     *     to identify the same image in different environments/runtimes.
     */
@@ -117,7 +118,9 @@ object ContainerExperimentalAttributes {
 
   /** Values for [[ContainerCpuState]].
     */
+  @deprecated("Use `cpu.mode` instead", "0.5.0")
   abstract class ContainerCpuStateValue(val value: String)
+  @annotation.nowarn("cat=deprecation")
   object ContainerCpuStateValue {
 
     /** When tasks of the cgroup are in user mode (Linux). When all container

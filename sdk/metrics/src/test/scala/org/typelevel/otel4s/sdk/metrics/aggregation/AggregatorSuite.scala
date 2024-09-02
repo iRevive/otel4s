@@ -33,7 +33,7 @@ import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.MetricPoints
 import org.typelevel.otel4s.sdk.metrics.data.PointData
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
-import org.typelevel.otel4s.sdk.metrics.exemplar.ExemplarFilter
+import org.typelevel.otel4s.sdk.metrics.exemplar.Reservoirs
 import org.typelevel.otel4s.sdk.metrics.exemplar.TraceContextLookup
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
 import org.typelevel.otel4s.sdk.metrics.scalacheck.Gens
@@ -75,10 +75,9 @@ class AggregatorSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
 
         val aggregator = Aggregator
           .synchronous[IO, Long](
+            Reservoirs.alwaysOn(TraceContextLookup.noop),
             aggregation,
-            descriptor,
-            ExemplarFilter.alwaysOn,
-            TraceContextLookup.noop
+            descriptor
           )
           .asInstanceOf[SynchronousAggregator[IO, Long]]
 
@@ -103,6 +102,7 @@ class AggregatorSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
               descriptor.instrumentType match {
                 case InstrumentType.Counter       => numberPoints
                 case InstrumentType.UpDownCounter => numberPoints
+                case InstrumentType.Gauge         => numberPoints
                 case InstrumentType.Histogram =>
                   histogramPoints(Aggregation.Defaults.Boundaries)
               }
@@ -141,6 +141,7 @@ class AggregatorSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
               descriptor.instrumentType match {
                 case InstrumentType.Counter       => sum
                 case InstrumentType.UpDownCounter => sum
+                case InstrumentType.Gauge         => lastValue
                 case InstrumentType.Histogram =>
                   histogram(Aggregation.Defaults.Boundaries)
               }

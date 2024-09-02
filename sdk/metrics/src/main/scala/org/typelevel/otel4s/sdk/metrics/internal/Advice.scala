@@ -18,17 +18,24 @@ package org.typelevel.otel4s.sdk.metrics.internal
 
 import cats.Hash
 import cats.Show
+import cats.syntax.foldable._
 import org.typelevel.otel4s.AttributeKey
 import org.typelevel.otel4s.metrics.BucketBoundaries
 
-sealed trait Advice {
+/** Advisory options influencing aggregation configuration parameters.
+  *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/metrics/api/#instrument-advisory-parameters]]
+  */
+private[metrics] sealed trait Advice {
 
-  /** The explicit bucket histogram boundaries.
+  /** The recommended set of bucket boundaries to use if the selected
+    * aggregation is `ExplicitBucketHistogram`.
     */
-  def explicitBoundaries: Option[BucketBoundaries]
+  def explicitBucketBoundaries: Option[BucketBoundaries]
 
   /** The list of the attribute keys to be used for the resulting instrument.
-    */
+   */
   def attributeKeys: Option[Set[AttributeKey[_]]]
 
   override final def hashCode(): Int =
@@ -44,31 +51,35 @@ sealed trait Advice {
     Show[Advice].show(this)
 }
 
-object Advice {
-  def empty: Advice = new Advice {
-    def explicitBoundaries: Option[BucketBoundaries] = None
-    def attributeKeys: Option[Set[AttributeKey[_]]] = None
-  }
+private[metrics] object Advice {
 
+  /** Creates an [[Advice]] with the given values.
+    *
+    * @param bucketBoundaries
+    *   the recommended set of bucket boundaries to use if the selected
+    *   aggregation is `explicit bucket histogram`
+    */
   def apply(bucketBoundaries: Option[BucketBoundaries]): Advice =
-    new Advice {
-      def explicitBoundaries: Option[BucketBoundaries] = bucketBoundaries
-      def attributeKeys: Option[Set[AttributeKey[_]]] = None
-    }
+    Impl(bucketBoundaries, None)
 
   implicit val adviceHash: Hash[Advice] =
-    Hash.by(a => (a.attributeKeys, a.explicitBoundaries))
+    Hash.by(a => (a.explicitBucketBoundaries, a.attributeKeys))
 
   implicit val adviceShow: Show[Advice] =
     Show.show { advice =>
+      val boundaries = advice.explicitBucketBoundaries.map { b =>
+        s"explicitBucketBoundaries=$b"
+      }
+
       val attributeKeys = advice.attributeKeys.map { k =>
         s"attributeKeys=${k.mkString("[", ",", "]")}"
       }
 
-      val boundaries = advice.explicitBoundaries.map { b =>
-        s"explicitBoundaries=$b"
-      }
-
       Vector(attributeKeys, boundaries).flatten.mkString("Advice{", ", ", "}")
     }
+
+  private final case class Impl(
+      explicitBucketBoundaries: Option[BucketBoundaries],
+      attributeKeys: Option[Set[AttributeKey[_]]]
+  ) extends Advice
 }

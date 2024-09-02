@@ -49,6 +49,7 @@ class SdkTracesSuite extends CatsEffectSuite {
   private val DefaultTraces =
     tracesToString(
       TelemetryResource.default,
+      SpanLimits.default,
       Sampler.parentBased(Sampler.AlwaysOn)
     )
 
@@ -56,7 +57,12 @@ class SdkTracesSuite extends CatsEffectSuite {
     "SdkTraces{tracerProvider=TracerProvider.Noop, propagators=ContextPropagators.Noop}"
 
   test("withConfig - use the given config") {
-    val config = Config.ofProps(Map("otel.traces.exporter" -> "none"))
+    val config = Config.ofProps(
+      Map(
+        "otel.otel4s.resource.detectors.enabled" -> "none",
+        "otel.traces.exporter" -> "none"
+      )
+    )
 
     SdkTraces
       .autoConfigured[IO](_.withConfig(config))
@@ -110,6 +116,7 @@ class SdkTracesSuite extends CatsEffectSuite {
 
     val sampler = Sampler.AlwaysOff
     val resource = TelemetryResource.default
+    val spanLimits = SpanLimits.default
 
     SdkTraces
       .autoConfigured[IO](
@@ -118,12 +125,22 @@ class SdkTracesSuite extends CatsEffectSuite {
           .addTracerProviderCustomizer((t, _) => t.withResource(resource))
       )
       .use { traces =>
-        IO(assertEquals(traces.toString, tracesToString(resource, sampler)))
+        IO(
+          assertEquals(
+            traces.toString,
+            tracesToString(resource, spanLimits, sampler)
+          )
+        )
       }
   }
 
   test("addResourceCustomizer - customize a resource") {
-    val config = Config.ofProps(Map("otel.traces.exporter" -> "none"))
+    val config = Config.ofProps(
+      Map(
+        "otel.otel4s.resource.detectors.enabled" -> "none",
+        "otel.traces.exporter" -> "none"
+      )
+    )
 
     val default = TelemetryResource.default
     val withAttributes =
@@ -147,7 +164,10 @@ class SdkTracesSuite extends CatsEffectSuite {
 
   test("addExporterConfigurer - support external configurers") {
     val config = Config.ofProps(
-      Map("otel.traces.exporter" -> "custom-1,custom-2")
+      Map(
+        "otel.otel4s.resource.detectors.enabled" -> "none",
+        "otel.traces.exporter" -> "custom-1,custom-2"
+      )
     )
 
     def customExporter(exporterName: String): SpanExporter[IO] =
@@ -185,6 +205,7 @@ class SdkTracesSuite extends CatsEffectSuite {
   test("addSamplerConfigurer - support external configurers") {
     val config = Config.ofProps(
       Map(
+        "otel.otel4s.resource.detectors.enabled" -> "none",
         "otel.traces.exporter" -> "none",
         "otel.traces.sampler" -> "custom-sampler",
       )
@@ -218,6 +239,7 @@ class SdkTracesSuite extends CatsEffectSuite {
   test("addTextMapPropagatorConfigurer - support external configurers") {
     val config = Config.ofProps(
       Map(
+        "otel.otel4s.resource.detectors.enabled" -> "none",
         "otel.traces.exporter" -> "none",
         "otel.propagators" -> "tracecontext,custom-1,custom-2,baggage",
       )
@@ -260,6 +282,7 @@ class SdkTracesSuite extends CatsEffectSuite {
 
   private def tracesToString(
       resource: TelemetryResource = TelemetryResource.default,
+      spanLimits: SpanLimits = SpanLimits.default,
       sampler: Sampler = Sampler.parentBased(Sampler.AlwaysOn),
       propagators: ContextPropagators[Context] = ContextPropagators.of(
         W3CTraceContextPropagator.default,
@@ -268,7 +291,7 @@ class SdkTracesSuite extends CatsEffectSuite {
       exporter: String = "SpanExporter.Noop"
   ) =
     "SdkTraces{tracerProvider=" +
-      s"SdkTracerProvider{resource=$resource, sampler=$sampler, " +
+      s"SdkTracerProvider{resource=$resource, spanLimits=$spanLimits, sampler=$sampler, " +
       "spanProcessor=SpanProcessor.Multi(" +
       s"BatchSpanProcessor{exporter=$exporter, scheduleDelay=5 seconds, exporterTimeout=30 seconds, maxQueueSize=2048, maxExportBatchSize=512}, " +
       "SpanStorage)}, " +

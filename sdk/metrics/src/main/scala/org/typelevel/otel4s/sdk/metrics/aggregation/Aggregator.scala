@@ -18,8 +18,7 @@ package org.typelevel.otel4s.sdk.metrics.aggregation
 
 import cats.Applicative
 import cats.data.NonEmptyVector
-import cats.effect.Temporal
-import cats.effect.std.Random
+import cats.effect.Concurrent
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.metrics.BucketBoundaries
 import org.typelevel.otel4s.metrics.MeasurementValue
@@ -32,8 +31,7 @@ import org.typelevel.otel4s.sdk.metrics.data.AggregationTemporality
 import org.typelevel.otel4s.sdk.metrics.data.MetricData
 import org.typelevel.otel4s.sdk.metrics.data.PointData
 import org.typelevel.otel4s.sdk.metrics.data.TimeWindow
-import org.typelevel.otel4s.sdk.metrics.exemplar.ExemplarFilter
-import org.typelevel.otel4s.sdk.metrics.exemplar.TraceContextLookup
+import org.typelevel.otel4s.sdk.metrics.exemplar.Reservoirs
 import org.typelevel.otel4s.sdk.metrics.internal.AsynchronousMeasurement
 import org.typelevel.otel4s.sdk.metrics.internal.InstrumentDescriptor
 import org.typelevel.otel4s.sdk.metrics.internal.MetricDescriptor
@@ -50,6 +48,7 @@ private[metrics] object Aggregator {
     *   - Counter
     *   - UpDownCounter
     *   - Histogram
+    *   - Gauge
     *
     * @tparam F
     *   the higher-kinded type of a polymorphic effect
@@ -196,18 +195,14 @@ private[metrics] object Aggregator {
 
   /** Creates a [[Synchronous]] aggregator based on the given `aggregation`.
     *
+    * @param reservoirs
+    *   the allocator of exemplar reservoirs
+    *
     * @param aggregation
     *   the aggregation to use
     *
     * @param descriptor
     *   the descriptor of the instrument
-    *
-    * @param filter
-    *   used by the exemplar reservoir to filter the offered values
-    *
-    * @param traceContextLookup
-    *   used by the exemplar reservoir to extract tracing information from the
-    *   context
     *
     * @tparam F
     *   the higher-kinded type of a polymorphic effect
@@ -215,33 +210,34 @@ private[metrics] object Aggregator {
     * @tparam A
     *   the type of the values to record
     */
-  def synchronous[F[_]: Temporal: Random, A: MeasurementValue: Numeric](
+  def synchronous[F[_]: Concurrent, A: MeasurementValue: Numeric](
+      reservoirs: Reservoirs[F],
       aggregation: Aggregation.Synchronous,
-      descriptor: InstrumentDescriptor.Synchronous,
-      filter: ExemplarFilter,
-      traceContextLookup: TraceContextLookup
+      descriptor: InstrumentDescriptor.Synchronous
   ): Aggregator.Synchronous[F, A] = {
+    def fixedReservoirSize: Int =
+      Runtime.getRuntime.availableProcessors
+
     def sum: Aggregator.Synchronous[F, A] =
-      SumAggregator.synchronous(
-        Runtime.getRuntime.availableProcessors,
-        filter,
-        traceContextLookup
-      )
+      SumAggregator.synchronous(reservoirs, fixedReservoirSize)
 
     def lastValue: Aggregator.Synchronous[F, A] =
-      LastValueAggregator.synchronous[F, A]
+      LastValueAggregator.synchronous(reservoirs, fixedReservoirSize)
 
     def histogram(boundaries: BucketBoundaries): Aggregator.Synchronous[F, A] =
-      ExplicitBucketHistogramAggregator(boundaries, filter, traceContextLookup)
+      ExplicitBucketHistogramAggregator(reservoirs, boundaries)
 
     aggregation match {
       case Aggregation.Default =>
         descriptor.instrumentType match {
           case InstrumentType.Counter       => sum
           case InstrumentType.UpDownCounter => sum
+          case InstrumentType.Gauge         => lastValue
           case InstrumentType.Histogram =>
-            val boundaries = descriptor.advice.explicitBoundaries
+            val boundaries = descriptor.advice
+              .flatMap(_.explicitBucketBoundaries)
               .getOrElse(Aggregation.Defaults.Boundaries)
+
             histogram(boundaries)
         }
 

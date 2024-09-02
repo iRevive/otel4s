@@ -44,10 +44,8 @@ object Aggregation {
   private[metrics] object Defaults {
     // See https://opentelemetry.io/docs/specs/otel/metrics/sdk/#explicit-bucket-histogram-aggregation
     val Boundaries: BucketBoundaries = BucketBoundaries(
-      Vector(
-        0d, 5d, 10d, 25d, 50d, 75d, 100d, 250d, 500d, 750d, 1000d, 2500d, 5000d,
-        7500d, 10000d
-      )
+      0d, 5d, 10d, 25d, 50d, 75d, 100d, 250d, 500d, 750d, 1000d, 2500d, 5000d,
+      7500d, 10000d
     )
   }
 
@@ -59,6 +57,7 @@ object Aggregation {
     *   - counter - [[sum]]
     *   - up down counter - [[sum]]
     *   - observable counter - [[sum]]
+    *   - gauge - [[lastValue]]
     *   - observable up down counter - [[sum]]
     *   - histogram - `explicitBucketHistogram`
     *   - observable gauge - [[lastValue]]
@@ -82,6 +81,7 @@ object Aggregation {
     * using the last seen measurement.
     *
     * Compatible instruments:
+    *   - [[org.typelevel.otel4s.metrics.Gauge Gauge]]
     *   - [[org.typelevel.otel4s.metrics.ObservableGauge ObservableGauge]]
     */
   def lastValue: Aggregation = LastValue
@@ -208,7 +208,7 @@ object Aggregation {
     )
 
     val LastValue: Set[InstrumentType] =
-      Set(InstrumentType.ObservableGauge)
+      Set(InstrumentType.Gauge, InstrumentType.ObservableGauge)
 
     val ExplicitBucketHistogram: Set[InstrumentType] =
       Set(InstrumentType.Counter, InstrumentType.Histogram)
