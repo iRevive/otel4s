@@ -120,7 +120,7 @@ private final class SpanExportersAutoConfigure[F[_]: MonadThrow: Console](
         |import org.typelevel.otel4s.sdk.exporter.otlp.trace.autoconfigure.OtlpSpanExporterAutoConfigure
         |
         |SdkTraces.autoConfigured[IO](
-        |  _.addSpanExporterConfigurer(OtlpSpanExporterAutoConfigure[IO])
+        |  _.addExporterConfigurer(OtlpSpanExporterAutoConfigure[IO])
         |)
         |""".stripMargin
     )

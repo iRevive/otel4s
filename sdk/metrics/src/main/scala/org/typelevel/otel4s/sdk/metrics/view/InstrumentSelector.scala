@@ -20,8 +20,8 @@ package view
 import cats.Hash
 import cats.Show
 
-/** Instrument selection criteria for applying [[View]]s registered via
-  * [[org.typelevel.otel4s.sdk.metrics.SdkMeterProvider.Builder.registerView]].
+/** Instrument selection criteria for applying views registered via meter
+  * provider.
   *
   * The predicate is built by the logical conjunction of the present properties.
   */
