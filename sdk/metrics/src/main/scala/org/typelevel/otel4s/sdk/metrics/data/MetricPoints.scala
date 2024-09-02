@@ -94,6 +94,14 @@ object MetricPoints {
     def aggregationTemporality: AggregationTemporality
   }
 
+  sealed trait ExponentialHistogram extends MetricPoints {
+    def points: NonEmptyVector[PointData.ExponentialHistogram]
+
+    /** The aggregation temporality of this aggregation.
+      */
+    def aggregationTemporality: AggregationTemporality
+  }
+
   /** Creates a [[Sum]] with the given values.
     */
   def sum[A <: PointData.NumberPoint](
@@ -117,6 +125,12 @@ object MetricPoints {
       aggregationTemporality: AggregationTemporality
   ): Histogram =
     HistogramImpl(points, aggregationTemporality)
+
+  def exponentialHistogram(
+      points: NonEmptyVector[PointData.ExponentialHistogram],
+      aggregationTemporality: AggregationTemporality
+  ): ExponentialHistogram =
+    ExponentialHistogramImpl(points, aggregationTemporality)
 
   implicit val metricPointsHash: Hash[MetricPoints] = {
     val sumHash: Hash[Sum] =
@@ -191,5 +205,10 @@ object MetricPoints {
       points: NonEmptyVector[PointData.Histogram],
       aggregationTemporality: AggregationTemporality
   ) extends Histogram
+
+  private final case class ExponentialHistogramImpl(
+      points: NonEmptyVector[PointData.ExponentialHistogram],
+      aggregationTemporality: AggregationTemporality
+  ) extends ExponentialHistogram
 
 }
