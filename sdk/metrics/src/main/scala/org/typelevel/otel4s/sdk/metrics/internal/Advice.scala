@@ -19,6 +19,7 @@ package org.typelevel.otel4s.sdk.metrics.internal
 import cats.Hash
 import cats.Show
 import cats.syntax.foldable._
+import org.typelevel.otel4s.AttributeKey
 import org.typelevel.otel4s.metrics.BucketBoundaries
 
 /** Advisory options influencing aggregation configuration parameters.
@@ -32,6 +33,10 @@ private[metrics] sealed trait Advice {
     * aggregation is `ExplicitBucketHistogram`.
     */
   def explicitBucketBoundaries: Option[BucketBoundaries]
+
+  /** The list of the attribute keys to be used for the resulting instrument.
+   */
+  def attributeKeys: Option[Set[AttributeKey[_]]]
 
   override final def hashCode(): Int =
     Hash[Advice].hash(this)
@@ -55,20 +60,26 @@ private[metrics] object Advice {
     *   aggregation is `explicit bucket histogram`
     */
   def apply(bucketBoundaries: Option[BucketBoundaries]): Advice =
-    Impl(bucketBoundaries)
+    Impl(bucketBoundaries, None)
 
   implicit val adviceHash: Hash[Advice] =
-    Hash.by(_.explicitBucketBoundaries)
+    Hash.by(a => (a.explicitBucketBoundaries, a.attributeKeys))
 
   implicit val adviceShow: Show[Advice] =
     Show.show { advice =>
-      val boundaries = advice.explicitBucketBoundaries.foldMap { b =>
+      val boundaries = advice.explicitBucketBoundaries.map { b =>
         s"explicitBucketBoundaries=$b"
       }
-      s"Advice{$boundaries}"
+
+      val attributeKeys = advice.attributeKeys.map { k =>
+        s"attributeKeys=${k.mkString("[", ",", "]")}"
+      }
+
+      Vector(attributeKeys, boundaries).flatten.mkString("Advice{", ", ", "}")
     }
 
   private final case class Impl(
-      explicitBucketBoundaries: Option[BucketBoundaries]
+      explicitBucketBoundaries: Option[BucketBoundaries],
+      attributeKeys: Option[Set[AttributeKey[_]]]
   ) extends Advice
 }

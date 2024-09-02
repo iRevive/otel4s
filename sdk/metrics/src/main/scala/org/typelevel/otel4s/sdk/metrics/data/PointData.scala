@@ -172,6 +172,39 @@ object PointData {
 
   }
 
+  sealed trait Summary extends PointData {
+    def count: Long
+    def sum: Double
+    def percentileValues: Vector[Summary.ValueAtQuantile]
+  }
+
+  object Summary {
+    sealed trait ValueAtQuantile {
+      def quantile: Double
+      def value: Double
+    }
+  }
+
+  sealed trait ExponentialHistogram extends PointData {
+    def exemplars: Vector[ExemplarData.DoubleExemplar]
+    def sum: Double
+    def zeroCount: Long
+    def min: Option[Double]
+    def max: Option[Double]
+    val count: Long
+    def positiveBuckets: ExponentialHistogram.Buckets
+    def negativeBuckets: ExponentialHistogram.Buckets
+  }
+
+  object ExponentialHistogram {
+    sealed trait Buckets {
+      def scale: Int
+      def offset: Int
+      def bucketCounts: Vector[Long]
+      def totalCount: Long
+    }
+  }
+
   /** Creates a [[LongNumber]] with the given values.
     */
   def longNumber(
@@ -203,6 +236,44 @@ object PointData {
       counts: Vector[Long]
   ): Histogram =
     HistogramImpl(timeWindow, attributes, exemplars, stats, boundaries, counts)
+
+  def summary(
+      timeWindow: TimeWindow,
+      attributes: Attributes,
+      count: Long,
+      sum: Double,
+      percentileValues: Vector[Summary.ValueAtQuantile]
+  ): Summary =
+    SummaryImpl(
+      timeWindow,
+      attributes,
+      count,
+      sum,
+      percentileValues
+    )
+
+  def exponentialHistogram(
+      timeWindow: TimeWindow,
+      attributes: Attributes,
+      exemplars: Vector[ExemplarData.DoubleExemplar],
+      sum: Double,
+      zeroCount: Long,
+      min: Option[Double],
+      max: Option[Double],
+      positiveBuckets: ExponentialHistogram.Buckets,
+      negativeBuckets: ExponentialHistogram.Buckets
+  ): ExponentialHistogram =
+    ExponentialHistogramImpl(
+      timeWindow,
+      attributes,
+      exemplars,
+      sum,
+      zeroCount,
+      min,
+      max,
+      positiveBuckets,
+      negativeBuckets
+    )
 
   implicit val pointDataHash: Hash[PointData] = {
     val numberHash: Hash[NumberPoint] = {
@@ -297,5 +368,28 @@ object PointData {
       boundaries: BucketBoundaries,
       counts: Vector[Long]
   ) extends Histogram
+
+  private final case class SummaryImpl(
+      timeWindow: TimeWindow,
+      attributes: Attributes,
+      count: Long,
+      sum: Double,
+      percentileValues: Vector[Summary.ValueAtQuantile]
+  ) extends Summary
+
+  private final case class ExponentialHistogramImpl(
+      timeWindow: TimeWindow,
+      attributes: Attributes,
+      exemplars: Vector[ExemplarData.DoubleExemplar],
+      sum: Double,
+      zeroCount: Long,
+      min: Option[Double],
+      max: Option[Double],
+      positiveBuckets: ExponentialHistogram.Buckets,
+      negativeBuckets: ExponentialHistogram.Buckets
+  ) extends ExponentialHistogram {
+    val count: Long =
+      zeroCount + positiveBuckets.totalCount + negativeBuckets.totalCount
+  }
 
 }

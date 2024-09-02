@@ -246,6 +246,9 @@ private[metrics] object Aggregator {
 
       case Aggregation.ExplicitBucketHistogram(boundaries) =>
         histogram(boundaries)
+
+      case Aggregation.Base2ExponentialHistogram(_, _) =>
+        ???
     }
   }
 

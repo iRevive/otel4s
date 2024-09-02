@@ -162,11 +162,65 @@ private object MetricsProtoEncoder {
         Proto.Gauge(gauge.points.toVector.map(ProtoEncoder.encode(_)))
       )
 
+    case summary: MetricPoints.Summary =>
+      Proto.Metric.Data.Summary(
+        Proto.Summary(
+          summary.points.toVector.map(p =>
+            Proto.SummaryDataPoint(
+              ProtoEncoder.encode(p.attributes),
+              p.timeWindow.start.toNanos,
+              p.timeWindow.end.toNanos,
+              p.count,
+              p.sum,
+              p.percentileValues.map { q =>
+                Proto.SummaryDataPoint
+                  .ValueAtQuantile(q.quantile, q.value)
+              }
+            )
+          )
+        )
+      )
+
     case histogram: MetricPoints.Histogram =>
       Proto.Metric.Data.Histogram(
         Proto.Histogram(
           histogram.points.toVector.map(ProtoEncoder.encode(_)),
           ProtoEncoder.encode(histogram.aggregationTemporality)
+        )
+      )
+
+    case exponentialHistogram: MetricPoints.ExponentialHistogram =>
+      Proto.Metric.Data.ExponentialHistogram(
+        Proto.ExponentialHistogram(
+          exponentialHistogram.points.toVector.map(p =>
+            Proto
+              .ExponentialHistogramDataPoint(
+                attributes = ProtoEncoder.encode(p.attributes),
+                startTimeUnixNano = p.timeWindow.start.toNanos,
+                timeUnixNano = p.timeWindow.end.toNanos,
+                count = p.count,
+                sum = Some(p.sum),
+                scale = 0, // todo scale
+                zeroCount = p.zeroCount,
+                positive = Some(
+                  Proto.ExponentialHistogramDataPoint.Buckets(
+                    p.positiveBuckets.offset,
+                    p.positiveBuckets.bucketCounts
+                  )
+                ),
+                negative = Some(
+                  Proto.ExponentialHistogramDataPoint.Buckets(
+                    p.negativeBuckets.offset,
+                    p.negativeBuckets.bucketCounts
+                  )
+                ),
+                exemplars = p.exemplars.map(ProtoEncoder.encode(_)),
+                min = p.min,
+                max = p.max,
+                // zeroThreshold = , // todo?
+              )
+          ),
+          ProtoEncoder.encode(exponentialHistogram.aggregationTemporality)
         )
       )
   }

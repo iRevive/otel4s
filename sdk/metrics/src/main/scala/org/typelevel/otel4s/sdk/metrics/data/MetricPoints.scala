@@ -79,6 +79,10 @@ object MetricPoints {
     def points: NonEmptyVector[Point]
   }
 
+  sealed trait Summary extends MetricPoints {
+    def points: NonEmptyVector[PointData.Summary]
+  }
+
   /** Histogram represents the type of a metric that is calculated by
     * aggregating as a histogram of all reported double measurements over a time
     * interval.
@@ -91,6 +95,11 @@ object MetricPoints {
 
     /** The aggregation temporality of this aggregation.
       */
+    def aggregationTemporality: AggregationTemporality
+  }
+
+  sealed trait ExponentialHistogram extends MetricPoints {
+    def points: NonEmptyVector[PointData.ExponentialHistogram]
     def aggregationTemporality: AggregationTemporality
   }
 
@@ -110,6 +119,11 @@ object MetricPoints {
   ): Gauge =
     GaugeImpl(points)
 
+  def summary(
+      points: NonEmptyVector[PointData.Summary]
+  ): Summary =
+    SummaryImpl(points)
+
   /** Creates a [[Histogram]] with the given values.
     */
   def histogram(
@@ -117,6 +131,12 @@ object MetricPoints {
       aggregationTemporality: AggregationTemporality
   ): Histogram =
     HistogramImpl(points, aggregationTemporality)
+
+  def exponentialHistogram(
+      points: NonEmptyVector[PointData.ExponentialHistogram],
+      aggregationTemporality: AggregationTemporality
+  ): ExponentialHistogram =
+    ExponentialHistogramImpl(points, aggregationTemporality)
 
   implicit val metricPointsHash: Hash[MetricPoints] = {
     val sumHash: Hash[Sum] =
@@ -187,9 +207,18 @@ object MetricPoints {
       points: NonEmptyVector[A]
   ) extends Gauge { type Point = A }
 
+  private final case class SummaryImpl(
+      points: NonEmptyVector[PointData.Summary]
+  ) extends Summary
+
   private final case class HistogramImpl(
       points: NonEmptyVector[PointData.Histogram],
       aggregationTemporality: AggregationTemporality
   ) extends Histogram
+
+  private final case class ExponentialHistogramImpl(
+      points: NonEmptyVector[PointData.ExponentialHistogram],
+      aggregationTemporality: AggregationTemporality
+  ) extends ExponentialHistogram
 
 }
