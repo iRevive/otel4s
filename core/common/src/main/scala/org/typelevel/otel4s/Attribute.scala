@@ -85,6 +85,83 @@ object Attribute {
     implicit def id[A]: From[A, A] = a => a
   }
 
+  /** Allows an implicit conversion of `A` to `Attribute`.
+    *
+    * @tparam A
+    *   the type of the value
+    *
+    * @tparam Key
+    *   type of the attribute key
+    */
+  trait Keyed[A, Key] {
+    def make(a: A): Attribute[Key]
+  }
+
+  object Keyed {
+
+    /** Creates a [[Keyed]] instance with a const name.
+      *
+      * @example
+      *   {{{
+      * case class UserId(id: Int)
+      * object UserId {
+      *   val UserIdKey: AttributeKey[Long] = AttributeKey("user.id")
+      *   implicit val userIdAttributeFrom: Attribute.From[UserId, Long] =
+      *     _.id.toLong
+      *   implicit val userIdAttributeKeyed: Attribute.Keyed[UserId, Long] =
+      *     Attribute.Keyed.const(UserIdKey)
+      * }
+      *
+      * val userId = UserId(123)
+      *
+      * val attributes = Attributes(userId) // implicitly converted to Attribute[Long]
+      *   }}}
+      *
+      * @param key
+      *   the key of the attribute
+      *
+      * @tparam A
+      *   the type of the value
+      *
+      * @tparam Key
+      *   the type of the key
+      */
+    def const[A, Key](key: AttributeKey[Key])(implicit from: Attribute.From[A, Key]): Keyed[A, Key] =
+      (value: A) => Attribute.from(key, value)
+
+    /** Creates a [[Keyed]] instance with a const name.
+      *
+      * @example
+      *   {{{
+      * case class UserId(id: Int)
+      * object UserId {
+      *   implicit val userIdAttributeFrom: Attribute.From[UserId, Long] =
+      *     _.id.toLong
+      *   implicit val userIdAttributeKeyed: Attribute.Keyed[UserId, Long] =
+      *     Attribute.Keyed.const("user.id")
+      * }
+      *
+      * val userId = UserId(123)
+      *
+      * val attributes = Attributes(userId) // implicitly converted to Attribute[Long]
+      *   }}}
+      *
+      * @param name
+      *   the name of the attribute
+      *
+      * @tparam A
+      *   the type of the value
+      *
+      * @tparam Key
+      *   the type of the key
+      */
+    def const[A, Key](name: String)(implicit
+        from: Attribute.From[A, Key],
+        select: AttributeKey.KeySelect[Key]
+    ): Keyed[A, Key] =
+      (a: A) => Attribute.from(name, a)
+  }
+
   /** Creates an attribute with the given key and value.
     *
     * @example
@@ -154,6 +231,9 @@ object Attribute {
       select: AttributeKey.KeySelect[Key]
   ): Attribute[Key] =
     Impl(select.make(name), from(value))
+
+  implicit def materializeFromKeyed[A, Key](value: A)(implicit ev: Keyed[A, Key]): Attribute[Key] =
+    ev.make(value)
 
   implicit val showAttribute: Show[Attribute[_]] = (a: Attribute[_]) => s"${show"${a.key}"}=${a.value}"
 

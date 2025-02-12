@@ -47,4 +47,28 @@ class AttributeSuite extends FunSuite {
     assertEquals(builder.result(), expected)
   }
 
+  test("implicitly materialize an attribute using Attribute.Keyed") {
+    case class AssetId(id: Int)
+
+    val assetIdKey: AttributeKey[Long] = AttributeKey("asset.id")
+
+    implicit val assetIdFrom: Attribute.From[AssetId, Long] =
+      _.id.toLong
+
+    implicit val userIdAttributeKeyed: Attribute.Keyed[UserId, String] =
+      Attribute.Keyed.const("user.id")
+
+    implicit val assetIdAttributeKeyed: Attribute.Keyed[AssetId, Long] =
+      Attribute.Keyed.const(assetIdKey)
+
+    val builder = Attributes.newBuilder
+    builder += UserId("321")
+    builder ++= Option(AssetId(123))
+
+    val attributes = builder.result()
+
+    assertEquals(attributes.get[String]("user.id").map(_.value), Some("321"))
+    assertEquals(attributes.get[Long]("asset.id").map(_.value), Some(123L))
+  }
+
 }
