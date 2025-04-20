@@ -16,16 +16,12 @@
 
 package org.typelevel.otel4s.sdk.logs
 
-import cats.Applicative
 import cats.effect.IO
-import cats.effect.std.Random
 import cats.mtl.Ask
-import munit.CatsEffectSuite
-import munit.ScalaCheckEffectSuite
+import munit.{CatsEffectSuite, ScalaCheckEffectSuite}
 import org.scalacheck.effect.PropF
-import org.typelevel.otel4s.sdk.context.AskContext
-import org.typelevel.otel4s.sdk.context.Context
-import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
+import org.typelevel.otel4s.sdk.context.{AskContext, Context}
+import org.typelevel.otel4s.sdk.logs.processor.LogRecordProcessor
 import org.typelevel.otel4s.sdk.logs.scalacheck.Gens
 
 class SdkLoggerProviderSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
@@ -33,38 +29,26 @@ class SdkLoggerProviderSuite extends CatsEffectSuite with ScalaCheckEffectSuite 
   private implicit val askContext: AskContext[IO] = Ask.const(Context.root)
 
   test("empty builder - return noop instance") {
-    Random.scalaUtilRandom[IO].flatMap { implicit R: Random[IO] =>
-      for {
-        provider <- SdkLoggerProvider.builder[IO].build
-      } yield assertEquals(provider.toString, "LoggerProvider.Noop")
-    }
+    for {
+      provider <- SdkLoggerProvider.builder[IO].build
+    } yield assertEquals(provider.toString, "LoggerProvider.Noop")
   }
 
   test("reflect parameters in the toString") {
     PropF.forAllF(Gens.telemetryResource) { resource =>
-      val exporter = new EmptyLogRecordExporter[IO]
+      val processor = LogRecordProcessor.noop[IO]
 
-      val expected = {
-        s"SdkLoggerProvider{resource=$resource, exporter=$exporter}"
-      }
+      val expected =
+        s"SdkLoggerProvider{resource=$resource, logRecordProcessor=$processor}"
 
-      Random.scalaUtilRandom[IO].flatMap { implicit R: Random[IO] =>
-        for {
-          provider <- SdkLoggerProvider
-            .builder[IO]
-            .withResource(resource)
-            .withExporter(exporter)
-            .build
-        } yield assertEquals(provider.toString, expected)
-      }
+      for {
+        provider <- SdkLoggerProvider
+          .builder[IO]
+          .withResource(resource)
+          .addLogRecordProcessor(processor)
+          .build
+      } yield assertEquals(provider.toString, expected)
     }
   }
 
-  private class EmptyLogRecordExporter[F[_]: Applicative] extends LogRecordExporter[F] {
-    def name: String = "LogRecordExporter.Empty"
-    def exportLogs[G[_]: cats.Foldable](logs: G[org.typelevel.otel4s.sdk.logs.data.LogRecordData]): F[Unit] =
-      Applicative[F].unit
-    def flush: F[Unit] = Applicative[F].unit
-    override def toString: String = "LogRecordExporter.Empty"
-  }
 }

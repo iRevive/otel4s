@@ -59,7 +59,7 @@ sealed abstract class OpenTelemetrySdkTestkit[F[_]] private (implicit
   val baggageManager: BaggageManager[F] = SdkBaggageManager.fromLocal
 
   override def toString: String =
-    s"OpenTelemetrySdkTestkit{" +
+    "OpenTelemetrySdkTestkit{" +
       s"meterProvider=$meterProvider, " +
       s"tracerProvider=$tracerProvider, " +
       s"loggerProvider=$loggerProvider, " +

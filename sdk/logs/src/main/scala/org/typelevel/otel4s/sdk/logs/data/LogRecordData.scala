@@ -16,9 +16,12 @@
 
 package org.typelevel.otel4s.sdk.logs.data
 
-import cats.{Hash, Show}
+import cats.Hash
+import cats.Show
 import cats.syntax.show._
-import org.typelevel.otel4s.{Attributes, TraceContext, Value}
+import org.typelevel.otel4s.Attributes
+import org.typelevel.otel4s.TraceContext
+import org.typelevel.otel4s.Value
 import org.typelevel.otel4s.logs.Severity
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
@@ -166,7 +169,7 @@ object LogRecordData {
         s"Some(TraceContext{traceId=${tc.traceId}, spanId=${tc.spanId}, isSampled=${tc.isSampled}})"
       }
 
-      s"LogRecordData{" +
+      "LogRecordData{" +
         s"timestamp=${data.timestamp}, " +
         s"observedTimestamp=${data.observedTimestamp}, " +
         s"traceContext=$traceContextStr, " +

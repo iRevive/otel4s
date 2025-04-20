@@ -16,11 +16,14 @@
 
 package org.typelevel.otel4s.sdk.logs
 
+import cats.Applicative
+import cats.Monad
+import cats.Parallel
 import cats.effect.Temporal
 import cats.effect.std.Console
 import cats.syntax.functor._
-import cats.{Applicative, Monad, Parallel}
-import org.typelevel.otel4s.logs.{LoggerBuilder, LoggerProvider}
+import org.typelevel.otel4s.logs.LoggerBuilder
+import org.typelevel.otel4s.logs.LoggerProvider
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.AskContext

@@ -20,7 +20,8 @@ import cats.Show
 import cats.kernel.laws.discipline.HashTests
 import munit.DisciplineSuite
 import org.scalacheck.Prop
-import org.typelevel.otel4s.scalacheck.{Arbitraries, Cogens}
+import org.typelevel.otel4s.scalacheck.Arbitraries
+import org.typelevel.otel4s.scalacheck.Cogens
 
 class ValueSuite extends DisciplineSuite {
   import Arbitraries.valueArbitrary

@@ -32,7 +32,8 @@ import org.typelevel.otel4s.oteljava.baggage.BaggageManagerImpl
 import org.typelevel.otel4s.oteljava.context.Context
 import org.typelevel.otel4s.oteljava.context.LocalContext
 import org.typelevel.otel4s.oteljava.context.LocalContextProvider
-import org.typelevel.otel4s.oteljava.testkit.logs.{FromLogRecordData, LogsTestkit}
+import org.typelevel.otel4s.oteljava.testkit.logs.FromLogRecordData
+import org.typelevel.otel4s.oteljava.testkit.logs.LogsTestkit
 import org.typelevel.otel4s.oteljava.testkit.metrics.FromMetricData
 import org.typelevel.otel4s.oteljava.testkit.metrics.MetricsTestkit
 import org.typelevel.otel4s.oteljava.testkit.trace.FromSpanData

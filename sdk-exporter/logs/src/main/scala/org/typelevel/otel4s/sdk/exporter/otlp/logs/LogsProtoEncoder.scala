@@ -21,8 +21,14 @@ package logs
 
 import com.google.protobuf.ByteString
 import io.circe.Json
-import org.typelevel.otel4s.sdk.exporter.proto.common.{AnyValue, ArrayValue, KeyValue, KeyValueList}
-import org.typelevel.otel4s.sdk.exporter.proto.logs.{ResourceLogs, ScopeLogs, SeverityNumber, LogRecord => LogProto}
+import org.typelevel.otel4s.sdk.exporter.proto.common.AnyValue
+import org.typelevel.otel4s.sdk.exporter.proto.common.ArrayValue
+import org.typelevel.otel4s.sdk.exporter.proto.common.KeyValue
+import org.typelevel.otel4s.sdk.exporter.proto.common.KeyValueList
+import org.typelevel.otel4s.sdk.exporter.proto.logs.{LogRecord => LogProto}
+import org.typelevel.otel4s.sdk.exporter.proto.logs.ResourceLogs
+import org.typelevel.otel4s.sdk.exporter.proto.logs.ScopeLogs
+import org.typelevel.otel4s.sdk.exporter.proto.logs.SeverityNumber
 import org.typelevel.otel4s.sdk.exporter.proto.logs_service.ExportLogsServiceRequest
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 import scalapb.descriptors.FieldDescriptor

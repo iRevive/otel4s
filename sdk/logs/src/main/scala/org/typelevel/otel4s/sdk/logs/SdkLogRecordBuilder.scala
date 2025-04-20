@@ -16,20 +16,23 @@
 
 package org.typelevel.otel4s.sdk.logs
 
-import java.time.Instant
-
 import cats.Monad
 import cats.effect.Clock
 import cats.mtl.Ask
 import cats.syntax.all._
-import org.typelevel.otel4s.{Attribute, Attributes, Value}
-import org.typelevel.otel4s.logs.{LogRecordBuilder, Severity}
+import org.typelevel.otel4s.Attribute
+import org.typelevel.otel4s.Attributes
+import org.typelevel.otel4s.Value
+import org.typelevel.otel4s.logs.LogRecordBuilder
+import org.typelevel.otel4s.logs.Severity
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
-import org.typelevel.otel4s.sdk.context.{AskContext, Context}
+import org.typelevel.otel4s.sdk.context.AskContext
+import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 import org.typelevel.otel4s.sdk.logs.processor.LogRecordProcessor
 
+import java.time.Instant
 import scala.collection.immutable
 import scala.concurrent.duration._
 

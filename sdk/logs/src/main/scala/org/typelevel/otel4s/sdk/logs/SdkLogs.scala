@@ -33,8 +33,8 @@ import org.typelevel.otel4s.sdk.autoconfigure.AutoConfigure
 import org.typelevel.otel4s.sdk.autoconfigure.CommonConfigKeys
 import org.typelevel.otel4s.sdk.autoconfigure.Config
 import org.typelevel.otel4s.sdk.autoconfigure.TelemetryResourceAutoConfigure
-import org.typelevel.otel4s.sdk.logs.autoconfigure.LoggerProviderAutoConfigure
 import org.typelevel.otel4s.sdk.context.Context
+import org.typelevel.otel4s.sdk.logs.autoconfigure.LoggerProviderAutoConfigure
 import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
 import org.typelevel.otel4s.sdk.resource.TelemetryResourceDetector
 

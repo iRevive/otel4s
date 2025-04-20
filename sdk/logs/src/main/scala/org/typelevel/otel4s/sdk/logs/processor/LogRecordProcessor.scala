@@ -16,7 +16,10 @@
 
 package org.typelevel.otel4s.sdk.logs.processor
 
-import cats.{Applicative, MonadThrow, Monoid, Parallel}
+import cats.Applicative
+import cats.MonadThrow
+import cats.Monoid
+import cats.Parallel
 import cats.data.NonEmptyList
 import cats.syntax.all._
 import org.typelevel.otel4s.sdk.context.Context

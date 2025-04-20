@@ -18,7 +18,8 @@ package org.typelevel.otel4s.sdk.logs
 
 import cats.Monad
 import cats.effect.kernel.Clock
-import org.typelevel.otel4s.logs.{LogRecordBuilder, Logger}
+import org.typelevel.otel4s.logs.LogRecordBuilder
+import org.typelevel.otel4s.logs.Logger
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.AskContext

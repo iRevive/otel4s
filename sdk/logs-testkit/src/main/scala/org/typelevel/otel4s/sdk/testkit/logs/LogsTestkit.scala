@@ -17,7 +17,8 @@
 package org.typelevel.otel4s.sdk.testkit.logs
 
 import cats.Parallel
-import cats.effect.{Resource, Temporal}
+import cats.effect.Resource
+import cats.effect.Temporal
 import cats.effect.std.Console
 import cats.mtl.Ask
 import org.typelevel.otel4s.logs.LoggerProvider

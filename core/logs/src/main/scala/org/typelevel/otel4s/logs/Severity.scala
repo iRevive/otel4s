@@ -16,7 +16,8 @@
 
 package org.typelevel.otel4s.logs
 
-import cats.{Hash, Show}
+import cats.Hash
+import cats.Show
 
 /** Represents the severity of a log record.
   *

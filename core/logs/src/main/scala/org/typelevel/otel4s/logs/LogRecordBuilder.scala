@@ -16,11 +16,12 @@
 
 package org.typelevel.otel4s.logs
 
-import java.time.Instant
-
 import cats.Applicative
-import org.typelevel.otel4s.{Attribute, KindTransformer, Value}
+import org.typelevel.otel4s.Attribute
+import org.typelevel.otel4s.KindTransformer
+import org.typelevel.otel4s.Value
 
+import java.time.Instant
 import scala.collection.immutable
 import scala.concurrent.duration.FiniteDuration
 

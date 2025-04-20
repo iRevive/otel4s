@@ -16,10 +16,14 @@
 
 package org.typelevel.otel4s.sdk.logs.processor
 
-import cats.effect.{Ref, Resource, Temporal}
+import cats.effect.Ref
+import cats.effect.Resource
+import cats.effect.Temporal
+import cats.effect.std.Console
+import cats.effect.std.CountDownLatch
+import cats.effect.std.Queue
 import cats.effect.syntax.all._
 import cats.syntax.all._
-import cats.effect.std.{Console, CountDownLatch, Queue}
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter

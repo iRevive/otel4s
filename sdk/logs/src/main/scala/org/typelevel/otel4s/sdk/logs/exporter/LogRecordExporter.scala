@@ -16,8 +16,12 @@
 
 package org.typelevel.otel4s.sdk.logs.exporter
 
+import cats.Applicative
+import cats.Foldable
+import cats.MonadThrow
+import cats.Monoid
+import cats.Parallel
 import cats.data.NonEmptyList
-import cats.{Applicative, Foldable, MonadThrow, Monoid, Parallel}
 import cats.syntax.all._
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 

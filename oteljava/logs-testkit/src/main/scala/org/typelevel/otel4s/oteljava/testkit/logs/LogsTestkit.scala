@@ -20,11 +20,15 @@ import cats.effect.Async
 import cats.effect.Resource
 import cats.mtl.Ask
 import cats.syntax.all._
-import io.opentelemetry.sdk.logs.{LogRecordProcessor, SdkLoggerProvider, SdkLoggerProviderBuilder}
-import io.opentelemetry.sdk.logs.`export`.{LogRecordExporter, SimpleLogRecordProcessor}
+import io.opentelemetry.sdk.logs.LogRecordProcessor
+import io.opentelemetry.sdk.logs.SdkLoggerProvider
+import io.opentelemetry.sdk.logs.SdkLoggerProviderBuilder
+import io.opentelemetry.sdk.logs.export.LogRecordExporter
+import io.opentelemetry.sdk.logs.export.SimpleLogRecordProcessor
 import io.opentelemetry.sdk.testing.exporter.InMemoryLogRecordExporter
 import org.typelevel.otel4s.logs.LoggerProvider
-import org.typelevel.otel4s.oteljava.context.{AskContext, Context}
+import org.typelevel.otel4s.oteljava.context.AskContext
+import org.typelevel.otel4s.oteljava.context.Context
 import org.typelevel.otel4s.oteljava.logs.LoggerProviderImpl
 import org.typelevel.otel4s.oteljava.testkit.Conversions
 

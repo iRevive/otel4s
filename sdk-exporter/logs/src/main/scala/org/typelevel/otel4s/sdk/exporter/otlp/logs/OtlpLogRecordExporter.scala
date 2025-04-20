@@ -19,17 +19,22 @@ package sdk
 package exporter.otlp
 package logs
 
+import cats.Applicative
+import cats.Foldable
+import cats.effect.Async
+import cats.effect.Resource
 import cats.effect.std.Console
-import cats.effect.{Async, Resource}
-import cats.{Applicative, Foldable}
 import fs2.compression.Compression
 import fs2.io.net.Network
 import fs2.io.net.tls.TLSContext
+import org.http4s.Headers
+import org.http4s.Uri
 import org.http4s.client.Client
-import org.http4s.{Headers, Uri}
 import org.http4s.syntax.literals._
 import org.typelevel.otel4s.sdk.exporter.RetryPolicy
-import org.typelevel.otel4s.sdk.exporter.otlp.{OtlpClient, OtlpProtocol, PayloadCompression}
+import org.typelevel.otel4s.sdk.exporter.otlp.OtlpClient
+import org.typelevel.otel4s.sdk.exporter.otlp.OtlpProtocol
+import org.typelevel.otel4s.sdk.exporter.otlp.PayloadCompression
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
 

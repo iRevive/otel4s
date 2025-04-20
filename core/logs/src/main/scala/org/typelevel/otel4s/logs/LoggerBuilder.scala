@@ -17,7 +17,8 @@
 package org.typelevel.otel4s
 package logs
 
-import cats.{Applicative, Functor}
+import cats.Applicative
+import cats.Functor
 import cats.syntax.functor._
 
 trait LoggerBuilder[F[_]] {

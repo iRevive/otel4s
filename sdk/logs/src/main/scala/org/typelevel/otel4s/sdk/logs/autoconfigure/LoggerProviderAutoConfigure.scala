@@ -29,7 +29,8 @@ import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.logs.SdkLoggerProvider
 import org.typelevel.otel4s.sdk.logs.autoconfigure.LoggerProviderAutoConfigure.Customizer
 import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
-import org.typelevel.otel4s.sdk.logs.processor.{LogRecordProcessor, SimpleLogRecordProcessor}
+import org.typelevel.otel4s.sdk.logs.processor.LogRecordProcessor
+import org.typelevel.otel4s.sdk.logs.processor.SimpleLogRecordProcessor
 
 /** Autoconfigures [[org.typelevel.otel4s.logs.LoggerProvider LoggerProvider]].
   *

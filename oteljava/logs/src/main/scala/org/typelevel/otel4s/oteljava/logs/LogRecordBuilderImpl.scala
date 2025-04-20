@@ -18,20 +18,21 @@ package org.typelevel.otel4s
 package oteljava
 package logs
 
-import java.time.Instant
-import java.util.concurrent.TimeUnit
-
 import cats.effect.Sync
 import cats.mtl.Ask
 import cats.syntax.flatMap._
-import io.opentelemetry.api.common.{Value => JValue}
 import io.opentelemetry.api.common.{AttributeKey => JAttributeKey}
+import io.opentelemetry.api.common.{Value => JValue}
 import io.opentelemetry.api.logs.{LogRecordBuilder => JLogRecordBuilder}
 import io.opentelemetry.api.logs.{Severity => JSeverity}
-import org.typelevel.otel4s.logs.{LogRecordBuilder, Severity}
+import org.typelevel.otel4s.logs.LogRecordBuilder
+import org.typelevel.otel4s.logs.Severity
 import org.typelevel.otel4s.oteljava.AttributeConverters._
-import org.typelevel.otel4s.oteljava.context.{AskContext, Context}
+import org.typelevel.otel4s.oteljava.context.AskContext
+import org.typelevel.otel4s.oteljava.context.Context
 
+import java.time.Instant
+import java.util.concurrent.TimeUnit
 import scala.collection.immutable
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
