@@ -151,7 +151,7 @@ private final class BatchLogRecordProcessor[F[_]: Temporal: Console] private (
 
   private def exportBatch(batch: Vector[LogRecordData]): F[Unit] =
     exporter
-      .exportLogs(batch)
+      .exportLogRecords(batch)
       .timeoutTo(
         config.exporterTimeout,
         Console[F].errorln(

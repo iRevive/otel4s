@@ -17,7 +17,6 @@
 package org.typelevel.otel4s.sdk.logs.scalacheck
 
 import org.scalacheck.Arbitrary
-// Severity has been moved to org.typelevel.otel4s.logs.Severity
 
 trait Arbitraries extends org.typelevel.otel4s.sdk.scalacheck.Arbitraries {
 

@@ -38,6 +38,7 @@ import org.typelevel.otel4s.sdk.logs.processor.LogRecordProcessor
 private final class SdkLoggerProvider[F[_]: Applicative](
     componentRegistry: ComponentRegistry[F, SdkLogger[F]],
     resource: TelemetryResource,
+    limits: LogRecordLimits,
     processor: LogRecordProcessor[F]
 ) extends LoggerProvider[F] {
   import SdkLoggerProvider.DefaultLoggerName
@@ -48,7 +49,7 @@ private final class SdkLoggerProvider[F[_]: Applicative](
   }
 
   override def toString: String =
-    s"SdkLoggerProvider{resource=$resource, logRecordProcessor=$processor}"
+    s"SdkLoggerProvider{resource=$resource, logRecordLimits=$limits, logRecordProcessor=$processor}"
 }
 
 object SdkLoggerProvider {
@@ -82,15 +83,15 @@ object SdkLoggerProvider {
       */
     def addResource(resource: TelemetryResource): Builder[F]
 
-    /** Sets the [[LogLimits]] to be used by the logger provider.
+    /** Sets the [[LogRecordLimits]] to be used by the logger provider.
       *
       * @note
       *   on multiple subsequent calls, the limits from the last call will be retained.
       *
-      * @param logLimits
-      *   the [[LogLimits]] to use
+      * @param limits
+      *   the [[LogRecordLimits]] to use
       */
-    def withLogLimits(logLimits: LogLimits): Builder[F]
+    def withLogRecordLimits(limits: LogRecordLimits): Builder[F]
 
     /** Adds a [[org.typelevel.otel4s.sdk.logs.processor.LogRecordProcessor LogRecordProcessor]] to the log record
       * processing pipeline that will be built.
@@ -116,13 +117,13 @@ object SdkLoggerProvider {
   def builder[F[_]: Temporal: Parallel: AskContext: Console]: Builder[F] =
     BuilderImpl(
       resource = TelemetryResource.default,
-      logLimits = LogLimits.default,
+      logRecordLimits = LogRecordLimits.default,
       logRecordProcessors = Nil
     )
 
   private final case class BuilderImpl[F[_]: Temporal: Parallel: AskContext: Console](
       resource: TelemetryResource,
-      logLimits: LogLimits,
+      logRecordLimits: LogRecordLimits,
       logRecordProcessors: List[LogRecordProcessor[F]]
   ) extends Builder[F] {
 
@@ -132,13 +133,17 @@ object SdkLoggerProvider {
     def addResource(resource: TelemetryResource): Builder[F] =
       copy(resource = this.resource.mergeUnsafe(resource))
 
-    def withLogLimits(logLimits: LogLimits): Builder[F] =
-      copy(logLimits = logLimits)
+    def withLogRecordLimits(limits: LogRecordLimits): Builder[F] =
+      copy(logRecordLimits = limits)
 
     def addLogRecordProcessor(processor: LogRecordProcessor[F]): Builder[F] =
       copy(logRecordProcessors = logRecordProcessors :+ processor)
 
-    def build: F[LoggerProvider[F]] = {
+    def build: F[LoggerProvider[F]] =
+      if (logRecordProcessors.isEmpty) Temporal[F].pure(LoggerProvider.noop)
+      else create
+
+    private def create: F[LoggerProvider[F]] = {
       val processor = LogRecordProcessor.of(logRecordProcessors: _*)
 
       def createLogger(scope: InstrumentationScope): F[SdkLogger[F]] =
@@ -152,7 +157,7 @@ object SdkLoggerProvider {
 
       for {
         registry <- ComponentRegistry.create(createLogger)
-      } yield new SdkLoggerProvider(registry, resource, processor)
+      } yield new SdkLoggerProvider(registry, resource, logRecordLimits, processor)
     }
   }
 }

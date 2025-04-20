@@ -56,7 +56,7 @@ trait LogRecordExporter[F[_]] {
     * @param logs
     *   the logs to be exported
     */
-  def exportLogs[G[_]: Foldable](logs: G[LogRecordData]): F[Unit]
+  def exportLogRecords[G[_]: Foldable](logs: G[LogRecordData]): F[Unit]
 
   /** Exports the collection of sampled [[org.typelevel.otel4s.sdk.logs.data.LogRecordData LogRecordData]] that have not
     * yet been exported.
@@ -144,7 +144,7 @@ object LogRecordExporter {
   private final class Noop[F[_]: Applicative] extends LogRecordExporter[F] {
     val name: String = "LogRecordExporter.Noop"
 
-    def exportLogs[G[_]: Foldable](logs: G[LogRecordData]): F[Unit] =
+    def exportLogRecords[G[_]: Foldable](logs: G[LogRecordData]): F[Unit] =
       Applicative[F].unit
 
     def flush: F[Unit] =
@@ -157,9 +157,9 @@ object LogRecordExporter {
     val name: String =
       s"LogRecordExporter.Multi(${exporters.map(_.toString).mkString_(", ")})"
 
-    def exportLogs[G[_]: Foldable](logs: G[LogRecordData]): F[Unit] =
+    def exportLogRecords[G[_]: Foldable](logs: G[LogRecordData]): F[Unit] =
       exporters
-        .parTraverse(e => e.exportLogs(logs).attempt.tupleLeft(e.toString))
+        .parTraverse(e => e.exportLogRecords(logs).attempt.tupleLeft(e.toString))
         .flatMap(attempts => handleAttempts(attempts))
 
     def flush: F[Unit] =

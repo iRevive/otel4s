@@ -37,7 +37,7 @@ private final class ConsoleLogRecordExporter[F[_]: Monad: Console] extends LogRe
 
   val name: String = "ConsoleLogRecordExporter"
 
-  def exportLogs[G[_]: Foldable](logs: G[LogRecordData]): F[Unit] = {
+  def exportLogRecords[G[_]: Foldable](logs: G[LogRecordData]): F[Unit] = {
     for {
       _ <- Console[F].println(
         s"ConsoleLogRecordExporter: received a collection of [${logs.size}] log records for export."

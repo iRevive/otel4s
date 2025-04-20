@@ -56,12 +56,14 @@ private final class LoggerProviderAutoConfigure[F[_]: Temporal: Parallel: Consol
     for {
       exporters <- LogRecordExportersAutoConfigure[F](exporterConfigurers).configure(config)
       processors <- configureProcessors(config, exporters)
-      logLimits <- LogLimitsAutoConfigure[F].configure(config)
+      _ = println("exp: " + exporters)
+      _ = println("proc: " + processors)
+      logLimits <- LogRecordLimitsAutoConfigure[F].configure(config)
       loggerProviderBuilder = {
         val builder = SdkLoggerProvider
           .builder[F]
           .withResource(resource)
-          .withLogLimits(logLimits)
+          .withLogRecordLimits(logLimits)
 
         processors.foldLeft(builder)(_.addLogRecordProcessor(_))
       }
@@ -75,6 +77,7 @@ private final class LoggerProviderAutoConfigure[F[_]: Temporal: Parallel: Consol
       config: Config,
       exporters: Map[String, LogRecordExporter[F]]
   ): Resource[F, List[LogRecordProcessor[F]]] = {
+    val noneExporter = LogRecordExportersAutoConfigure.Const.NoneExporter
     val consoleExporter = LogRecordExportersAutoConfigure.Const.ConsoleExporter
 
     val console = exporters.get(consoleExporter) match {
@@ -82,7 +85,7 @@ private final class LoggerProviderAutoConfigure[F[_]: Temporal: Parallel: Consol
       case None          => Nil
     }
 
-    val others = exporters.removed(consoleExporter)
+    val others = exporters.removed(consoleExporter).removed(noneExporter)
     if (others.nonEmpty) {
       val exporter = others.values.toList.combineAll
       BatchLogRecordProcessorAutoConfigure[F](exporter)

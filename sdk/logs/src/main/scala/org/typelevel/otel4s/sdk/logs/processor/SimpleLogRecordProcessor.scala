@@ -42,7 +42,7 @@ private final class SimpleLogRecordProcessor[F[_]: ApplicativeThrow: Console] pr
     s"SimpleLogRecordProcessor{exporter=${exporter.name}}"
 
   def onEmit(context: Context, logRecord: LogRecordData): F[Unit] =
-    exporter.exportLogs(List(logRecord)).handleErrorWith { e =>
+    exporter.exportLogRecords(List(logRecord)).handleErrorWith { e =>
       Console[F].errorln(
         s"SimpleLogRecordProcessor: the export has failed: ${e.getMessage}\n${e.getStackTrace.mkString("\n")}\n"
       )

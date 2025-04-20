@@ -16,100 +16,119 @@
 
 package org.typelevel.otel4s.sdk.logs.autoconfigure
 
+import cats.Foldable
 import cats.effect.IO
 import cats.effect.Resource
+import cats.effect.std.Console
+import cats.syntax.all._
 import munit.CatsEffectSuite
 import org.typelevel.otel4s.sdk.autoconfigure.AutoConfigure
 import org.typelevel.otel4s.sdk.autoconfigure.Config
+import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
+import org.typelevel.otel4s.sdk.test.NoopConsole
 
 class LogRecordExportersAutoConfigureSuite extends CatsEffectSuite {
 
-  test("load default (otlp)") {
-    val config = Config.ofProps(Map.empty)
+  private implicit val noopConsole: Console[IO] = new NoopConsole[IO]
 
-    val result = configure(config).attempt.map { result =>
-      assert(
-        result.isLeft,
-        "Expected failure because otlp exporter is not registered"
-      )
-      assert(
-        result.left.exists(_.getMessage.contains("otlp")),
-        "Expected error message to contain 'otlp'"
-      )
-    }
+  // OTLPExporter exists in the separate package, so we use mock here
+  private val otlpExporter = customExporter("OTLPExporter")
+  private val otlp: AutoConfigure.Named[IO, LogRecordExporter[IO]] =
+    AutoConfigure.Named.const("otlp", otlpExporter)
 
-    result
-  }
+  test("load from an empty config - load default (otlp)") {
+    val config = Config(Map.empty, Map.empty, Map.empty)
 
-  test("load none exporter") {
-    val config = Config.ofProps(
-      Map("otel.logs.exporter" -> "none")
-    )
-
-    configure(config).use { exporters =>
-      IO {
-        assertEquals(exporters.size, 1)
-        assert(exporters.contains("none"), "Expected 'none' exporter")
-        assertEquals(exporters("none").name, "NoopLogRecordExporter")
+    LogRecordExportersAutoConfigure[IO](Set(otlp))
+      .configure(config)
+      .use { exporters =>
+        IO(assertEquals(exporters, Map("otlp" -> otlpExporter)))
       }
-    }
   }
 
-  test("load console exporter") {
-    val config = Config.ofProps(
-      Map("otel.logs.exporter" -> "console")
-    )
+  test("load from the config (empty string) - load default (otlp)") {
+    val props = Map("otel.logs.exporter" -> "")
+    val config = Config.ofProps(props)
 
-    configure(config).use { exporters =>
-      IO {
-        assertEquals(exporters.size, 1)
-        assert(exporters.contains("console"), "Expected 'console' exporter")
-        assertEquals(exporters("console").name, "ConsoleLogRecordExporter")
+    LogRecordExportersAutoConfigure[IO](Set(otlp))
+      .configure(config)
+      .use { exporters =>
+        IO(assertEquals(exporters, Map("otlp" -> otlpExporter)))
       }
-    }
   }
 
-  test("load multiple exporters") {
-    val config = Config.ofProps(
-      Map("otel.logs.exporter" -> "console,none")
-    )
+  test("load from the config (none) - load noop") {
+    val props = Map("otel.logs.exporter" -> "none")
+    val config = Config.ofProps(props)
 
-    configure(config).use { exporters =>
-      IO {
-        assertEquals(exporters.size, 2)
-        assert(exporters.contains("console"), "Expected 'console' exporter")
-        assert(exporters.contains("none"), "Expected 'none' exporter")
-        assertEquals(exporters("console").name, "ConsoleLogRecordExporter")
-        assertEquals(exporters("none").name, "NoopLogRecordExporter")
+    LogRecordExportersAutoConfigure[IO](Set.empty)
+      .configure(config)
+      .use { exporters =>
+        IO(
+          assertEquals(
+            exporters.values.map(_.name).toList,
+            List("LogRecordExporter.Noop")
+          )
+        )
       }
-    }
   }
 
-  test("fail when none is used with other exporters") {
-    val config = Config.ofProps(
-      Map("otel.logs.exporter" -> "none,console")
-    )
+  test("support custom configurers") {
+    val props = Map("otel.logs.exporter" -> "custom")
+    val config = Config.ofProps(props)
 
-    val result = configure(config).attempt.map { result =>
-      assert(
-        result.isLeft,
-        "Expected failure because 'none' is used with other exporters"
+    val exporter: LogRecordExporter[IO] = customExporter("CustomExporter")
+
+    val custom: AutoConfigure.Named[IO, LogRecordExporter[IO]] =
+      AutoConfigure.Named.const("custom", exporter)
+
+    LogRecordExportersAutoConfigure[IO](Set(custom))
+      .configure(config)
+      .use { exporters =>
+        IO(assertEquals(exporters, Map("custom" -> exporter)))
+      }
+  }
+
+  test("load from the config - 'none' along with others - fail") {
+    val props = Map("otel.logs.exporter" -> "otlp,none")
+    val config = Config.ofProps(props)
+
+    LogRecordExportersAutoConfigure[IO](Set(otlp))
+      .configure(config)
+      .use_
+      .attempt
+      .map(_.leftMap(_.getMessage))
+      .assertEquals(
+        Left("""Cannot autoconfigure [LogRecordExporters].
+               |Cause: [otel.logs.exporter] contains 'none' along with other exporters.
+               |Config:
+               |1) `otel.logs.exporter` - otlp,none""".stripMargin)
       )
-      assert(
-        result.left.exists(_.getMessage.contains("'none' along with other exporters")),
-        "Expected error message to contain 'none' along with other exporters"
+  }
+
+  test("load from the config - unknown exporter - fail") {
+    val props = Map("otel.logs.exporter" -> "aws-xray")
+    val config = Config.ofProps(props)
+
+    LogRecordExportersAutoConfigure[IO](Set(otlp))
+      .configure(config)
+      .use_
+      .attempt
+      .map(_.leftMap(_.getMessage))
+      .assertEquals(
+        Left("""Cannot autoconfigure [LogRecordExporters].
+               |Cause: Unrecognized value for [otel.logs.exporter]: aws-xray. Supported options [none, console, otlp].
+               |Config:
+               |1) `otel.logs.exporter` - aws-xray""".stripMargin)
       )
+  }
+
+  private def customExporter(exporterName: String): LogRecordExporter[IO] =
+    new LogRecordExporter[IO] {
+      def name: String = exporterName
+      def exportLogRecords[G[_]: Foldable](logs: G[LogRecordData]): IO[Unit] = ???
+      def flush: IO[Unit] = IO.unit
     }
 
-    result
-  }
-
-  private def configure(
-      config: Config,
-      configurers: Set[AutoConfigure.Named[IO, LogRecordExporter[IO]]] = Set.empty
-  ): Resource[IO, Map[String, LogRecordExporter[IO]]] = {
-    val autoConfigure = LogRecordExportersAutoConfigure[IO](configurers)
-    autoConfigure.configure(config)
-  }
 }

@@ -18,11 +18,13 @@ package org.typelevel.otel4s.sdk.logs
 
 import cats.effect.IO
 import cats.mtl.Ask
-import munit.{CatsEffectSuite, ScalaCheckEffectSuite}
+import munit.CatsEffectSuite
+import munit.ScalaCheckEffectSuite
 import org.scalacheck.effect.PropF
-import org.typelevel.otel4s.sdk.context.{AskContext, Context}
+import org.typelevel.otel4s.sdk.context.AskContext
+import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.logs.processor.LogRecordProcessor
-import org.typelevel.otel4s.sdk.logs.scalacheck.Gens
+import org.typelevel.otel4s.sdk.scalacheck.Gens
 
 class SdkLoggerProviderSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
 
@@ -37,14 +39,19 @@ class SdkLoggerProviderSuite extends CatsEffectSuite with ScalaCheckEffectSuite 
   test("reflect parameters in the toString") {
     PropF.forAllF(Gens.telemetryResource) { resource =>
       val processor = LogRecordProcessor.noop[IO]
+      val limits = LogRecordLimits.builder
+        .withMaxNumberOfAttributes(64)
+        .withMaxAttributeValueLength(128)
+        .build
 
       val expected =
-        s"SdkLoggerProvider{resource=$resource, logRecordProcessor=$processor}"
+        s"SdkLoggerProvider{resource=$resource, logRecordLimits=$limits, logRecordProcessor=$processor}"
 
       for {
         provider <- SdkLoggerProvider
           .builder[IO]
           .withResource(resource)
+          .withLogRecordLimits(limits)
           .addLogRecordProcessor(processor)
           .build
       } yield assertEquals(provider.toString, expected)

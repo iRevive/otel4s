@@ -20,55 +20,59 @@ import cats.effect.IO
 import cats.syntax.either._
 import munit.CatsEffectSuite
 import org.typelevel.otel4s.sdk.autoconfigure.Config
-import org.typelevel.otel4s.sdk.logs.LogLimits
+import org.typelevel.otel4s.sdk.logs.LogRecordLimits
 
-class LogLimitsAutoConfigureSuite extends CatsEffectSuite {
+class LogRecordLimitsAutoConfigureSuite extends CatsEffectSuite {
 
-  /*test("load from an empty config - load default") {
+  test("load from an empty config - load default") {
     val config = Config(Map.empty, Map.empty, Map.empty)
 
-    LogLimitsAutoConfigure[IO]
+    LogRecordLimitsAutoConfigure[IO]
       .configure(config)
       .use { limits =>
-        IO(assertEquals(limits.maxNumberOfLogs, LogLimits.default.maxNumberOfLogs))
+        IO(assertEquals(limits, LogRecordLimits.default))
       }
   }
 
   test("load from the config (empty string) - load default") {
     val props = Map(
-      "otel.log.max.number.of.logs" -> ""
+      "otel.attribute.count.limit" -> "",
+      "otel.attribute.value.length.limit" -> "",
     )
 
     val config = Config.ofProps(props)
 
-    LogLimitsAutoConfigure[IO]
+    LogRecordLimitsAutoConfigure[IO]
       .configure(config)
       .use { limits =>
-        IO(assertEquals(limits.maxNumberOfLogs, LogLimits.default.maxNumberOfLogs))
+        IO(assertEquals(limits, LogRecordLimits.default))
       }
   }
 
   test("load from the config - use given value") {
     val props = Map(
-      "otel.log.max.number.of.logs" -> "100"
+      "otel.attribute.count.limit" -> "100",
+      "otel.attribute.value.length.limit" -> "105",
     )
 
     val config = Config.ofProps(props)
 
-    LogLimitsAutoConfigure[IO]
+    val expected =
+      "LogRecordLimits{maxNumberOfAttributes=100, maxAttributeValueLength=105}"
+
+    LogRecordLimitsAutoConfigure[IO]
       .configure(config)
       .use { limits =>
-        IO(assertEquals(limits.maxNumberOfLogs, 100))
+        IO(assertEquals(limits.toString, expected))
       }
-  }*/
+  }
 
   test("invalid config value - fail") {
-    val config =
-      Config.ofProps(Map("otel.log.max.number.of.logs" -> "not int"))
+    val config = Config.ofProps(Map("otel.attribute.count.limit" -> "not int"))
     val error =
-      "Invalid value for property otel.log.max.number.of.logs=not int. Must be [Int]"
+      "Invalid value for property otel.attribute.count.limit=not int. Must be [Int]"
 
-    LogLimitsAutoConfigure[IO]
+    LogRecordLimitsAutoConfigure[IO]
       .configure(config)
       .evalMap(IO.println)
       .use_
@@ -76,10 +80,11 @@ class LogLimitsAutoConfigureSuite extends CatsEffectSuite {
       .map(_.leftMap(_.getMessage))
       .assertEquals(
         Left(
-          s"""Cannot autoconfigure [LogLimits].
+          s"""Cannot autoconfigure [LogRecordLimits].
              |Cause: $error.
              |Config:
-             |1) `otel.log.max.number.of.logs` - not int""".stripMargin
+             |1) `otel.attribute.count.limit` - not int
+             |2) `otel.attribute.value.length.limit` - N/A""".stripMargin
         )
       )
   }
