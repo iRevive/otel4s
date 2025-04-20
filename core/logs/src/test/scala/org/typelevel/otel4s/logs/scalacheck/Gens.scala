@@ -22,7 +22,32 @@ import org.typelevel.otel4s.logs.Severity
 trait Gens {
 
   val severity: Gen[Severity] =
-    Gen.oneOf(Severity.values)
+    Gen.oneOf(
+      Severity.Trace.trace1,
+      Severity.Trace.trace2,
+      Severity.Trace.trace3,
+      Severity.Trace.trace4,
+      Severity.Debug.debug1,
+      Severity.Debug.debug2,
+      Severity.Debug.debug3,
+      Severity.Debug.debug4,
+      Severity.Info.info1,
+      Severity.Info.info2,
+      Severity.Info.info3,
+      Severity.Info.info4,
+      Severity.Warn.warn1,
+      Severity.Warn.warn2,
+      Severity.Warn.warn3,
+      Severity.Warn.warn4,
+      Severity.Error.error1,
+      Severity.Error.error2,
+      Severity.Error.error3,
+      Severity.Error.error4,
+      Severity.Fatal.fatal1,
+      Severity.Fatal.fatal2,
+      Severity.Fatal.fatal3,
+      Severity.Fatal.fatal4,
+    )
 
 }
 

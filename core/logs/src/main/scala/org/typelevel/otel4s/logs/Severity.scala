@@ -124,5 +124,33 @@ object Severity {
 
   implicit val severityHash: Hash[Severity] = Hash.by(_.severity)
 
-  implicit val severityShow: Show[Severity] = Show.fromToString
+  /** @see
+    *   [[https://opentelemetry.io/docs/specs/otel/logs/data-model/#displaying-severity]]
+    */
+  implicit val severityShow: Show[Severity] = {
+    case Severity.Trace.Trace1 => "TRACE"
+    case Severity.Trace.Trace2 => "TRACE2"
+    case Severity.Trace.Trace3 => "TRACE3"
+    case Severity.Trace.Trace4 => "TRACE4"
+    case Severity.Debug.Debug1 => "DEBUG"
+    case Severity.Debug.Debug2 => "DEBUG2"
+    case Severity.Debug.Debug3 => "DEBUG3"
+    case Severity.Debug.Debug4 => "DEBUG4"
+    case Severity.Info.Info1   => "INFO"
+    case Severity.Info.Info2   => "INFO2"
+    case Severity.Info.Info3   => "INFO3"
+    case Severity.Info.Info4   => "INFO4"
+    case Severity.Warn.Warn1   => "WARN"
+    case Severity.Warn.Warn2   => "WARN2"
+    case Severity.Warn.Warn3   => "WARN3"
+    case Severity.Warn.Warn4   => "WARN4"
+    case Severity.Error.Error1 => "ERROR"
+    case Severity.Error.Error2 => "ERROR2"
+    case Severity.Error.Error3 => "ERROR3"
+    case Severity.Error.Error4 => "ERROR4"
+    case Severity.Fatal.Fatal1 => "FATAL"
+    case Severity.Fatal.Fatal2 => "FATAL2"
+    case Severity.Fatal.Fatal3 => "FATAL3"
+    case Severity.Fatal.Fatal4 => "FATAL4"
+  }
 }
