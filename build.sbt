@@ -142,6 +142,7 @@ lazy val root = tlCrossRootProject
     `instrumentation-metrics`,
     `sdk-common`,
     `sdk-logs`,
+    `sdk-logs-testkit`,
     `sdk-metrics`,
     `sdk-metrics-testkit`,
     `sdk-trace`,
@@ -161,6 +162,7 @@ lazy val root = tlCrossRootProject
     `oteljava-common`,
     `oteljava-common-testkit`,
     `oteljava-logs`,
+    `oteljava-logs-testkit`,
     `oteljava-metrics`,
     `oteljava-metrics-testkit`,
     `oteljava-trace`,
@@ -330,6 +332,16 @@ lazy val `sdk-logs` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .settings(munitDependencies)
   .jsSettings(scalaJSLinkerSettings)
 
+lazy val `sdk-logs-testkit` =
+  crossProject(JVMPlatform, JSPlatform, NativePlatform)
+    .crossType(CrossType.Pure)
+    .in(file("sdk/logs-testkit"))
+    .dependsOn(`sdk-logs`)
+    .settings(
+      name := "otel4s-sdk-logs-testkit",
+      startYear := Some(2025)
+    )
+
 lazy val `sdk-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
   .in(file("sdk/metrics"))
@@ -396,7 +408,7 @@ lazy val `sdk-trace-testkit` =
 lazy val `sdk-testkit` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
   .in(file("sdk/testkit"))
-  .dependsOn(core, `sdk-metrics-testkit`, `sdk-trace-testkit`)
+  .dependsOn(core, `sdk-logs-testkit`, `sdk-metrics-testkit`, `sdk-trace-testkit`)
   .settings(
     name := "otel4s-sdk-testkit",
     startYear := Some(2024)
@@ -729,6 +741,15 @@ lazy val `oteljava-logs` = project
     )
   )
 
+lazy val `oteljava-logs-testkit` = project
+  .in(file("oteljava/logs-testkit"))
+  .dependsOn(`oteljava-logs`, `oteljava-common-testkit`)
+  .settings(munitDependencies)
+  .settings(
+    name := "otel4s-oteljava-logs-testkit",
+    startYear := Some(2025)
+  )
+
 lazy val `oteljava-metrics` = project
   .in(file("oteljava/metrics"))
   .dependsOn(
@@ -780,7 +801,7 @@ lazy val `oteljava-trace-testkit` = project
 
 lazy val `oteljava-testkit` = project
   .in(file("oteljava/testkit"))
-  .dependsOn(core.jvm, `oteljava-metrics-testkit`, `oteljava-trace-testkit`)
+  .dependsOn(core.jvm, `oteljava-logs-testkit`, `oteljava-metrics-testkit`, `oteljava-trace-testkit`)
   .settings(
     name := "otel4s-oteljava-testkit",
     startYear := Some(2024)
@@ -1033,6 +1054,7 @@ lazy val unidocs = project
       `instrumentation-metrics`.jvm,
       `sdk-common`.jvm,
       `sdk-logs`.jvm,
+      `sdk-logs-testkit`.jvm,
       `sdk-metrics`.jvm,
       `sdk-metrics-testkit`.jvm,
       `sdk-trace`.jvm,
@@ -1051,6 +1073,7 @@ lazy val unidocs = project
       `oteljava-common`,
       `oteljava-common-testkit`,
       `oteljava-logs`,
+      `oteljava-logs-testkit`,
       `oteljava-metrics`,
       `oteljava-metrics-testkit`,
       `oteljava-trace`,
