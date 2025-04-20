@@ -16,69 +16,37 @@
 
 package org.typelevel.otel4s
 
+import cats.Show
 import cats.kernel.laws.discipline.HashTests
 import munit.DisciplineSuite
-import org.scalacheck.{Arbitrary, Gen}
-import org.scalacheck.Arbitrary.arbitrary
-import scala.collection.immutable
+import org.scalacheck.Prop
+import org.typelevel.otel4s.scalacheck.{Arbitraries, Cogens}
 
 class ValueSuite extends DisciplineSuite {
-
-  // Generate arbitrary Value instances for testing
-  implicit val arbValue: Arbitrary[Value] = Arbitrary {
-    val genString = Gen.alphaNumStr.map(Value.string)
-    val genBoolean = Gen.oneOf(true, false).map(Value.boolean)
-    val genLong = Gen.long.map(Value.long)
-    val genDouble = Gen.double.map(Value.double)
-    val genByteArray = Gen.listOf(Gen.choose(Byte.MinValue, Byte.MaxValue)).map(_.toArray).map(Value.bytes)
-
-    // For recursive types (array and map), we need to limit the depth to avoid stack overflow
-    def genValueWithDepth(depth: Int): Gen[Value] = {
-      if (depth <= 0) {
-        // Base case: only generate non-recursive values
-        Gen.oneOf(genString, genBoolean, genLong, genDouble, genByteArray)
-      } else {
-        // Recursive case: generate any value type, including arrays and maps
-        val genArray = Gen.listOf(genValueWithDepth(depth - 1)).map(_.toList).map(Value.array)
-        val genMap = for {
-          keys <- Gen.listOf(Gen.alphaNumStr)
-          values <- Gen.listOf(genValueWithDepth(depth - 1))
-          pairs = keys.zip(values).toMap
-        } yield Value.map(pairs)
-        Gen.oneOf(genString, genBoolean, genLong, genDouble, genByteArray, genArray, genMap)
-      }
-    }
-
-    genValueWithDepth(2) // Limit recursion depth to 2 to avoid stack overflow
-  }
-
-  // Generate arbitrary functions from Value to Value
-  implicit val arbValueFunction: Arbitrary[Value => Value] = Arbitrary {
-    Gen.oneOf(
-      Gen.const((v: Value) => v), // identity function
-      Gen.const((v: Value) => Value.string("constant")), // constant function
-      Gen.const((v: Value) => Value.array(List(v))), // wrap in array
-      arbitrary[Value].map(constant => (_: Value) => constant) // constant function with random value
-    )
-  }
+  import Arbitraries.valueArbitrary
+  import Cogens.valueCogen
 
   // Test Hash laws
   checkAll("Value.HashLaws", HashTests[Value].hash)
 
   // Test Show instance
   test("Show[Value]") {
-    // Test simple values
-    assertEquals(Value.string("test").toString, "StringValue(test)")
-    assertEquals(Value.boolean(true).toString, "BooleanValue(true)")
-    assertEquals(Value.long(123L).toString, "LongValue(123)")
-    assertEquals(Value.double(3.14).toString, "DoubleValue(3.14)")
+    Prop.forAll(valueArbitrary.arbitrary) { value =>
+      def render(v: Value): String = v match {
+        case Value.StringValue(value)    => s"StringValue($value)"
+        case Value.BooleanValue(value)   => s"BooleanValue($value)"
+        case Value.LongValue(value)      => s"LongValue($value)"
+        case Value.DoubleValue(value)    => s"DoubleValue($value)"
+        case Value.ByteArrayValue(value) => s"ByteArrayValue(${java.util.Arrays.toString(value)})"
+        case Value.ArrayValue(values)    => s"ArrayValue(${values.map(render).mkString("[", ", ", "]")})"
+        case Value.MapValue(values) =>
+          s"MapValue(${values.map { case (k, v) => s"$k -> ${render(v)}" }.mkString("{", ", ", "}")})"
+      }
 
-    // Test array value
-    val arrayValue = Value.array(List(Value.string("a"), Value.long(1)))
-    assertEquals(arrayValue.toString, "ArrayValue([StringValue(a), LongValue(1)])")
+      val expected = render(value)
 
-    // Test map value
-    val mapValue = Value.map(Map("key" -> Value.boolean(true)))
-    assertEquals(mapValue.toString, "MapValue({key -> BooleanValue(true)})")
+      assertEquals(Show[Value].show(value), expected)
+      assertEquals(value.toString, expected)
+    }
   }
 }

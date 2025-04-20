@@ -17,8 +17,7 @@
 package org.typelevel.otel4s.scalacheck
 
 import org.scalacheck.Arbitrary
-import org.typelevel.otel4s.Attribute
-import org.typelevel.otel4s.Attributes
+import org.typelevel.otel4s.{Attribute, Attributes, Value}
 
 trait Arbitraries {
 
@@ -27,6 +26,10 @@ trait Arbitraries {
 
   implicit val attributesArbitrary: Arbitrary[Attributes] =
     Arbitrary(Gens.attributes)
+
+  implicit val valueArbitrary: Arbitrary[Value] =
+    Arbitrary(Gens.value)
+
 
 }
 
