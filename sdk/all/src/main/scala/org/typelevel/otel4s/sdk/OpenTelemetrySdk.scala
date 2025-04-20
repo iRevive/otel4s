@@ -32,6 +32,7 @@ import org.typelevel.otel4s.baggage.BaggageManager
 import org.typelevel.otel4s.context.LocalProvider
 import org.typelevel.otel4s.context.propagation.ContextPropagators
 import org.typelevel.otel4s.context.propagation.TextMapPropagator
+import org.typelevel.otel4s.logs.LoggerProvider
 import org.typelevel.otel4s.metrics.MeterProvider
 import org.typelevel.otel4s.sdk.autoconfigure.AutoConfigure
 import org.typelevel.otel4s.sdk.autoconfigure.CommonConfigKeys
@@ -43,6 +44,8 @@ import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.context.LocalContext
 import org.typelevel.otel4s.sdk.context.LocalContextProvider
 import org.typelevel.otel4s.sdk.context.TraceContext
+import org.typelevel.otel4s.sdk.logs.SdkLoggerProvider
+import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
 import org.typelevel.otel4s.sdk.metrics.SdkMeterProvider
 import org.typelevel.otel4s.sdk.metrics.autoconfigure.MeterProviderAutoConfigure
 import org.typelevel.otel4s.sdk.metrics.exporter.MetricExporter
@@ -58,6 +61,7 @@ import org.typelevel.otel4s.trace.TracerProvider
 final class OpenTelemetrySdk[F[_]] private (
     val meterProvider: MeterProvider[F],
     val tracerProvider: TracerProvider[F],
+    val loggerProvider: LoggerProvider[F],
     val propagators: ContextPropagators[Context]
 )(implicit val localContext: LocalContext[F])
     extends Otel4s[F] {
@@ -67,7 +71,7 @@ final class OpenTelemetrySdk[F[_]] private (
   val baggageManager: BaggageManager[F] = SdkBaggageManager.fromLocal
 
   override def toString: String =
-    s"OpenTelemetrySdk{meterProvider=$meterProvider, tracerProvider=$tracerProvider, propagators=$propagators}"
+    s"OpenTelemetrySdk{meterProvider=$meterProvider, tracerProvider=$tracerProvider, loggerProvider=$loggerProvider, propagators=$propagators}"
 }
 
 object OpenTelemetrySdk {
@@ -104,6 +108,7 @@ object OpenTelemetrySdk {
     } yield new OpenTelemetrySdk[F](
       MeterProvider.noop,
       TracerProvider.noop,
+      LoggerProvider.noop,
       ContextPropagators.noop
     )(local)
 
@@ -178,6 +183,14 @@ object OpenTelemetrySdk {
         *   the customizer to add
         */
       def addTracerProviderCustomizer(customizer: Customizer[SdkTracerProvider.Builder[F]]): Builder[F]
+
+      /** Adds the logger provider builder customizer. Multiple customizers can be added, and they will be applied in
+        * the order they were added.
+        *
+        * @param customizer
+        *   the customizer to add
+        */
+      def addLoggerProviderCustomizer(customizer: Customizer[SdkLoggerProvider.Builder[F]]): Builder[F]
 
       /** Adds the telemetry resource customizer. Multiple customizers can be added, and they will be applied in the
         * order they were added.
@@ -263,6 +276,26 @@ object OpenTelemetrySdk {
         */
       def addSpanExporterConfigurer(configurer: AutoConfigure.Named[F, SpanExporter[F]]): Builder[F]
 
+      /** Adds the exporter configurer. Can be used to register exporters that aren't included in the SDK.
+        *
+        * @example
+        *   Add the `otel4s-sdk-exporter` dependency to the build file:
+        *   {{{
+        * libraryDependencies += "org.typelevel" %%% "otel4s-sdk-exporter" % "x.x.x"
+        *   }}}
+        *   and register the configurer manually:
+        *   {{{
+        * import org.typelevel.otel4s.sdk.OpenTelemetrySdk
+        * import org.typelevel.otel4s.sdk.exporter.otlp.logs.autoconfigure.OtlpLogRecordExporterAutoConfigure
+        *
+        * OpenTelemetrySdk.autoConfigured[IO](_.addLogRecordExporterConfigurer(OtlpLogRecordExporterAutoConfigure[IO]))
+        *   }}}
+        *
+        * @param configurer
+        *   the configurer to add
+        */
+      def addLogRecordExporterConfigurer(configurer: AutoConfigure.Named[F, LogRecordExporter[F]]): Builder[F]
+
       /** Adds the sampler configurer. Can be used to register samplers that aren't included in the SDK.
         *
         * @param configurer
@@ -292,9 +325,11 @@ object OpenTelemetrySdk {
         resourceCustomizer = (a, _) => a,
         meterProviderCustomizer = (a: SdkMeterProvider.Builder[F], _) => a,
         tracerProviderCustomizer = (a: SdkTracerProvider.Builder[F], _) => a,
+        loggerProviderCustomizer = (a: SdkLoggerProvider.Builder[F], _) => a,
         resourceDetectors = Set.empty,
         metricExporterConfigurers = Set.empty,
         spanExporterConfigurers = Set.empty,
+        logRecordExporterConfigurers = Set.empty,
         samplerConfigurers = Set.empty,
         textMapPropagatorConfigurers = Set.empty
       )
@@ -306,9 +341,11 @@ object OpenTelemetrySdk {
         resourceCustomizer: Customizer[TelemetryResource],
         meterProviderCustomizer: Customizer[SdkMeterProvider.Builder[F]],
         tracerProviderCustomizer: Customizer[SdkTracerProvider.Builder[F]],
+        loggerProviderCustomizer: Customizer[SdkLoggerProvider.Builder[F]],
         resourceDetectors: Set[TelemetryResourceDetector[F]],
         metricExporterConfigurers: Set[AutoConfigure.Named[F, MetricExporter[F]]],
         spanExporterConfigurers: Set[AutoConfigure.Named[F, SpanExporter[F]]],
+        logRecordExporterConfigurers: Set[AutoConfigure.Named[F, LogRecordExporter[F]]],
         samplerConfigurers: Set[AutoConfigure.Named[F, Sampler[F]]],
         textMapPropagatorConfigurers: Set[AutoConfigure.Named[F, TextMapPropagator[Context]]]
     ) extends Builder[F] {
@@ -331,13 +368,17 @@ object OpenTelemetrySdk {
       def addTracerProviderCustomizer(customizer: Customizer[SdkTracerProvider.Builder[F]]): Builder[F] =
         copy(tracerProviderCustomizer = merge(this.tracerProviderCustomizer, customizer))
 
+      def addLoggerProviderCustomizer(customizer: Customizer[SdkLoggerProvider.Builder[F]]): Builder[F] =
+        copy(loggerProviderCustomizer = merge(this.loggerProviderCustomizer, customizer))
+
       def addResourceDetector(detector: TelemetryResourceDetector[F]): Builder[F] =
         copy(resourceDetectors = this.resourceDetectors + detector)
 
       def addExportersConfigurer(configurer: ExportersAutoConfigure[F]): Builder[F] =
         copy(
           metricExporterConfigurers = metricExporterConfigurers + configurer.metricExporterAutoConfigure,
-          spanExporterConfigurers = spanExporterConfigurers + configurer.spanExporterAutoConfigure
+          spanExporterConfigurers = spanExporterConfigurers + configurer.spanExporterAutoConfigure,
+          logRecordExporterConfigurers = logRecordExporterConfigurers + configurer.logRecordExporterAutoConfigure
         )
 
       def addMetricExporterConfigurer(configurer: AutoConfigure.Named[F, MetricExporter[F]]): Builder[F] =
@@ -345,6 +386,9 @@ object OpenTelemetrySdk {
 
       def addSpanExporterConfigurer(configurer: AutoConfigure.Named[F, SpanExporter[F]]): Builder[F] =
         copy(spanExporterConfigurers = spanExporterConfigurers + configurer)
+
+      def addLogRecordExporterConfigurer(configurer: AutoConfigure.Named[F, LogRecordExporter[F]]): Builder[F] =
+        copy(logRecordExporterConfigurers = logRecordExporterConfigurers + configurer)
 
       def addSamplerConfigurer(configurer: AutoConfigure.Named[F, Sampler[F]]): Builder[F] =
         copy(samplerConfigurers = samplerConfigurers + configurer)
@@ -416,9 +460,21 @@ object OpenTelemetrySdk {
                 for {
                   meterProvider <- meterProviderConfigure.configure(config)
                   tracerProvider <- tracerProviderConfigure.configure(config)
+
+                  // Configure LoggerProvider
+                  loggerProviderBuilder = SdkLoggerProvider.builder[F]
+                    .withResource(resource)
+
+                  // Apply customizations to the logger provider builder
+                  customizedLoggerBuilder = loggerProviderCustomizer(loggerProviderBuilder, config)
+
+                  // Build the logger provider
+                  loggerProvider <- Resource.eval(customizedLoggerBuilder.build)
+
                   sdk = new OpenTelemetrySdk(
                     meterProvider,
                     tracerProvider,
+                    loggerProvider,
                     propagators
                   )
                 } yield Impl(sdk, resource, config)
