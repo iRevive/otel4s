@@ -21,6 +21,7 @@ import cats.effect.Async
 import cats.effect.Resource
 import cats.effect.std.Console
 import org.typelevel.otel4s.Otel4s
+import org.typelevel.otel4s.TraceContext
 import org.typelevel.otel4s.baggage.BaggageManager
 import org.typelevel.otel4s.context.LocalProvider
 import org.typelevel.otel4s.context.propagation.ContextPropagators

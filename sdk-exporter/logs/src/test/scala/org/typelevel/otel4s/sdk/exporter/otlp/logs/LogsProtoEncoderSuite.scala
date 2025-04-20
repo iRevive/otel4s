@@ -23,14 +23,10 @@ import io.circe.Encoder
 import io.circe.Json
 import io.circe.syntax._
 import munit._
-import org.scalacheck.Arbitrary
-import org.scalacheck.Gen
-import org.scalacheck.Prop
 import org.scalacheck.Test
 import org.typelevel.otel4s.logs.Severity
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
-import org.typelevel.otel4s.TraceContext
 import scodec.bits.ByteVector
 
 import scala.concurrent.duration._
@@ -40,6 +36,8 @@ class LogsProtoEncoderSuite extends ScalaCheckSuite {
   import LogsProtoEncoder._
 
   test("encode LogRecordData") {
+    // todo: use gen
+
     // Create a simple LogRecordData instance for testing
     val resource = TelemetryResource.default
     val scope = InstrumentationScope("test-scope", None, None, Attributes.empty)

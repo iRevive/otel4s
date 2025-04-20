@@ -18,7 +18,12 @@ package org.typelevel.otel4s.scalacheck
 
 import org.scalacheck.Cogen
 import org.scalacheck.rng.Seed
-import org.typelevel.otel4s.{Attribute, AttributeKey, AttributeType, Attributes, TraceContext, Value}
+import org.typelevel.otel4s.Attribute
+import org.typelevel.otel4s.AttributeKey
+import org.typelevel.otel4s.AttributeType
+import org.typelevel.otel4s.Attributes
+import org.typelevel.otel4s.TraceContext
+import org.typelevel.otel4s.Value
 
 trait Cogens {
 

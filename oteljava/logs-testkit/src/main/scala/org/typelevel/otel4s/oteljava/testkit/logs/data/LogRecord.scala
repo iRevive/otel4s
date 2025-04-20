@@ -19,7 +19,6 @@ package logs.data
 
 import cats.Hash
 import cats.Show
-import cats.syntax.show._
 import io.opentelemetry.sdk.logs.data.{LogRecordData => JLogRecordData}
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.logs.Severity

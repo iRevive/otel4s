@@ -17,7 +17,8 @@
 package org.typelevel.otel4s.sdk.logs.scalacheck
 
 import org.scalacheck.Cogen
-import org.typelevel.otel4s.{Attributes, Value}
+import org.typelevel.otel4s.Attributes
+import org.typelevel.otel4s.Value
 import org.typelevel.otel4s.logs.Severity
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope

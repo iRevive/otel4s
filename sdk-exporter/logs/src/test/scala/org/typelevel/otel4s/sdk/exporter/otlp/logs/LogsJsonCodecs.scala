@@ -16,7 +16,8 @@
 
 package org.typelevel.otel4s.sdk.exporter.otlp.logs
 
-import io.circe.{Encoder, Json}
+import io.circe.Encoder
+import io.circe.Json
 import io.circe.syntax._
 import org.typelevel.otel4s.Value
 import org.typelevel.otel4s.sdk.exporter.otlp.JsonCodecs

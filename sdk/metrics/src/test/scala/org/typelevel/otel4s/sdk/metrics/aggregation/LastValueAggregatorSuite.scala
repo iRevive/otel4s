@@ -26,6 +26,7 @@ import munit.ScalaCheckEffectSuite
 import org.scalacheck.Gen
 import org.scalacheck.Test
 import org.scalacheck.effect.PropF
+import org.typelevel.otel4s.TraceContext
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.context.TraceContext
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData

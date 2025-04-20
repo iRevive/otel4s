@@ -16,7 +16,8 @@
 
 package org.typelevel.otel4s
 
-import cats.{Hash, Show}
+import cats.Hash
+import cats.Show
 import scodec.bits.ByteVector
 
 /** The trace information.

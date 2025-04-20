@@ -20,6 +20,7 @@ package scalacheck
 import org.scalacheck.Cogen
 import org.typelevel.ci.CIString
 import org.typelevel.otel4s.Attributes
+import org.typelevel.otel4s.TraceContext
 import org.typelevel.otel4s.metrics.BucketBoundaries
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope

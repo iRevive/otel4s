@@ -16,14 +16,15 @@
 
 package org.typelevel.otel4s.sdk.logs.exporter
 
-import java.time.{Instant, ZoneOffset}
-import java.time.format.DateTimeFormatter
-
 import cats.Foldable
 import cats.Monad
 import cats.effect.std.Console
 import cats.syntax.foldable._
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
+
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 /** A log record exporter that logs every record using [[cats.effect.std.Console]].
   *

@@ -17,18 +17,21 @@
 package org.typelevel.otel4s.sdk.logs
 package exporter
 
-import java.time.format.DateTimeFormatter
-import java.time.{Instant, ZoneOffset}
-
 import cats.Monad
 import cats.effect.IO
-import munit.{CatsEffectSuite, ScalaCheckEffectSuite}
-import org.scalacheck.{Gen, Test}
+import munit.CatsEffectSuite
+import munit.ScalaCheckEffectSuite
+import org.scalacheck.Gen
+import org.scalacheck.Test
 import org.scalacheck.effect.PropF
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 import org.typelevel.otel4s.sdk.logs.scalacheck.Gens
 import org.typelevel.otel4s.sdk.test.InMemoryConsole
 import org.typelevel.otel4s.sdk.test.InMemoryConsole._
+
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 class ConsoleLogRecordExporterSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
   private val Formatter = DateTimeFormatter.ISO_DATE_TIME
