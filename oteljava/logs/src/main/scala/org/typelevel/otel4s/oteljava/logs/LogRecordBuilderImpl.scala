@@ -1,0 +1,116 @@
+package org.typelevel.otel4s
+package oteljava
+package logs
+
+import java.time.Instant
+import java.util.concurrent.TimeUnit
+
+import cats.effect.Sync
+import cats.mtl.Ask
+import cats.syntax.flatMap._
+import io.opentelemetry.api.common.{Value => JValue}
+import io.opentelemetry.api.common.{AttributeKey => JAttributeKey}
+import io.opentelemetry.api.logs.{LogRecordBuilder => JLogRecordBuilder}
+import io.opentelemetry.api.logs.{Severity => JSeverity}
+import org.typelevel.otel4s.logs.{LogRecordBuilder, Severity}
+import org.typelevel.otel4s.oteljava.AttributeConverters._
+import org.typelevel.otel4s.oteljava.context.{AskContext, Context}
+
+import scala.collection.immutable
+import scala.concurrent.duration.FiniteDuration
+import scala.jdk.CollectionConverters._
+
+private[oteljava] final case class LogRecordBuilderImpl[F[_]: Sync: AskContext](
+    jBuilder: JLogRecordBuilder
+) extends LogRecordBuilder[F] {
+
+  def withTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F] =
+    copy(jBuilder = jBuilder.setTimestamp(timestamp.toNanos, TimeUnit.NANOSECONDS))
+
+  def withTimestamp(timestamp: Instant): LogRecordBuilder[F] =
+    copy(jBuilder = jBuilder.setTimestamp(timestamp))
+
+  def withObservedTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F] =
+    copy(jBuilder = jBuilder.setObservedTimestamp(timestamp.toNanos, TimeUnit.NANOSECONDS))
+
+  def withObservedTimestamp(timestamp: Instant): LogRecordBuilder[F] =
+    copy(jBuilder = jBuilder.setObservedTimestamp(timestamp))
+
+  /*def withTraceContext(context: TraceContext): LogRecordBuilder[F] =
+    copy(jBuilder = jBuilder.setContext(timestamp))*/
+
+  def withSeverity(severity: Severity): LogRecordBuilder[F] =
+    copy(jBuilder = jBuilder.setSeverity(toJSeverity(severity)))
+
+  def withSeverityText(severityText: String): LogRecordBuilder[F] =
+    copy(jBuilder = jBuilder.setSeverityText(severityText))
+
+  def withBody(value: Value): LogRecordBuilder[F] =
+    copy(jBuilder = jBuilder.setBody(toJValue(value)))
+
+  def addAttribute[A](attribute: Attribute[A]): LogRecordBuilder[F] =
+    copy(jBuilder = jBuilder.setAttribute(attribute.key.toJava.asInstanceOf[JAttributeKey[Any]], attribute.value))
+
+  def addAttributes(attributes: Attribute[_]*): LogRecordBuilder[F] =
+    copy(jBuilder = jBuilder.setAllAttributes(attributes.toJavaAttributes))
+
+  def addAttributes(attributes: immutable.Iterable[Attribute[_]]): LogRecordBuilder[F] =
+    copy(jBuilder = jBuilder.setAllAttributes(attributes.toJavaAttributes))
+
+  def emit: F[Unit] =
+    Ask[F, Context].ask.flatMap { ctx =>
+      Sync[F].delay {
+        // make the current context active
+        val scope = ctx.underlying.makeCurrent()
+        try {
+          jBuilder.emit()
+        } finally {
+          scope.close() // release the context
+        }
+      }
+    }
+
+  private def toJSeverity(severity: Severity): JSeverity =
+    severity match {
+      case Severity.Trace.Trace1 => JSeverity.TRACE
+      case Severity.Trace.Trace2 => JSeverity.TRACE2
+      case Severity.Trace.Trace3 => JSeverity.TRACE3
+      case Severity.Trace.Trace4 => JSeverity.TRACE4
+
+      case Severity.Debug.Debug1 => JSeverity.DEBUG
+      case Severity.Debug.Debug2 => JSeverity.DEBUG2
+      case Severity.Debug.Debug3 => JSeverity.DEBUG3
+      case Severity.Debug.Debug4 => JSeverity.DEBUG4
+
+      case Severity.Info.Info1 => JSeverity.INFO
+      case Severity.Info.Info2 => JSeverity.INFO2
+      case Severity.Info.Info3 => JSeverity.INFO3
+      case Severity.Info.Info4 => JSeverity.INFO4
+
+      case Severity.Warn.Warn1 => JSeverity.WARN
+      case Severity.Warn.Warn2 => JSeverity.WARN2
+      case Severity.Warn.Warn3 => JSeverity.WARN3
+      case Severity.Warn.Warn4 => JSeverity.WARN4
+
+      case Severity.Error.Error1 => JSeverity.ERROR
+      case Severity.Error.Error2 => JSeverity.ERROR2
+      case Severity.Error.Error3 => JSeverity.ERROR3
+      case Severity.Error.Error4 => JSeverity.ERROR4
+
+      case Severity.Fatal.Fatal1 => JSeverity.FATAL
+      case Severity.Fatal.Fatal2 => JSeverity.FATAL2
+      case Severity.Fatal.Fatal3 => JSeverity.FATAL3
+      case Severity.Fatal.Fatal4 => JSeverity.FATAL4
+    }
+
+  private def toJValue(value: Value): JValue[_] =
+    value match {
+      case Value.StringValue(value)    => JValue.of(value)
+      case Value.BooleanValue(value)   => JValue.of(value)
+      case Value.LongValue(value)      => JValue.of(value)
+      case Value.DoubleValue(value)    => JValue.of(value)
+      case Value.ByteArrayValue(value) => JValue.of(value)
+      case Value.ArrayValue(values)    => JValue.of(values.map(toJValue).toList.asJava)
+      case Value.MapValue(values)      => JValue.of(values.view.mapValues(toJValue).toMap.asJava)
+    }
+}

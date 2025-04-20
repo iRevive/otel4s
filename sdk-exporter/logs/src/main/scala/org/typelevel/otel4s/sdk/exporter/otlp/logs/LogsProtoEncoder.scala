@@ -1,0 +1,112 @@
+package org.typelevel.otel4s
+package sdk
+package exporter.otlp
+package logs
+
+import com.google.protobuf.ByteString
+import io.circe.Json
+import org.typelevel.otel4s.sdk.exporter.proto.common.{AnyValue, ArrayValue, KeyValue, KeyValueList}
+import org.typelevel.otel4s.sdk.exporter.proto.logs.{ResourceLogs, ScopeLogs, SeverityNumber, LogRecord => LogProto}
+import org.typelevel.otel4s.sdk.exporter.proto.logs_service.ExportLogsServiceRequest
+import org.typelevel.otel4s.sdk.logs.data.LogRecordData
+import scalapb.descriptors.FieldDescriptor
+import scalapb.descriptors.PByteString
+import scalapb.descriptors.PValue
+import scalapb_circe.Printer
+import scodec.bits.ByteVector
+
+/** @see
+  *   [[https://github.com/open-telemetry/opentelemetry-proto/blob/v1.5.0/opentelemetry/proto/logs/v1/logs.proto]]
+  */
+private object LogsProtoEncoder {
+
+  implicit val jsonPrinter: Printer = new ProtoEncoder.JsonPrinter {
+    private val EncodeAsHex = Set("trace_id", "span_id")
+
+    /** The `traceId` and `spanId` byte arrays are represented as case-insensitive hex-encoded strings; they are not
+      * base64-encoded as is defined in the standard Protobuf JSON Mapping. Hex encoding is used for traceId and spanId
+      * fields in all OTLP Protobuf messages, e.g., the Span, Link, LogRecord, etc. messages.
+      *
+      * @see
+      *   [[https://github.com/open-telemetry/opentelemetry-proto/blob/v1.5.0/docs/specification.md#json-protobuf-encoding]]
+      */
+    override def serializeSingleValue(
+        fd: FieldDescriptor,
+        value: PValue,
+        formattingLongAsNumber: Boolean
+    ): Json = {
+      value match {
+        case PByteString(bs) if EncodeAsHex.contains(fd.name) =>
+          Json.fromString(ByteVector(bs.toByteArray()).toHex)
+        case _ =>
+          super.serializeSingleValue(fd, value, formattingLongAsNumber)
+      }
+    }
+  }
+
+  implicit val logRecordDataEncoder: ProtoEncoder[LogRecordData, LogProto] = { log =>
+    val traceId =
+      log.traceContext
+        .map(v => ByteString.copyFrom(v.traceId.toArray))
+        .getOrElse(ByteString.EMPTY)
+
+    val spanId =
+      log.traceContext
+        .map(v => ByteString.copyFrom(v.spanId.toArray))
+        .getOrElse(ByteString.EMPTY)
+
+
+    def toB(value: Value): AnyValue =
+      value match {
+        case Value.StringValue(value)    => AnyValue(AnyValue.Value.StringValue(value))
+        case Value.BooleanValue(value)   => AnyValue(AnyValue.Value.BoolValue(value))
+        case Value.LongValue(value)      => AnyValue(AnyValue.Value.IntValue(value))
+        case Value.DoubleValue(value)    => AnyValue(AnyValue.Value.DoubleValue(value))
+        case Value.ByteArrayValue(value) => AnyValue(AnyValue.Value.BytesValue(ByteString.copyFrom(value)))
+        case Value.ArrayValue(values)    => AnyValue(AnyValue.Value.ArrayValue(ArrayValue(values.map(toB).toSeq)))
+        case Value.MapValue(values)      => AnyValue(AnyValue.Value.KvlistValue(KeyValueList(values.map { case (k, v) => KeyValue(k, Some(toB(v))) }.toSeq)))
+      }
+
+    LogProto(
+      timeUnixNano = log.timestamp.map(_.toNanos).getOrElse(0L),
+      observedTimeUnixNano = log.observedTimestamp.toNanos,
+      severityNumber = SeverityNumber.fromValue(log.severity.map(_.severity).getOrElse(0)),
+      severityText = log.severityText.getOrElse(""),
+      body = log.body.map(toB),
+      attributes = ProtoEncoder.encode(log.attributes),
+      droppedAttributesCount = 0, // todo
+      flags = 0,
+      traceId = traceId,
+      spanId = spanId,
+    )
+  }
+
+  implicit val logRecordDataToRequest: ProtoEncoder[List[LogRecordData], ExportLogsServiceRequest] = { logs =>
+    val resourceLogs =
+      logs
+        .groupBy(_.resource)
+        .map { case (resource, resourceSpans) =>
+          val scopeLogs: List[ScopeLogs] =
+            resourceSpans
+              .groupBy(_.instrumentationScope)
+              .map { case (scope, logs) =>
+                ScopeLogs(
+                  scope = Some(ProtoEncoder.encode(scope)),
+                  logRecords = logs.map(log => ProtoEncoder.encode(log)),
+                  schemaUrl = scope.schemaUrl.getOrElse("")
+                )
+              }
+              .toList
+
+          ResourceLogs(
+            Some(ProtoEncoder.encode(resource)),
+            scopeLogs,
+            resource.schemaUrl.getOrElse("")
+          )
+        }
+        .toList
+
+    ExportLogsServiceRequest(resourceLogs)
+  }
+
+}

@@ -1,37 +1,21 @@
-/*
- * Copyright 2023 Typelevel
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+package org.typelevel.otel4s
+package sdk
+package exporter.otlp
+package logs
 
-package org.typelevel.otel4s.sdk.exporter
-package otlp
-package trace
-
-import cats.Applicative
-import cats.Foldable
-import cats.effect.Async
-import cats.effect.Resource
 import cats.effect.std.Console
+import cats.effect.{Async, Resource}
+import cats.{Applicative, Foldable}
 import fs2.compression.Compression
 import fs2.io.net.Network
 import fs2.io.net.tls.TLSContext
-import org.http4s.Headers
-import org.http4s.Uri
 import org.http4s.client.Client
+import org.http4s.{Headers, Uri}
 import org.http4s.syntax.literals._
-import org.typelevel.otel4s.sdk.trace.data.SpanData
-import org.typelevel.otel4s.sdk.trace.exporter.SpanExporter
+import org.typelevel.otel4s.sdk.exporter.RetryPolicy
+import org.typelevel.otel4s.sdk.exporter.otlp.{OtlpClient, OtlpProtocol, PayloadCompression}
+import org.typelevel.otel4s.sdk.logs.data.LogRecordData
+import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
 
 import scala.concurrent.duration._
 
@@ -49,37 +33,38 @@ import scala.concurrent.duration._
   *   [[https://opentelemetry.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/]]
   *
   * @see
-  *   [[https://github.com/open-telemetry/opentelemetry-proto/blob/v1.3.2/opentelemetry/proto/collector/trace/v1/trace_service.proto]]
+  *   [[https://github.com/open-telemetry/opentelemetry-proto/blob/v1.5.0/opentelemetry/proto/collector/logs/v1/logs_service.proto]]
   */
-private final class OtlpSpanExporter[F[_]: Applicative] private[otlp] (
-    client: OtlpClient[F, SpanData]
-) extends SpanExporter[F] {
-  val name: String = s"OtlpSpanExporter{client=$client}"
+private final class OtlpLogRecordExporter[F[_]: Applicative] private[otlp] (
+    client: OtlpClient[F, LogRecordData]
+) extends LogRecordExporter[F] {
 
-  def exportSpans[G[_]: Foldable](spans: G[SpanData]): F[Unit] =
-    client.doExport(spans)
+  val name: String = s"OtlpLogRecordExporter{client=$client}"
+
+  def exportLogs[G[_]: Foldable](logs: G[LogRecordData]): F[Unit] =
+    client.doExport(logs)
 
   def flush: F[Unit] = Applicative[F].unit
 }
 
-object OtlpSpanExporter {
+object OtlpLogRecordExporter {
 
   private[otlp] object Defaults {
     val Protocol: OtlpProtocol = OtlpProtocol.httpProtobuf
-    val HttpEndpoint: Uri = uri"http://localhost:4318/v1/traces"
-    val GrpcEndpoint: Uri = uri"http://localhost:4317/opentelemetry.proto.collector.trace.v1.TraceService/Export"
+    val HttpEndpoint: Uri = uri"http://localhost:4318/v1/logs"
+    val GrpcEndpoint: Uri = uri"http://localhost:4317/opentelemetry.proto.collector.logs.v1.LogsService/Export"
     val Timeout: FiniteDuration = 10.seconds
     val Compression: PayloadCompression = PayloadCompression.none
   }
 
-  /** A builder of [[OtlpSpanExporter]] */
+  /** A builder of [[OtlpLogRecordExporter]] */
   sealed trait Builder[F[_]] {
 
     /** Sets the OTLP endpoint to connect to.
       *
       * The endpoint must start with either `http://` or `https://`, and include the full HTTP path.
       *
-      * Default value is `http://localhost:4318/v1/traces`.
+      * Default value is `http://localhost:4318/v1/logs`.
       */
     def withEndpoint(endpoint: Uri): Builder[F]
 
@@ -124,14 +109,14 @@ object OtlpSpanExporter {
       */
     def withClient(client: Client[F]): Builder[F]
 
-    /** Creates a [[OtlpSpanExporter]] using the configuration of this builder.
+    /** Creates a [[OtlpLogRecordExporter]] using the configuration of this builder.
       */
-    def build: Resource[F, SpanExporter[F]]
+    def build: Resource[F, LogRecordExporter[F]]
   }
 
-  /** Creates a [[Builder]] of [[OtlpSpanExporter]] with the default configuration:
+  /** Creates a [[Builder]] of [[OtlpLogRecordExporter]] with the default configuration:
     *   - protocol: `http/protobuf`
-    *   - endpoint: `http://localhost:4318/v1/traces`
+    *   - endpoint: `http://localhost:4318/v1/logs`
     *   - timeout: `10 seconds`
     *   - retry policy: 5 exponential attempts, initial backoff is `1 second`, max backoff is `5 seconds`
     */
@@ -147,9 +132,7 @@ object OtlpSpanExporter {
       client = None
     )
 
-  private final case class BuilderImpl[
-      F[_]: Async: Network: Compression: Console
-  ](
+  private final case class BuilderImpl[F[_]: Async: Network: Compression: Console](
       protocol: OtlpProtocol,
       endpoint: Option[Uri],
       compression: PayloadCompression,
@@ -184,9 +167,9 @@ object OtlpSpanExporter {
     def withClient(client: Client[F]): Builder[F] =
       copy(client = Some(client))
 
-    def build: Resource[F, SpanExporter[F]] = {
-      import SpansProtoEncoder.spanDataToRequest
-      import SpansProtoEncoder.jsonPrinter
+    def build: Resource[F, LogRecordExporter[F]] = {
+      import LogsProtoEncoder.logRecordDataToRequest
+      import LogsProtoEncoder.jsonPrinter
 
       val endpoint = this.endpoint.getOrElse {
         protocol match {
@@ -196,7 +179,7 @@ object OtlpSpanExporter {
       }
 
       for {
-        client <- OtlpClient.create[F, SpanData](
+        client <- OtlpClient.create[F, LogRecordData](
           protocol,
           endpoint,
           headers,
@@ -206,7 +189,7 @@ object OtlpSpanExporter {
           tlsContext,
           client
         )
-      } yield new OtlpSpanExporter[F](client)
+      } yield new OtlpLogRecordExporter[F](client)
     }
   }
 

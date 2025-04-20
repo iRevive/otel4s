@@ -72,6 +72,11 @@ ThisBuild / mergifyPrRules ++= Seq(
     List(MergifyAction.Label(add = List("tracing")))
   ),
   MergifyPrRule(
+    "Label logs PRs",
+    List(MergifyCondition.Custom("files~=/(logs)/")),
+    List(MergifyAction.Label(add = List("logs")))
+  ),
+  MergifyPrRule(
     "Label Scala Steward PRs",
     List(MergifyCondition.Custom("author=typelevel-steward[bot]")),
     List(MergifyAction.Label(add = List("dependencies")))
@@ -130,11 +135,13 @@ semanticConventionsGenerate := {
 lazy val root = tlCrossRootProject
   .aggregate(
     `core-common`,
+    `core-logs`,
     `core-metrics`,
     `core-trace`,
     core,
     `instrumentation-metrics`,
     `sdk-common`,
+    `sdk-logs`,
     `sdk-metrics`,
     `sdk-metrics-testkit`,
     `sdk-trace`,
@@ -143,6 +150,7 @@ lazy val root = tlCrossRootProject
     sdk,
     `sdk-exporter-common`,
     `sdk-exporter-proto`,
+    `sdk-exporter-logs`,
     `sdk-exporter-metrics`,
     `sdk-exporter-prometheus`,
     `sdk-exporter-trace`,
@@ -152,6 +160,7 @@ lazy val root = tlCrossRootProject
     `sdk-contrib-aws-xray-propagator`,
     `oteljava-common`,
     `oteljava-common-testkit`,
+    `oteljava-logs`,
     `oteljava-metrics`,
     `oteljava-metrics-testkit`,
     `oteljava-trace`,
@@ -196,6 +205,21 @@ lazy val `core-common` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     )
   )
 
+lazy val `core-logs` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
+  .crossType(CrossType.Pure)
+  .in(file("core/logs"))
+  .dependsOn(`core-common`)
+  .settings(munitDependencies)
+  .settings(
+    name := "otel4s-core-logs",
+    libraryDependencies ++= Seq(
+      "org.typelevel" %%% "cats-effect-kernel" % CatsEffectVersion,
+      "org.typelevel" %%% "cats-effect-testkit" % CatsEffectVersion % Test,
+      "org.typelevel" %%% "cats-laws" % CatsVersion % Test,
+      "org.typelevel" %%% "discipline-munit" % MUnitDisciplineVersion % Test
+    )
+  )
+
 lazy val `core-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
   .in(file("core/metrics"))
@@ -232,7 +256,7 @@ lazy val `core-trace` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
 lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
   .in(file("core/all"))
-  .dependsOn(`core-common`, `core-metrics`, `core-trace`)
+  .dependsOn(`core-common`, `core-logs`, `core-metrics`, `core-trace`)
   .settings(
     name := "otel4s-core"
   )
@@ -281,6 +305,27 @@ lazy val `sdk-common` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     buildInfoKeys := Seq[BuildInfoKey](
       version
     )
+  )
+  .settings(munitDependencies)
+  .jsSettings(scalaJSLinkerSettings)
+
+lazy val `sdk-logs` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
+  .crossType(CrossType.Pure)
+  .in(file("sdk/logs"))
+  .dependsOn(
+    `sdk-common` % "compile->compile;test->test",
+    `core-logs` % "compile->compile;test->test",
+  )
+  .settings(
+    name := "otel4s-sdk-logs",
+    startYear := Some(2025),
+    libraryDependencies ++= Seq(
+      "org.typelevel" %%% "cats-effect" % CatsEffectVersion,
+      "org.typelevel" %%% "cats-laws" % CatsVersion % Test,
+      "org.typelevel" %%% "cats-effect-testkit" % CatsEffectVersion % Test,
+      "org.typelevel" %%% "discipline-munit" % MUnitDisciplineVersion % Test,
+      "org.typelevel" %%% "scalacheck-effect-munit" % MUnitScalaCheckEffectVersion % Test
+    ),
   )
   .settings(munitDependencies)
   .jsSettings(scalaJSLinkerSettings)
@@ -363,6 +408,7 @@ lazy val sdk = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .dependsOn(
     core,
     `sdk-common`,
+    `sdk-logs` % "compile->compile;test->test",
     `sdk-metrics` % "compile->compile;test->test",
     `sdk-metrics-testkit` % Test,
     `sdk-trace` % "compile->compile;test->test",
@@ -469,6 +515,29 @@ lazy val `sdk-exporter-common` =
     .nativeSettings(scalaNativeSettings)
     .settings(munitDependencies)
 
+lazy val `sdk-exporter-logs` =
+  crossProject(JVMPlatform, JSPlatform, NativePlatform)
+    .crossType(CrossType.Pure)
+    .in(file("sdk-exporter/logs"))
+    .enablePlugins(DockerComposeEnvPlugin)
+    .dependsOn(
+      `sdk-exporter-common` % "compile->compile;test->test",
+      `sdk-logs` % "compile->compile;test->test"
+    )
+    .settings(
+      name := "otel4s-sdk-exporter-logs",
+      startYear := Some(2025),
+      dockerComposeEnvFile := crossProjectBaseDirectory.value / "docker" / "docker-compose.yml",
+      Test / scalacOptions ++= {
+        // see https://github.com/circe/circe/issues/2162
+        if (tlIsScala3.value) Seq("-Xmax-inlines", "64") else Nil
+      }
+    )
+    .jsSettings(scalaJSLinkerSettings)
+    .nativeEnablePlugins(ScalaNativeBrewedConfigPlugin)
+    .nativeSettings(scalaNativeSettings)
+    .settings(munitDependencies)
+
 lazy val `sdk-exporter-metrics` =
   crossProject(JVMPlatform, JSPlatform, NativePlatform)
     .crossType(CrossType.Pure)
@@ -549,6 +618,7 @@ lazy val `sdk-exporter` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .dependsOn(
     sdk,
     `sdk-exporter-common`,
+    `sdk-exporter-logs`,
     `sdk-exporter-metrics`,
     `sdk-exporter-trace`
   )
@@ -645,6 +715,20 @@ lazy val `oteljava-common-testkit` = project
     startYear := Some(2024)
   )
 
+lazy val `oteljava-logs` = project
+  .in(file("oteljava/logs"))
+  .dependsOn(
+    `oteljava-common`,
+    `core-logs`.jvm % "compile->compile;test->test"
+  )
+  .settings(munitDependencies)
+  .settings(
+    name := "otel4s-oteljava-logs",
+    libraryDependencies ++= Seq(
+      "io.opentelemetry" % "opentelemetry-sdk-testing" % OpenTelemetryVersion % Test
+    )
+  )
+
 lazy val `oteljava-metrics` = project
   .in(file("oteljava/metrics"))
   .dependsOn(
@@ -721,6 +805,7 @@ lazy val oteljava = project
   .in(file("oteljava/all"))
   .dependsOn(
     core.jvm,
+    `oteljava-logs` % "compile->compile;test->test",
     `oteljava-metrics` % "compile->compile;test->test",
     `oteljava-metrics-testkit` % Test,
     `oteljava-trace` % "compile->compile;test->test",
@@ -941,11 +1026,13 @@ lazy val unidocs = project
     name := "otel4s-docs",
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(
       `core-common`.jvm,
+      `core-logs`.jvm,
       `core-metrics`.jvm,
       `core-trace`.jvm,
       core.jvm,
       `instrumentation-metrics`.jvm,
       `sdk-common`.jvm,
+      `sdk-logs`.jvm,
       `sdk-metrics`.jvm,
       `sdk-metrics-testkit`.jvm,
       `sdk-trace`.jvm,
@@ -953,6 +1040,7 @@ lazy val unidocs = project
       `sdk-testkit`.jvm,
       sdk.jvm,
       `sdk-exporter-common`.jvm,
+      `sdk-exporter-logs`.jvm,
       `sdk-exporter-metrics`.jvm,
       `sdk-exporter-prometheus`.jvm,
       `sdk-exporter-trace`.jvm,
@@ -962,6 +1050,7 @@ lazy val unidocs = project
       `sdk-contrib-aws-xray-propagator`.jvm,
       `oteljava-common`,
       `oteljava-common-testkit`,
+      `oteljava-logs`,
       `oteljava-metrics`,
       `oteljava-metrics-testkit`,
       `oteljava-trace`,
