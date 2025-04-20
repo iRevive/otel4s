@@ -73,9 +73,9 @@ class LogsProtoEncoderSuite extends ScalaCheckSuite {
         "severityText" := severityText.getOrElse(""),
         "body" := body.map(v => encodeValue(v)),
         "attributes" := attributes,
-        //"droppedAttributesCount" := 0,
-        //"traceId" := traceContext.map(_.traceId.toHex),
-        //"spanId" := traceContext.map(_.spanId.toHex)
+        // "droppedAttributesCount" := 0,
+        // "traceId" := traceContext.map(_.traceId.toHex),
+        // "spanId" := traceContext.map(_.spanId.toHex)
       )
       .dropNullValues
       .dropEmptyValues
@@ -145,14 +145,14 @@ class LogsProtoEncoderSuite extends ScalaCheckSuite {
 
   private def encodeValue(value: Value): Json = {
     value match {
-      case Value.StringValue(v) => Json.obj("stringValue" := v)
-      case Value.BooleanValue(v) => Json.obj("boolValue" := v)
-      case Value.LongValue(v) => Json.obj("intValue" := v.toString)
-      case Value.DoubleValue(v) => Json.obj("doubleValue" := v)
-      case Value.ByteArrayValue(v) => Json.obj("bytesValue" := ByteVector(v).toBase64)
+      case Value.StringValue(v)     => Json.obj("stringValue" := v)
+      case Value.BooleanValue(v)    => Json.obj("boolValue" := v)
+      case Value.LongValue(v)       => Json.obj("intValue" := v.toString)
+      case Value.DoubleValue(v)     => Json.obj("doubleValue" := v)
+      case Value.ByteArrayValue(v)  => Json.obj("bytesValue" := ByteVector(v).toBase64)
       case Value.ArrayValue(values) => Json.obj("arrayValue" := Json.obj("values" := values.map(encodeValue)))
-      case Value.MapValue(values) => 
-        Json.obj("kvlistValue" := Json.obj("values" := values.map { case (k, v) => 
+      case Value.MapValue(values) =>
+        Json.obj("kvlistValue" := Json.obj("values" := values.map { case (k, v) =>
           Json.obj("key" := k, "value" := encodeValue(v))
         }))
     }

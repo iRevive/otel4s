@@ -32,7 +32,7 @@ trait Cogens extends org.typelevel.otel4s.sdk.scalacheck.Cogens with org.typelev
       (
           Option[FiniteDuration],
           FiniteDuration,
-          //Option[TraceContext],
+          // Option[TraceContext],
           Option[Severity],
           Option[String],
           Option[Value],
@@ -44,7 +44,7 @@ trait Cogens extends org.typelevel.otel4s.sdk.scalacheck.Cogens with org.typelev
       (
         logRecordData.timestamp,
         logRecordData.observedTimestamp,
-        //logRecordData.traceContext,
+        // logRecordData.traceContext,
         logRecordData.severity,
         logRecordData.severityText,
         logRecordData.body,
