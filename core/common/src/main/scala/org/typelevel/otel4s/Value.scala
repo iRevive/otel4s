@@ -76,20 +76,20 @@ object Value {
     }
 
     def eqv(x: Value, y: Value): Boolean = (x, y) match {
-      case (StringValue(a), StringValue(b))       => a == b
-      case (BooleanValue(a), BooleanValue(b))     => a == b
-      case (LongValue(a), LongValue(b))           => a == b
-      case (DoubleValue(a), DoubleValue(b))       => a == b
-      case (ByteArrayValue(a), ByteArrayValue(b)) => java.util.Arrays.equals(a, b)
+      case (StringValue(a), StringValue(b))   => a == b
+      case (BooleanValue(a), BooleanValue(b)) => a == b
+      case (LongValue(a), LongValue(b))       => a == b
+      case (DoubleValue(a), DoubleValue(b))   => a == b
+      case (ByteArrayValue(a), ByteArrayValue(b)) =>
+        java.util.Arrays.equals(a, b)
       case (ArrayValue(a), ArrayValue(b)) =>
         a.size == b.size && a.lazyZip(b).forall { case (x, y) => eqv(x, y) }
       case (MapValue(a), MapValue(b)) =>
-        a.size == b.size && a.keys.forall(k => b.contains(k) && eqv(a(k), b(k))) // todo: doesn't seem to be correct
+        a.size == b.size && a.keys.forall(k => b.contains(k) && eqv(a(k), b(k)))
       case _ => false
     }
   }
 
-  /** Show instance for Value */
   implicit val valueShow: Show[Value] = Show.show {
     case StringValue(value)    => show"StringValue($value)"
     case BooleanValue(value)   => show"BooleanValue($value)"

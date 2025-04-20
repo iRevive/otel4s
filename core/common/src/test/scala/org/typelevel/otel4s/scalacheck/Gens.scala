@@ -20,6 +20,7 @@ package scalacheck
 import cats.data.NonEmptyVector
 import org.scalacheck.Arbitrary
 import org.scalacheck.Gen
+import scodec.bits.ByteVector
 
 trait Gens {
 
@@ -85,6 +86,17 @@ trait Gens {
     for {
       attributes <- Gen.listOfN(n, attribute)
     } yield attributes.to(Attributes)
+
+  val traceContext: Gen[TraceContext] =
+    for {
+      traceId <- Gen.zip(Gen.long, nonZeroLong)
+      spanId <- nonZeroLong
+      sampled <- Gen.oneOf(true, false)
+    } yield TraceContext(
+      ByteVector.fromLong(traceId._1, 8) ++ ByteVector.fromLong(traceId._2, 8),
+      ByteVector.fromLong(spanId, 8),
+      sampled
+    )
 
   val value: Gen[Value] = {
     val string = Gen.alphaNumStr.map(Value.string)

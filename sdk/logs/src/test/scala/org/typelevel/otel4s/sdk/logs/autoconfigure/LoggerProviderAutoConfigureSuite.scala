@@ -18,10 +18,8 @@ package org.typelevel.otel4s.sdk.logs.autoconfigure
 
 import cats.Foldable
 import cats.effect.IO
-import cats.effect.Resource
 import cats.mtl.Ask
 import munit.CatsEffectSuite
-import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.logs.LoggerProvider
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.autoconfigure.AutoConfigure
@@ -32,7 +30,6 @@ import org.typelevel.otel4s.sdk.logs.LogRecordLimits
 import org.typelevel.otel4s.sdk.logs.SdkLoggerProvider
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
-import org.typelevel.otel4s.semconv.attributes.ServiceAttributes
 
 class LoggerProviderAutoConfigureSuite extends CatsEffectSuite {
   import LoggerProviderAutoConfigure.Customizer

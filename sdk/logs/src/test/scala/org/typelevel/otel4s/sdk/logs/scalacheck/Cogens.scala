@@ -17,14 +17,42 @@
 package org.typelevel.otel4s.sdk.logs.scalacheck
 
 import org.scalacheck.Cogen
-// Severity has been moved to org.typelevel.otel4s.logs.Severity
+import org.typelevel.otel4s.{Attributes, Value}
+import org.typelevel.otel4s.logs.Severity
+import org.typelevel.otel4s.sdk.TelemetryResource
+import org.typelevel.otel4s.sdk.common.InstrumentationScope
+import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 
-trait Cogens extends org.typelevel.otel4s.sdk.scalacheck.Cogens {
+import scala.concurrent.duration.FiniteDuration
 
-  // Severity has been moved to org.typelevel.otel4s.logs.Severity
-  // Use org.typelevel.otel4s.logs.scalacheck.Cogens.severityCogen instead
-  // implicit val severityCogen: Cogen[Severity] =
-  //   Cogen[Int].contramap(_.number)
+trait Cogens extends org.typelevel.otel4s.sdk.scalacheck.Cogens with org.typelevel.otel4s.logs.scalacheck.Cogens {
+
+  implicit val logRecordDataCogen: Cogen[LogRecordData] =
+    Cogen[
+      (
+          Option[FiniteDuration],
+          FiniteDuration,
+          //Option[TraceContext],
+          Option[Severity],
+          Option[String],
+          Option[Value],
+          Attributes,
+          InstrumentationScope,
+          TelemetryResource
+      )
+    ].contramap { logRecordData =>
+      (
+        logRecordData.timestamp,
+        logRecordData.observedTimestamp,
+        //logRecordData.traceContext,
+        logRecordData.severity,
+        logRecordData.severityText,
+        logRecordData.body,
+        logRecordData.attributes,
+        logRecordData.instrumentationScope,
+        logRecordData.resource
+      )
+    }
 
 }
 

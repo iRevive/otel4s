@@ -18,7 +18,6 @@ package org.typelevel.otel4s.sdk.logs.autoconfigure
 
 import cats.Foldable
 import cats.effect.IO
-import cats.effect.Resource
 import cats.effect.std.Console
 import cats.syntax.all._
 import munit.CatsEffectSuite

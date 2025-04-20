@@ -18,7 +18,6 @@ package org.typelevel.otel4s.sdk.logs.data
 
 import cats.Hash
 import cats.Show
-import cats.syntax.show._
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.TraceContext
 import org.typelevel.otel4s.Value
@@ -51,6 +50,8 @@ sealed trait LogRecordData {
     */
   def observedTimestamp: FiniteDuration
 
+  /** The tracing context associated with the log record.
+    */
   def traceContext: Option[TraceContext]
 
   /** The severity level.
@@ -153,7 +154,7 @@ object LogRecordData {
       (
         data.timestamp,
         data.observedTimestamp,
-        // data.traceContext,
+        data.traceContext,
         data.severity,
         data.severityText,
         data.body,
@@ -165,14 +166,10 @@ object LogRecordData {
 
   implicit val logRecordDataShow: Show[LogRecordData] =
     Show.show { data =>
-      val traceContextStr = data.traceContext.fold("None") { tc =>
-        s"Some(TraceContext{traceId=${tc.traceId}, spanId=${tc.spanId}, isSampled=${tc.isSampled}})"
-      }
-
       "LogRecordData{" +
         s"timestamp=${data.timestamp}, " +
         s"observedTimestamp=${data.observedTimestamp}, " +
-        s"traceContext=$traceContextStr, " +
+        s"traceContext=${data.traceContext.fold("None")(_.toString)}, " +
         s"severity=${data.severity}, " +
         s"severityText=${data.severityText}, " +
         s"body=${data.body}, " +

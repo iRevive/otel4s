@@ -17,14 +17,32 @@
 package org.typelevel.otel4s.sdk.logs.scalacheck
 
 import org.scalacheck.Gen
-// Severity has been moved to org.typelevel.otel4s.logs.Severity
+import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 
-trait Gens extends org.typelevel.otel4s.sdk.scalacheck.Gens {
+trait Gens extends org.typelevel.otel4s.sdk.scalacheck.Gens with org.typelevel.otel4s.logs.scalacheck.Gens {
 
-  // Severity has been moved to org.typelevel.otel4s.logs.Severity
-  // Use org.typelevel.otel4s.logs.scalacheck.Gens.severity instead
-  // val severity: Gen[Severity] =
-  //   Gen.oneOf(Severity.values)
+  val logRecordData: Gen[LogRecordData] =
+    for {
+      timestamp <- Gen.option(Gens.timestamp)
+      observedTimestamp <- Gens.timestamp
+      traceContext <- Gen.option(Gens.traceContext)
+      severity <- Gen.option(Gens.severity)
+      severityText <- Gen.option(Gens.nonEmptyString)
+      body <- Gen.option(Gens.value)
+      attributes <- Gens.attributes
+      instrumentationScope <- Gens.instrumentationScope
+      resource <- Gens.telemetryResource
+    } yield LogRecordData(
+      timestamp = timestamp,
+      observedTimestamp = observedTimestamp,
+      traceContext = traceContext,
+      severity = severity,
+      severityText = severityText,
+      body = body,
+      attributes = attributes,
+      instrumentationScope = instrumentationScope,
+      resource = resource
+    )
 
 }
 

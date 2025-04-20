@@ -17,13 +17,14 @@
 package org.typelevel.otel4s.sdk.logs.scalacheck
 
 import org.scalacheck.Arbitrary
+import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 
-trait Arbitraries extends org.typelevel.otel4s.sdk.scalacheck.Arbitraries {
+trait Arbitraries
+    extends org.typelevel.otel4s.sdk.scalacheck.Arbitraries
+    with org.typelevel.otel4s.logs.scalacheck.Arbitraries {
 
-  // Severity has been moved to org.typelevel.otel4s.logs.Severity
-  // Use org.typelevel.otel4s.logs.scalacheck.Arbitraries.severityArbitrary instead
-  // implicit val severityArbitrary: Arbitrary[Severity] =
-  //   Arbitrary(Gens.severity)
+  implicit val logRecordDataArbitrary: Arbitrary[LogRecordData] =
+    Arbitrary(Gens.logRecordData)
 
 }
 

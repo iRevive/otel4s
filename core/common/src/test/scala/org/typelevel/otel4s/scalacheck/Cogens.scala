@@ -18,11 +18,7 @@ package org.typelevel.otel4s.scalacheck
 
 import org.scalacheck.Cogen
 import org.scalacheck.rng.Seed
-import org.typelevel.otel4s.Attribute
-import org.typelevel.otel4s.AttributeKey
-import org.typelevel.otel4s.AttributeType
-import org.typelevel.otel4s.Attributes
-import org.typelevel.otel4s.Value
+import org.typelevel.otel4s.{Attribute, AttributeKey, AttributeType, Attributes, TraceContext, Value}
 
 trait Cogens {
 
@@ -61,6 +57,9 @@ trait Cogens {
 
   implicit val attributesCogen: Cogen[Attributes] =
     Cogen[List[Attribute[_]]].contramap(_.toList)
+
+  implicit val traceContextCogen: Cogen[TraceContext] =
+    Cogen[(String, String, Boolean)].contramap(c => (c.traceId.toHex, c.spanId.toHex, c.isSampled))
 
   implicit val valueCogen: Cogen[Value] =
     Cogen { (seed, value) =>

@@ -16,13 +16,13 @@
 
 package org.typelevel.otel4s.sdk.logs.exporter
 
+import java.time.{Instant, ZoneOffset}
+import java.time.format.DateTimeFormatter
+
 import cats.Foldable
 import cats.Monad
 import cats.effect.std.Console
-import cats.syntax.applicative._
-import cats.syntax.flatMap._
 import cats.syntax.foldable._
-import cats.syntax.functor._
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 
 /** A log record exporter that logs every record using [[cats.effect.std.Console]].
@@ -37,21 +37,37 @@ private final class ConsoleLogRecordExporter[F[_]: Monad: Console] extends LogRe
 
   val name: String = "ConsoleLogRecordExporter"
 
-  def exportLogRecords[G[_]: Foldable](logs: G[LogRecordData]): F[Unit] = {
-    for {
-      _ <- Console[F].println(
-        s"ConsoleLogRecordExporter: received a collection of [${logs.size}] log records for export."
-      )
-      _ <- logs.traverse_ { log =>
-        Console[F].println(s"ConsoleLogRecordExporter: $log")
-      }
-    } yield ()
-  }.whenA(logs.nonEmpty)
+  def exportLogRecords[G[_]: Foldable](logs: G[LogRecordData]): F[Unit] =
+    logs.traverse_(span => log(span))
 
   def flush: F[Unit] = Monad[F].unit
+
+  private def log(data: LogRecordData): F[Unit] = {
+    import ConsoleLogRecordExporter.Formatter
+
+    val scope = data.instrumentationScope
+
+    val timestamp =
+      Instant
+        .ofEpochMilli(data.timestamp.getOrElse(data.observedTimestamp).toMillis)
+        .atZone(ZoneOffset.UTC)
+
+    val date = Formatter.format(timestamp)
+    val severity = data.severity.map(_.toString).getOrElse("")
+    val body = data.body.map(_.toString).getOrElse("")
+    val traceId = data.traceContext.map(_.traceId.toHex).getOrElse("")
+    val spanId = data.traceContext.map(_.spanId.toHex).getOrElse("")
+    val scopeInfo = scope.name + ":" + scope.version.getOrElse("")
+
+    val content = s"$date $severity '$body' : $traceId $spanId [scopeInfo: $scopeInfo] ${data.attributes}"
+
+    Console[F].println(s"ConsoleLogRecordExporter: $content")
+  }
+
 }
 
 object ConsoleLogRecordExporter {
+  private val Formatter = DateTimeFormatter.ISO_DATE_TIME
 
   /** Creates a log record exporter that logs every record using [[cats.effect.std.Console]].
     *
