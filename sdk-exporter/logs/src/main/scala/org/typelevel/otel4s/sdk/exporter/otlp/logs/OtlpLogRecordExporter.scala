@@ -62,7 +62,7 @@ private final class OtlpLogRecordExporter[F[_]: Applicative] private[otlp] (
 
   val name: String = s"OtlpLogRecordExporter{client=$client}"
 
-  def exportLogs[G[_]: Foldable](logs: G[LogRecordData]): F[Unit] =
+  def exportLogRecords[G[_]: Foldable](logs: G[LogRecordData]): F[Unit] =
     client.doExport(logs)
 
   def flush: F[Unit] = Applicative[F].unit

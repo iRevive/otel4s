@@ -31,7 +31,7 @@ final class InMemoryLogRecordExporter[F[_]: Monad] private (
 
   def name: String = "InMemoryLogRecordExporter"
 
-  def exportLogs[G[_]: Foldable](logs: G[LogRecordData]): F[Unit] =
+  def exportLogRecords[G[_]: Foldable](logs: G[LogRecordData]): F[Unit] =
     logs.traverse_(log => queue.offer(log))
 
   def flush: F[Unit] =

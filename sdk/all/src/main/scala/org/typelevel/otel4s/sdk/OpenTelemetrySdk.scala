@@ -72,7 +72,11 @@ final class OpenTelemetrySdk[F[_]] private (
   val baggageManager: BaggageManager[F] = SdkBaggageManager.fromLocal
 
   override def toString: String =
-    s"OpenTelemetrySdk{meterProvider=$meterProvider, tracerProvider=$tracerProvider, loggerProvider=$loggerProvider, propagators=$propagators}"
+    s"OpenTelemetrySdk{" +
+      s"loggerProvider=$loggerProvider, " +
+      s"meterProvider=$meterProvider, " +
+      s"tracerProvider=$tracerProvider, " +
+      s"propagators=$propagators}"
 }
 
 object OpenTelemetrySdk {

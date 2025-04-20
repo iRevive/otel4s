@@ -56,8 +56,6 @@ private final class LoggerProviderAutoConfigure[F[_]: Temporal: Parallel: Consol
     for {
       exporters <- LogRecordExportersAutoConfigure[F](exporterConfigurers).configure(config)
       processors <- configureProcessors(config, exporters)
-      _ = println("exp: " + exporters)
-      _ = println("proc: " + processors)
       logLimits <- LogRecordLimitsAutoConfigure[F].configure(config)
       loggerProviderBuilder = {
         val builder = SdkLoggerProvider
