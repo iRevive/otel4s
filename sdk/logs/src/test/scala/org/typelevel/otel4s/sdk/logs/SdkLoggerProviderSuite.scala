@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Typelevel
+ * Copyright 2025 Typelevel
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,7 +62,7 @@ class SdkLoggerProviderSuite extends CatsEffectSuite with ScalaCheckEffectSuite 
 
   private class EmptyLogRecordExporter[F[_]: Applicative] extends LogRecordExporter[F] {
     def name: String = "LogRecordExporter.Empty"
-    def exportLogs[G[_]: cats.Foldable](logs: G[org.typelevel.otel4s.sdk.logs.data.LogRecordData]): F[Unit] = 
+    def exportLogs[G[_]: cats.Foldable](logs: G[org.typelevel.otel4s.sdk.logs.data.LogRecordData]): F[Unit] =
       Applicative[F].unit
     def flush: F[Unit] = Applicative[F].unit
     override def toString: String = "LogRecordExporter.Empty"

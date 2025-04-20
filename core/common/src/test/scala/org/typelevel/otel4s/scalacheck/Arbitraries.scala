@@ -30,7 +30,6 @@ trait Arbitraries {
   implicit val valueArbitrary: Arbitrary[Value] =
     Arbitrary(Gens.value)
 
-
 }
 
 object Arbitraries extends Arbitraries

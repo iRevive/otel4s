@@ -1,3 +1,19 @@
+/*
+ * Copyright 2025 Typelevel
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.typelevel.otel4s.sdk.logs
 
 import cats.Applicative
@@ -23,42 +39,42 @@ import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
 import org.typelevel.otel4s.sdk.resource.TelemetryResourceDetector
 
 /** The configured logs module.
- *
- * @tparam F
- *   the higher-kinded type of a polymorphic effect
- */
+  *
+  * @tparam F
+  *   the higher-kinded type of a polymorphic effect
+  */
 sealed trait SdkLogs[F[_]] {
 
   /** The [[org.typelevel.otel4s.logs.LoggerProvider LoggerProvider]] for bridging logs into OpenTelemetry.
-   *
-   * @note
-   *   the logs bridge API exists to enable bridging logs from other log frameworks (e.g. SLF4J, Log4j, JUL, Logback,
-   *   etc) into OpenTelemetry and is '''NOT''' a replacement log API.
-   */
+    *
+    * @note
+    *   the logs bridge API exists to enable bridging logs from other log frameworks (e.g. SLF4J, Log4j, JUL, Logback,
+    *   etc) into OpenTelemetry and is '''NOT''' a replacement log API.
+    */
   def loggerProvider: LoggerProvider[F]
 }
 
 object SdkLogs {
 
   /** Autoconfigures [[SdkLogs]] using [[AutoConfigured.Builder]].
-   *
-   * @note
-   *   the external components (e.g. OTLP exporter) must be registered manually. Add the `otel4s-sdk-exporter`
-   *   dependency to the build file:
-   *   {{{
-   * libraryDependencies += "org.typelevel" %%% "otel4s-sdk-exporter" % "x.x.x"
-   *   }}}
-   *   and register the configurer manually:
-   *   {{{
-   * import org.typelevel.otel4s.sdk.logs.SdkLogs
-   * import org.typelevel.otel4s.sdk.exporter.otlp.logs.autoconfigure.OtlpLogRecordExporterAutoConfigure
-   *
-   * SdkLogs.autoConfigured[IO](_.addExporterConfigurer(OtlpLogRecordExporterAutoConfigure[IO]))
-   *   }}}
-   *
-   * @param customize
-   *   a function for customizing the auto-configured SDK builder
-   */
+    *
+    * @note
+    *   the external components (e.g. OTLP exporter) must be registered manually. Add the `otel4s-sdk-exporter`
+    *   dependency to the build file:
+    *   {{{
+    * libraryDependencies += "org.typelevel" %%% "otel4s-sdk-exporter" % "x.x.x"
+    *   }}}
+    *   and register the configurer manually:
+    *   {{{
+    * import org.typelevel.otel4s.sdk.logs.SdkLogs
+    * import org.typelevel.otel4s.sdk.exporter.otlp.logs.autoconfigure.OtlpLogRecordExporterAutoConfigure
+    *
+    * SdkLogs.autoConfigured[IO](_.addExporterConfigurer(OtlpLogRecordExporterAutoConfigure[IO]))
+    *   }}}
+    *
+    * @param customize
+    *   a function for customizing the auto-configured SDK builder
+    */
   def autoConfigured[F[_]: Async: Parallel: Env: SystemProperties: Console](
       customize: AutoConfigured.Builder[F] => AutoConfigured.Builder[F] = (a: AutoConfigured.Builder[F]) => a
   ): Resource[F, SdkLogs[F]] =
@@ -72,94 +88,94 @@ object SdkLogs {
     type Customizer[A] = (A, Config) => A
 
     /** A builder of [[SdkLogs]].
-     */
+      */
     sealed trait Builder[F[_]] {
 
       /** Sets the given config to use when resolving properties.
-       *
-       * @note
-       *   [[addPropertiesLoader]] and [[addPropertiesCustomizer]] will have no effect if the custom config is
-       *   provided.
-       *
-       * @param config
-       *   the config to use
-       */
+        *
+        * @note
+        *   [[addPropertiesLoader]] and [[addPropertiesCustomizer]] will have no effect if the custom config is
+        *   provided.
+        *
+        * @param config
+        *   the config to use
+        */
       def withConfig(config: Config): Builder[F]
 
       /** Adds the properties loader. Multiple loaders will be added. The loaded properties will be merged with the
-       * default config. Loaded properties take precedence over the default ones.
-       *
-       * @param loader
-       *   the additional loader to add
-       */
+        * default config. Loaded properties take precedence over the default ones.
+        *
+        * @param loader
+        *   the additional loader to add
+        */
       def addPropertiesLoader(loader: F[Map[String, String]]): Builder[F]
 
       /** Adds the properties customizer. Multiple customizers can be added, and they will be applied in the order they
-       * were added.
-       *
-       * @param customizer
-       *   the customizer to add
-       */
+        * were added.
+        *
+        * @param customizer
+        *   the customizer to add
+        */
       def addPropertiesCustomizer(customizer: Config => Map[String, String]): Builder[F]
 
-      /** Adds the logger provider builder customizer. Multiple customizers can be added, and they will be applied in the
-       * order they were added.
-       *
-       * @param customizer
-       *   the customizer to add
-       */
+      /** Adds the logger provider builder customizer. Multiple customizers can be added, and they will be applied in
+        * the order they were added.
+        *
+        * @param customizer
+        *   the customizer to add
+        */
       def addLoggerProviderCustomizer(customizer: Customizer[SdkLoggerProvider.Builder[F]]): Builder[F]
 
       /** Adds the telemetry resource customizer. Multiple customizers can be added, and they will be applied in the
-       * order they were added.
-       *
-       * @param customizer
-       *   the customizer to add
-       */
+        * order they were added.
+        *
+        * @param customizer
+        *   the customizer to add
+        */
       def addResourceCustomizer(customizer: Customizer[TelemetryResource]): Builder[F]
 
       /** Adds the telemetry resource detector. Multiple detectors can be added, and the detected telemetry resources
-       * will be merged.
-       *
-       * By default, the following detectors are enabled:
-       *   - host: `host.arch`, `host.name`
-       *   - os: `os.type`, `os.description`
-       *   - process: `process.command`, `process.command_args`, `process.command_line`, `process.executable.name`,
-       *     `process.executable.path`, `process.pid`, `process.owner`
-       *   - process_runtime: `process.runtime.name`, `process.runtime.version`, `process.runtime.description`
-       *
-       * @param detector
-       *   the detector to add
-       */
+        * will be merged.
+        *
+        * By default, the following detectors are enabled:
+        *   - host: `host.arch`, `host.name`
+        *   - os: `os.type`, `os.description`
+        *   - process: `process.command`, `process.command_args`, `process.command_line`, `process.executable.name`,
+        *     `process.executable.path`, `process.pid`, `process.owner`
+        *   - process_runtime: `process.runtime.name`, `process.runtime.version`, `process.runtime.description`
+        *
+        * @param detector
+        *   the detector to add
+        */
       def addResourceDetector(detector: TelemetryResourceDetector[F]): Builder[F]
 
       /** Adds the exporter configurer. Can be used to register exporters that aren't included in the SDK.
-       *
-       * @example
-       *   Add the `otel4s-sdk-exporter` dependency to the build file:
-       *   {{{
-       * libraryDependencies += "org.typelevel" %%% "otel4s-sdk-exporter" % "x.x.x"
-       *   }}}
-       *   and register the configurer manually:
-       *   {{{
-       * import org.typelevel.otel4s.sdk.logs.SdkLogs
-       * import org.typelevel.otel4s.sdk.exporter.otlp.logs.autoconfigure.OtlpLogRecordExporterAutoConfigure
-       *
-       * SdkLogs.autoConfigured[IO](_.addExporterConfigurer(OtlpLogRecordExporterAutoConfigure[IO]))
-       *   }}}
-       *
-       * @param configurer
-       *   the configurer to add
-       */
+        *
+        * @example
+        *   Add the `otel4s-sdk-exporter` dependency to the build file:
+        *   {{{
+        * libraryDependencies += "org.typelevel" %%% "otel4s-sdk-exporter" % "x.x.x"
+        *   }}}
+        *   and register the configurer manually:
+        *   {{{
+        * import org.typelevel.otel4s.sdk.logs.SdkLogs
+        * import org.typelevel.otel4s.sdk.exporter.otlp.logs.autoconfigure.OtlpLogRecordExporterAutoConfigure
+        *
+        * SdkLogs.autoConfigured[IO](_.addExporterConfigurer(OtlpLogRecordExporterAutoConfigure[IO]))
+        *   }}}
+        *
+        * @param configurer
+        *   the configurer to add
+        */
       def addExporterConfigurer(configurer: AutoConfigure.Named[F, LogRecordExporter[F]]): Builder[F]
 
       /** Creates [[SdkLogs]] using the configuration of this builder.
-       */
+        */
       def build: Resource[F, SdkLogs[F]]
     }
 
     /** Creates a [[Builder]].
-     */
+      */
     def builder[F[_]: Async: Parallel: Env: SystemProperties: Console]: Builder[F] =
       BuilderImpl(
         customConfig = None,
