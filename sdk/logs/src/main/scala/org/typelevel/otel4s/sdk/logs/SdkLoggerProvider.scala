@@ -79,6 +79,16 @@ object SdkLoggerProvider {
       */
     def addResource(resource: TelemetryResource): Builder[F]
 
+    /** Sets the [[LogLimits]] to be used by the logger provider.
+      *
+      * @note
+      *   on multiple subsequent calls, the limits from the last call will be retained.
+      *
+      * @param logLimits
+      *   the [[LogLimits]] to use
+      */
+    def withLogLimits(logLimits: LogLimits): Builder[F]
+
     /** Adds a [[org.typelevel.otel4s.sdk.logs.processor.LogRecordProcessor LogRecordProcessor]] to the log record
       * processing pipeline that will be built.
       *
@@ -118,6 +128,9 @@ object SdkLoggerProvider {
 
     def addResource(resource: TelemetryResource): Builder[F] =
       copy(resource = this.resource.mergeUnsafe(resource))
+
+    def withLogLimits(logLimits: LogLimits): Builder[F] =
+      copy(logLimits = logLimits)
 
     def addLogRecordProcessor(processor: LogRecordProcessor[F]): Builder[F] =
       copy(logRecordProcessors = logRecordProcessors :+ processor)

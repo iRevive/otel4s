@@ -4,7 +4,6 @@ import cats.Applicative
 import cats.Parallel
 import cats.effect.Async
 import cats.effect.Resource
-import cats.effect.Temporal
 import cats.effect.std.Console
 import cats.effect.std.Env
 import cats.effect.std.SystemProperties
@@ -18,7 +17,7 @@ import org.typelevel.otel4s.sdk.autoconfigure.AutoConfigure
 import org.typelevel.otel4s.sdk.autoconfigure.CommonConfigKeys
 import org.typelevel.otel4s.sdk.autoconfigure.Config
 import org.typelevel.otel4s.sdk.autoconfigure.TelemetryResourceAutoConfigure
-import org.typelevel.otel4s.sdk.context.AskContext
+import org.typelevel.otel4s.sdk.logs.autoconfigure.LoggerProviderAutoConfigure
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
 import org.typelevel.otel4s.sdk.resource.TelemetryResourceDetector
@@ -30,7 +29,11 @@ import org.typelevel.otel4s.sdk.resource.TelemetryResourceDetector
  */
 sealed trait SdkLogs[F[_]] {
 
-  /** The [[org.typelevel.otel4s.logs.LoggerProvider LoggerProvider]].
+  /** The [[org.typelevel.otel4s.logs.LoggerProvider LoggerProvider]] for bridging logs into OpenTelemetry.
+   *
+   * @note
+   *   the logs bridge API exists to enable bridging logs from other log frameworks (e.g. SLF4J, Log4j, JUL, Logback,
+   *   etc) into OpenTelemetry and is '''NOT''' a replacement log API.
    */
   def loggerProvider: LoggerProvider[F]
 }
@@ -56,7 +59,7 @@ object SdkLogs {
    * @param customize
    *   a function for customizing the auto-configured SDK builder
    */
-  def autoConfigured[F[_]: Async: Parallel: Env: SystemProperties: Console: AskContext](
+  def autoConfigured[F[_]: Async: Parallel: Env: SystemProperties: Console](
       customize: AutoConfigured.Builder[F] => AutoConfigured.Builder[F] = (a: AutoConfigured.Builder[F]) => a
   ): Resource[F, SdkLogs[F]] =
     customize(AutoConfigured.builder[F]).build
@@ -157,7 +160,7 @@ object SdkLogs {
 
     /** Creates a [[Builder]].
      */
-    def builder[F[_]: Async: Parallel: Env: SystemProperties: Console: AskContext]: Builder[F] =
+    def builder[F[_]: Async: Parallel: Env: SystemProperties: Console]: Builder[F] =
       BuilderImpl(
         customConfig = None,
         propertiesLoader = Async[F].pure(Map.empty),
@@ -168,7 +171,7 @@ object SdkLogs {
         exporterConfigurers = Set.empty
       )
 
-    private final case class BuilderImpl[F[_]: Async: Parallel: Env: SystemProperties: Console: AskContext](
+    private final case class BuilderImpl[F[_]: Async: Parallel: Env: SystemProperties: Console](
         customConfig: Option[Config],
         propertiesLoader: F[Map[String, String]],
         propertiesCustomizers: List[Config => Map[String, String]],
@@ -215,26 +218,19 @@ object SdkLogs {
               .as(SdkLogs.noop[F])
           )
 
-        def loadLogs(
-            config: Config,
-            resource: TelemetryResource
-        ): Resource[F, SdkLogs[F]] = {
-          val loggerProviderBuilder = SdkLoggerProvider.builder[F]
-            .withResource(resource)
+        def loadLogs(config: Config, resource: TelemetryResource): Resource[F, SdkLogs[F]] = {
+          implicit val askContext: Ask[F, Context] = Ask.const(Context.root)
 
-          // Apply customizations to the logger provider builder
-          val customizedBuilder = loggerProviderCustomizer(loggerProviderBuilder, config)
+          val loggerProviderConfigure =
+            LoggerProviderAutoConfigure[F](
+              resource,
+              loggerProviderCustomizer,
+              exporterConfigurers
+            )
 
-          // Configure exporters if available
-          val builderWithExporters = if (exporterConfigurers.nonEmpty) {
-            // This would require implementing a LogRecordExportersAutoConfigure similar to MetricExportersAutoConfigure
-            // For now, we'll just return the customized builder
-            customizedBuilder
-          } else {
-            customizedBuilder
-          }
-
-          Resource.eval(builderWithExporters.build).map(new Impl(_))
+          for {
+            tracerProvider <- loggerProviderConfigure.configure(config)
+          } yield new Impl[F](tracerProvider)
         }
 
         for {
@@ -254,10 +250,7 @@ object SdkLogs {
         } yield logs
       }
 
-      private def merge[A](
-          first: Customizer[A],
-          second: Customizer[A]
-      ): Customizer[A] =
+      private def merge[A](first: Customizer[A], second: Customizer[A]): Customizer[A] =
         (a, config) => second(first(a, config), config)
     }
   }

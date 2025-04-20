@@ -150,7 +150,16 @@ object LogRecordData {
         s"Some(TraceContext{traceId=${tc.traceId}, spanId=${tc.spanId}, isSampled=${tc.isSampled}})"
       }
 
-      s"LogRecordData{timestamp=${data.timestamp}, observedTimestamp=${data.observedTimestamp}, traceContext=$traceContextStr, severity=${data.severity}, severityText=${data.severityText}, body=${data.body}, attributes=${data.attributes}, instrumentationScope=${data.instrumentationScope}, resource=${data.resource}}"
+      s"LogRecordData{" +
+        s"timestamp=${data.timestamp}, " +
+        s"observedTimestamp=${data.observedTimestamp}, " +
+        s"traceContext=$traceContextStr, " +
+        s"severity=${data.severity}, " +
+        s"severityText=${data.severityText}, " +
+        s"body=${data.body}, " +
+        s"attributes=${data.attributes}, " +
+        s"instrumentationScope=${data.instrumentationScope}, " +
+        s"resource=${data.resource}}"
     }
 
   private final case class Impl(
