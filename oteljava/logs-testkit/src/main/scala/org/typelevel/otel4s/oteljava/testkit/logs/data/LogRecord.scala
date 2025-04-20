@@ -94,7 +94,9 @@ object LogRecord {
     Hash.fromUniversalHashCode
 
   implicit val logRecordShow: Show[LogRecord] =
-    Show.show(p => s"LogRecord(${p.body}, ${p.attributes}, ${p.timestamp}, ${p.observedTimestamp}, ${p.severity}, ${p.severityText}, ${p.scope}, ${p.resource})")
+    Show.show(p =>
+      s"LogRecord(${p.body}, ${p.attributes}, ${p.timestamp}, ${p.observedTimestamp}, ${p.severity}, ${p.severityText}, ${p.scope}, ${p.resource})"
+    )
 
   final case class Impl(
       body: String,

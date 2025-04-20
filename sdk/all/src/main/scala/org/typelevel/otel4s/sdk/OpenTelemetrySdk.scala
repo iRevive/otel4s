@@ -45,6 +45,7 @@ import org.typelevel.otel4s.sdk.context.LocalContext
 import org.typelevel.otel4s.sdk.context.LocalContextProvider
 import org.typelevel.otel4s.sdk.context.TraceContext
 import org.typelevel.otel4s.sdk.logs.SdkLoggerProvider
+import org.typelevel.otel4s.sdk.logs.autoconfigure.LoggerProviderAutoConfigure
 import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
 import org.typelevel.otel4s.sdk.metrics.SdkMeterProvider
 import org.typelevel.otel4s.sdk.metrics.autoconfigure.MeterProviderAutoConfigure
@@ -442,6 +443,12 @@ object OpenTelemetrySdk {
               )
 
               propagatorsConfigure.configure(config).flatMap { propagators =>
+                val loggerProviderConfigure = LoggerProviderAutoConfigure[F](
+                  resource,
+                  loggerProviderCustomizer,
+                  logRecordExporterConfigurers
+                )
+
                 val meterProviderConfigure = MeterProviderAutoConfigure[F](
                   resource,
                   traceContextLookup,
@@ -458,19 +465,9 @@ object OpenTelemetrySdk {
                 )
 
                 for {
+                  loggerProvider <- loggerProviderConfigure.configure(config)
                   meterProvider <- meterProviderConfigure.configure(config)
                   tracerProvider <- tracerProviderConfigure.configure(config)
-
-                  // Configure LoggerProvider
-                  loggerProviderBuilder = SdkLoggerProvider.builder[F]
-                    .withResource(resource)
-
-                  // Apply customizations to the logger provider builder
-                  customizedLoggerBuilder = loggerProviderCustomizer(loggerProviderBuilder, config)
-
-                  // Build the logger provider
-                  loggerProvider <- Resource.eval(customizedLoggerBuilder.build)
-
                   sdk = new OpenTelemetrySdk(
                     meterProvider,
                     tracerProvider,
