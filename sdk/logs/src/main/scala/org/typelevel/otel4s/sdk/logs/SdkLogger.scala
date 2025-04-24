@@ -22,7 +22,7 @@ import org.typelevel.otel4s.logs.LogRecordBuilder
 import org.typelevel.otel4s.logs.Logger
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
-import org.typelevel.otel4s.sdk.context.AskContext
+import org.typelevel.otel4s.sdk.context.{AskContext, Context}
 import org.typelevel.otel4s.sdk.logs.processor.LogRecordProcessor
 
 /** SDK implementation of the [[Logger]].
@@ -34,9 +34,9 @@ private final class SdkLogger[F[_]: Monad: Clock: AskContext](
     instrumentationScope: InstrumentationScope,
     resource: TelemetryResource,
     processor: LogRecordProcessor[F]
-) extends Logger[F] {
+) extends Logger[F, Context] {
 
-  def logRecordBuilder: LogRecordBuilder[F] =
+  def logRecordBuilder: LogRecordBuilder[F, Context] =
     SdkLogRecordBuilder.empty(processor, instrumentationScope, resource)
 
 }

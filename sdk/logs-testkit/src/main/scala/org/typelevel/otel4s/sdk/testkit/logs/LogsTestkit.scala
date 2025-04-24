@@ -32,7 +32,7 @@ trait LogsTestkit[F[_]] {
 
   /** The [[org.typelevel.otel4s.logs.LoggerProvider LoggerProvider]].
     */
-  def loggerProvider: LoggerProvider[F]
+  def loggerProvider: LoggerProvider[F, Context]
 
   /** Collects and returns logs.
     *
@@ -61,7 +61,7 @@ object LogsTestkit {
   ): Resource[F, LogsTestkit[F]] = {
     def createLoggerProvider(
         exporter: InMemoryLogRecordExporter[F]
-    ): F[LoggerProvider[F]] = {
+    ): F[LoggerProvider[F, Context]] = {
       val processor = SimpleLogRecordProcessor[F](exporter)
       val builder = SdkLoggerProvider.builder[F].addLogRecordProcessor(processor)
       customize(builder).build
@@ -74,7 +74,7 @@ object LogsTestkit {
   }
 
   private final class Impl[F[_]](
-      val loggerProvider: LoggerProvider[F],
+      val loggerProvider: LoggerProvider[F, Context],
       exporter: InMemoryLogRecordExporter[F]
   ) extends LogsTestkit[F] {
     def collectLogs: F[List[LogRecordData]] =

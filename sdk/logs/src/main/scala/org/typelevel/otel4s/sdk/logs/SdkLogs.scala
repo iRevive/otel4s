@@ -51,7 +51,7 @@ sealed trait SdkLogs[F[_]] {
     *   the logs bridge API exists to enable bridging logs from other log frameworks (e.g. SLF4J, Log4j, JUL, Logback,
     *   etc) into OpenTelemetry and is '''NOT''' a replacement log API.
     */
-  def loggerProvider: LoggerProvider[F]
+  def loggerProvider: LoggerProvider[F, Context]
 }
 
 object SdkLogs {
@@ -272,7 +272,7 @@ object SdkLogs {
   }
 
   private final class Impl[F[_]](
-      val loggerProvider: LoggerProvider[F]
+      val loggerProvider: LoggerProvider[F, Context]
   ) extends SdkLogs[F] {
     override def toString: String =
       s"SdkLogs{loggerProvider=$loggerProvider}"

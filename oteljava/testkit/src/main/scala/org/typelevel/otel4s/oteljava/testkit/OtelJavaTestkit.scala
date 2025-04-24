@@ -93,7 +93,7 @@ object OtelJavaTestkit {
       metrics: MetricsTestkit[F],
       traces: TracesTestkit[F]
   ) extends OtelJavaTestkit[F]()(traces.localContext) {
-    def loggerProvider: LoggerProvider[F] = logs.loggerProvider
+    def loggerProvider: LoggerProvider[F, Context] = logs.loggerProvider
     def meterProvider: MeterProvider[F] = metrics.meterProvider
     def tracerProvider: TracerProvider[F] = traces.tracerProvider
     def propagators: ContextPropagators[Context] = traces.propagators

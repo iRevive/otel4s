@@ -63,7 +63,7 @@ import org.typelevel.otel4s.trace.TracerProvider
 final class OpenTelemetrySdk[F[_]] private (
     val meterProvider: MeterProvider[F],
     val tracerProvider: TracerProvider[F],
-    val loggerProvider: LoggerProvider[F],
+    val loggerProvider: LoggerProvider[F, Context],
     val propagators: ContextPropagators[Context]
 )(implicit val localContext: LocalContext[F])
     extends Otel4s[F] {

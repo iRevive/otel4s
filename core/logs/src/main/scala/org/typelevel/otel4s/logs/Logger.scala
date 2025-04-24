@@ -25,18 +25,18 @@ import cats.Applicative
   *   the `Logger` is intended to be used only for bridging logs from other log frameworks into OpenTelemetry and is
   *   '''NOT a replacement''' for logging API.
   */
-trait Logger[F[_]] {
+trait Logger[F[_], Ctx] {
 
-  def logRecordBuilder: LogRecordBuilder[F]
+  def logRecordBuilder: LogRecordBuilder[F, Ctx]
 
   /** Modify the context `F` using an implicit [[KindTransformer]] from `F` to `G`.
     */
-  def mapK[G[_]](implicit kt: KindTransformer[F, G]): Logger[G] =
+  def mapK[G[_]](implicit kt: KindTransformer[F, G]): Logger[G, Ctx] =
     new Logger.MappedK(this)
 }
 
 object Logger {
-  def apply[F[_]](implicit ev: Logger[F]): Logger[F] = ev
+  def apply[F[_], Ctx](implicit ev: Logger[F, Ctx]): Logger[F, Ctx] = ev
 
   /** Creates a no-op implementation of the [[Logger]].
     *
@@ -45,17 +45,20 @@ object Logger {
     * @tparam F
     *   the higher-kinded type of polymorphic effect
     */
-  def noop[F[_]: Applicative]: Logger[F] =
-    new Logger[F] {
-      val logRecordBuilder: LogRecordBuilder[F] = LogRecordBuilder.noop[F]
+  def noop[F[_]: Applicative, Ctx]: Logger[F, Ctx] =
+    new Logger[F, Ctx] {
+      val logRecordBuilder: LogRecordBuilder[F, Ctx] = LogRecordBuilder.noop[F, Ctx]
     }
 
   /** Implementation for [[Logger.mapK]]. */
-  private class MappedK[F[_], G[_]](logger: Logger[F])(implicit kt: KindTransformer[F, G]) extends Logger[G] {
-    def logRecordBuilder: LogRecordBuilder[G] = logger.logRecordBuilder.mapK
+  private class MappedK[F[_], G[_], Ctx](
+      logger: Logger[F, Ctx]
+  )(implicit kt: KindTransformer[F, G])
+      extends Logger[G, Ctx] {
+    def logRecordBuilder: LogRecordBuilder[G, Ctx] = logger.logRecordBuilder.mapK
   }
 
   object Implicits {
-    implicit def noop[F[_]: Applicative]: Logger[F] = Logger.noop
+    implicit def noop[F[_]: Applicative, Ctx]: Logger[F, Ctx] = Logger.noop
   }
 }

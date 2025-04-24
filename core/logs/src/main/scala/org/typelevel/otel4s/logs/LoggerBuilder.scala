@@ -21,29 +21,29 @@ import cats.Applicative
 import cats.Functor
 import cats.syntax.functor._
 
-trait LoggerBuilder[F[_]] {
+trait LoggerBuilder[F[_], Ctx] {
 
   /** Assigns a version to the resulting Logger.
     *
     * @param version
     *   the version of the instrumentation scope
     */
-  def withVersion(version: String): LoggerBuilder[F]
+  def withVersion(version: String): LoggerBuilder[F, Ctx]
 
   /** Assigns an OpenTelemetry schema URL to the resulting Logger.
     *
     * @param schemaUrl
     *   the URL of the OpenTelemetry schema
     */
-  def withSchemaUrl(schemaUrl: String): LoggerBuilder[F]
+  def withSchemaUrl(schemaUrl: String): LoggerBuilder[F, Ctx]
 
   /** Creates a [[Logger]] with the given `version` and `schemaUrl` (if any).
     */
-  def get: F[Logger[F]]
+  def get: F[Logger[F, Ctx]]
 
   /** Modify the context `F` using an implicit [[KindTransformer]] from `F` to `G`.
     */
-  def mapK[G[_]](implicit F: Functor[F], kt: KindTransformer[F, G]): LoggerBuilder[G] =
+  def mapK[G[_]](implicit F: Functor[F], kt: KindTransformer[F, G]): LoggerBuilder[G, Ctx] =
     new LoggerBuilder.MappedK(this)
 }
 
@@ -56,22 +56,22 @@ object LoggerBuilder {
     * @tparam F
     *   the higher-kinded type of polymorphic effect
     */
-  def noop[F[_]](implicit F: Applicative[F]): LoggerBuilder[F] =
-    new LoggerBuilder[F] {
-      def withVersion(version: String): LoggerBuilder[F] = this
-      def withSchemaUrl(schemaUrl: String): LoggerBuilder[F] = this
-      def get: F[Logger[F]] = F.pure(Logger.noop)
+  def noop[F[_], Ctx](implicit F: Applicative[F]): LoggerBuilder[F, Ctx] =
+    new LoggerBuilder[F, Ctx] {
+      def withVersion(version: String): LoggerBuilder[F, Ctx] = this
+      def withSchemaUrl(schemaUrl: String): LoggerBuilder[F, Ctx] = this
+      def get: F[Logger[F, Ctx]] = F.pure(Logger.noop)
     }
 
-  private class MappedK[F[_]: Functor, G[_]](
-      builder: LoggerBuilder[F]
+  private class MappedK[F[_]: Functor, G[_], Ctx](
+      builder: LoggerBuilder[F, Ctx]
   )(implicit kt: KindTransformer[F, G])
-      extends LoggerBuilder[G] {
-    def withVersion(version: String): LoggerBuilder[G] =
+      extends LoggerBuilder[G, Ctx] {
+    def withVersion(version: String): LoggerBuilder[G, Ctx] =
       new MappedK(builder.withVersion(version))
-    def withSchemaUrl(schemaUrl: String): LoggerBuilder[G] =
+    def withSchemaUrl(schemaUrl: String): LoggerBuilder[G, Ctx] =
       new MappedK(builder.withSchemaUrl(schemaUrl))
-    def get: G[Logger[G]] =
+    def get: G[Logger[G, Ctx]] =
       kt.liftK(builder.get.map(_.mapK[G]))
   }
 }

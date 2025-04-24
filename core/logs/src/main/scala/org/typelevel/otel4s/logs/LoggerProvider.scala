@@ -23,7 +23,7 @@ import cats.syntax.functor._
 
 /** The entry point of the logging API. Provides access to [[Logger]].
   */
-trait LoggerProvider[F[_]] {
+trait LoggerProvider[F[_], Ctx] {
 
   /** Creates a named [[Logger]].
     *
@@ -37,7 +37,7 @@ trait LoggerProvider[F[_]] {
     *   the name of the instrumentation scope, such as the instrumentation library, package, or fully qualified class
     *   name
     */
-  def get(name: String): F[Logger[F]] =
+  def get(name: String): F[Logger[F, Ctx]] =
     logger(name).get
 
   /** Creates a [[LoggerBuilder]] for a named [[Logger]] instance.
@@ -56,17 +56,17 @@ trait LoggerProvider[F[_]] {
     *   the name of the instrumentation scope, such as the instrumentation library, package, or fully qualified class
     *   name
     */
-  def logger(name: String): LoggerBuilder[F]
+  def logger(name: String): LoggerBuilder[F, Ctx]
 
   /** Modify the context `F` using an implicit [[KindTransformer]] from `F` to `G`.
     */
-  def mapK[G[_]](implicit F: Functor[F], kt: KindTransformer[F, G]): LoggerProvider[G] =
+  def mapK[G[_]](implicit F: Functor[F], kt: KindTransformer[F, G]): LoggerProvider[G, Ctx] =
     new LoggerProvider.MappedK(this)
 }
 
 object LoggerProvider {
 
-  def apply[F[_]](implicit ev: LoggerProvider[F]): LoggerProvider[F] = ev
+  def apply[F[_], Ctx](implicit ev: LoggerProvider[F, Ctx]): LoggerProvider[F, Ctx] = ev
 
   /** Creates a no-op implementation of the [[LoggerProvider]].
     *
@@ -75,21 +75,21 @@ object LoggerProvider {
     * @tparam F
     *   the higher-kinded type of a polymorphic effect
     */
-  def noop[F[_]: Applicative]: LoggerProvider[F] =
-    new LoggerProvider[F] {
-      def logger(name: String): LoggerBuilder[F] =
+  def noop[F[_]: Applicative, Ctx]: LoggerProvider[F, Ctx] =
+    new LoggerProvider[F, Ctx] {
+      def logger(name: String): LoggerBuilder[F, Ctx] =
         LoggerBuilder.noop
       override def toString: String =
         "LoggerProvider.Noop"
     }
 
-  private class MappedK[F[_]: Functor, G[_]](
-      provider: LoggerProvider[F]
+  private class MappedK[F[_]: Functor, G[_], Ctx](
+      provider: LoggerProvider[F, Ctx]
   )(implicit kt: KindTransformer[F, G])
-      extends LoggerProvider[G] {
-    override def get(name: String): G[Logger[G]] =
+      extends LoggerProvider[G, Ctx] {
+    override def get(name: String): G[Logger[G, Ctx]] =
       kt.liftK(provider.get(name).map(_.mapK[G]))
-    def logger(name: String): LoggerBuilder[G] =
+    def logger(name: String): LoggerBuilder[G, Ctx] =
       provider.logger(name).mapK[G]
   }
 }

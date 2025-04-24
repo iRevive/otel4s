@@ -21,6 +21,7 @@ import cats.syntax.functor._
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.logs.Logger
 import org.typelevel.otel4s.logs.LoggerBuilder
+import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.internal.ComponentRegistry
 
 /** SDK implementation of the [[LoggerBuilder]].
@@ -30,14 +31,14 @@ private final case class SdkLoggerBuilder[F[_]: Functor](
     name: String,
     version: Option[String] = None,
     schemaUrl: Option[String] = None
-) extends LoggerBuilder[F] {
+) extends LoggerBuilder[F, Context] {
 
-  def withVersion(version: String): LoggerBuilder[F] =
+  def withVersion(version: String): LoggerBuilder[F, Context] =
     copy(version = Option(version))
 
-  def withSchemaUrl(schemaUrl: String): LoggerBuilder[F] =
+  def withSchemaUrl(schemaUrl: String): LoggerBuilder[F, Context] =
     copy(schemaUrl = Option(schemaUrl))
 
-  def get: F[Logger[F]] =
+  def get: F[Logger[F, Context]] =
     componentRegistry.get(name, version, schemaUrl, Attributes.empty).widen
 }

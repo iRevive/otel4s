@@ -26,7 +26,7 @@ import org.typelevel.otel4s.logs.LoggerBuilder
 import org.typelevel.otel4s.logs.LoggerProvider
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
-import org.typelevel.otel4s.sdk.context.AskContext
+import org.typelevel.otel4s.sdk.context.{AskContext, Context}
 import org.typelevel.otel4s.sdk.internal.ComponentRegistry
 import org.typelevel.otel4s.sdk.logs.processor.LogRecordProcessor
 
@@ -40,10 +40,10 @@ private final class SdkLoggerProvider[F[_]: Applicative](
     resource: TelemetryResource,
     limits: LogRecordLimits,
     processor: LogRecordProcessor[F]
-) extends LoggerProvider[F] {
+) extends LoggerProvider[F, Context] {
   import SdkLoggerProvider.DefaultLoggerName
 
-  def logger(name: String): LoggerBuilder[F] = {
+  def logger(name: String): LoggerBuilder[F, Context] = {
     val loggerName = if (name.trim.isEmpty) DefaultLoggerName else name
     SdkLoggerBuilder(componentRegistry, loggerName)
   }
@@ -109,7 +109,7 @@ object SdkLoggerProvider {
 
     /** Creates [[org.typelevel.otel4s.logs.LoggerProvider LoggerProvider]] with the configuration of this builder.
       */
-    def build: F[LoggerProvider[F]]
+    def build: F[LoggerProvider[F, Context]]
   }
 
   /** Creates a new [[Builder]] with default configuration.
@@ -139,11 +139,11 @@ object SdkLoggerProvider {
     def addLogRecordProcessor(processor: LogRecordProcessor[F]): Builder[F] =
       copy(logRecordProcessors = logRecordProcessors :+ processor)
 
-    def build: F[LoggerProvider[F]] =
+    def build: F[LoggerProvider[F, Context]] =
       if (logRecordProcessors.isEmpty) Temporal[F].pure(LoggerProvider.noop)
       else create
 
-    private def create: F[LoggerProvider[F]] = {
+    private def create: F[LoggerProvider[F, Context]] = {
       val processor = LogRecordProcessor.of(logRecordProcessors: _*)
 
       def createLogger(scope: InstrumentationScope): F[SdkLogger[F]] =

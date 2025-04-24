@@ -28,90 +28,91 @@ import scala.concurrent.duration.FiniteDuration
 /** @see
   *   [[https://opentelemetry.io/docs/specs/otel/logs/api/#emit-a-logrecord]]
   */
-trait LogRecordBuilder[F[_]] {
+trait LogRecordBuilder[F[_], Ctx] {
 
-  def withTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F]
+  def withTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F, Ctx]
 
-  def withTimestamp(timestamp: Instant): LogRecordBuilder[F]
+  def withTimestamp(timestamp: Instant): LogRecordBuilder[F, Ctx]
 
-  def withObservedTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F]
+  def withObservedTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F, Ctx]
 
-  def withObservedTimestamp(timestamp: Instant): LogRecordBuilder[F]
+  def withObservedTimestamp(timestamp: Instant): LogRecordBuilder[F, Ctx]
 
-  /*def withTraceContext(context: TraceContext): LogRecordBuilder[F]*/
+  def withContext(context: Ctx): LogRecordBuilder[F, Ctx]
 
-  def withSeverity(severity: Severity): LogRecordBuilder[F]
+  def withSeverity(severity: Severity): LogRecordBuilder[F, Ctx]
 
-  def withSeverityText(severityText: String): LogRecordBuilder[F]
+  def withSeverityText(severityText: String): LogRecordBuilder[F, Ctx]
 
-  def withBody(body: Value): LogRecordBuilder[F]
+  def withBody(body: Value): LogRecordBuilder[F, Ctx]
 
-  def addAttribute[A](attribute: Attribute[A]): LogRecordBuilder[F]
+  def addAttribute[A](attribute: Attribute[A]): LogRecordBuilder[F, Ctx]
 
-  def addAttributes(attributes: Attribute[_]*): LogRecordBuilder[F]
+  def addAttributes(attributes: Attribute[_]*): LogRecordBuilder[F, Ctx]
 
-  def addAttributes(attributes: immutable.Iterable[Attribute[_]]): LogRecordBuilder[F]
+  def addAttributes(attributes: immutable.Iterable[Attribute[_]]): LogRecordBuilder[F, Ctx]
 
   def emit: F[Unit]
 
-  def mapK[G[_]](implicit kt: KindTransformer[F, G]): LogRecordBuilder[G] =
+  def mapK[G[_]](implicit kt: KindTransformer[F, G]): LogRecordBuilder[G, Ctx] =
     new LogRecordBuilder.MappedK(this)
 }
 
 object LogRecordBuilder {
 
-  def noop[F[_]: Applicative]: LogRecordBuilder[F] =
-    new LogRecordBuilder[F] {
-      def withTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F] = this
-
-      def withTimestamp(timestamp: Instant): LogRecordBuilder[F] = this
-
-      def withObservedTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F] = this
-
-      def withObservedTimestamp(timestamp: Instant): LogRecordBuilder[F] = this
-
-      /*def withTraceContext(context: TraceContext): LogRecordBuilder[F] = this*/
-
-      def withSeverity(severity: Severity): LogRecordBuilder[F] = this
-
-      def withSeverityText(severityText: String): LogRecordBuilder[F] = this
-
-      def withBody(body: Value): LogRecordBuilder[F] = this
-
-      def addAttribute[A](attribute: Attribute[A]): LogRecordBuilder[F] = this
-
-      def addAttributes(attributes: Attribute[_]*): LogRecordBuilder[F] = this
-
-      def addAttributes(attributes: immutable.Iterable[Attribute[_]]): LogRecordBuilder[F] = this
+  def noop[F[_]: Applicative, Ctx]: LogRecordBuilder[F, Ctx] =
+    new LogRecordBuilder[F, Ctx] {
+      def withTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F, Ctx] = this
+      def withTimestamp(timestamp: Instant): LogRecordBuilder[F, Ctx] = this
+      def withObservedTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F, Ctx] = this
+      def withObservedTimestamp(timestamp: Instant): LogRecordBuilder[F, Ctx] = this
+      def withContext(context: Ctx): LogRecordBuilder[F, Ctx] = this
+      def withSeverity(severity: Severity): LogRecordBuilder[F, Ctx] = this
+      def withSeverityText(severityText: String): LogRecordBuilder[F, Ctx] = this
+      def withBody(body: Value): LogRecordBuilder[F, Ctx] = this
+      def addAttribute[A](attribute: Attribute[A]): LogRecordBuilder[F, Ctx] = this
+      def addAttributes(attributes: Attribute[_]*): LogRecordBuilder[F, Ctx] = this
+      def addAttributes(attributes: immutable.Iterable[Attribute[_]]): LogRecordBuilder[F, Ctx] = this
       def emit: F[Unit] = Applicative[F].unit
     }
 
-  private final class MappedK[F[_], G[_]](
-      builder: LogRecordBuilder[F]
+  private final class MappedK[F[_], G[_], Ctx](
+      builder: LogRecordBuilder[F, Ctx]
   )(implicit kt: KindTransformer[F, G])
-      extends LogRecordBuilder[G] {
+      extends LogRecordBuilder[G, Ctx] {
 
-    def withTimestamp(timestamp: FiniteDuration): LogRecordBuilder[G] = this
+    def withTimestamp(timestamp: FiniteDuration): LogRecordBuilder[G, Ctx] =
+      builder.withTimestamp(timestamp).mapK
 
-    def withTimestamp(timestamp: Instant): LogRecordBuilder[G] = this
+    def withTimestamp(timestamp: Instant): LogRecordBuilder[G, Ctx] =
+      builder.withTimestamp(timestamp).mapK
 
-    def withObservedTimestamp(timestamp: FiniteDuration): LogRecordBuilder[G] = this
+    def withObservedTimestamp(timestamp: FiniteDuration): LogRecordBuilder[G, Ctx] =
+      builder.withObservedTimestamp(timestamp).mapK
 
-    def withObservedTimestamp(timestamp: Instant): LogRecordBuilder[G] = this
+    def withObservedTimestamp(timestamp: Instant): LogRecordBuilder[G, Ctx] =
+      builder.withObservedTimestamp(timestamp).mapK
 
-    /*def withTraceContext(context: TraceContext): LogRecordBuilder[G] = this*/
+    def withContext(context: Ctx): LogRecordBuilder[G, Ctx] =
+      builder.withContext(context).mapK
 
-    def withSeverity(severity: Severity): LogRecordBuilder[G] = this
+    def withSeverity(severity: Severity): LogRecordBuilder[G, Ctx] =
+      builder.withSeverity(severity).mapK
 
-    def withSeverityText(severityText: String): LogRecordBuilder[G] = this
+    def withSeverityText(severityText: String): LogRecordBuilder[G, Ctx] =
+      builder.withSeverityText(severityText).mapK
 
-    def withBody(body: Value): LogRecordBuilder[G] = this
+    def withBody(body: Value): LogRecordBuilder[G, Ctx] =
+      builder.withBody(body).mapK
 
-    def addAttribute[A](attribute: Attribute[A]): LogRecordBuilder[G] = this
+    def addAttribute[A](attribute: Attribute[A]): LogRecordBuilder[G, Ctx] =
+      builder.addAttribute(attribute).mapK
 
-    def addAttributes(attributes: Attribute[_]*): LogRecordBuilder[G] = this
+    def addAttributes(attributes: Attribute[_]*): LogRecordBuilder[G, Ctx] =
+      builder.addAttributes(attributes).mapK
 
-    def addAttributes(attributes: immutable.Iterable[Attribute[_]]): LogRecordBuilder[G] = this
+    def addAttributes(attributes: immutable.Iterable[Attribute[_]]): LogRecordBuilder[G, Ctx] =
+      builder.addAttributes(attributes).mapK
 
     def emit: G[Unit] =
       kt.liftK(builder.emit)

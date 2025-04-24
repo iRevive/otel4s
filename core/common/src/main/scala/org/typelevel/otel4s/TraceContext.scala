@@ -45,6 +45,18 @@ sealed trait TraceContext {
 
 object TraceContext {
 
+  /*trait Lookup[Ctx] {
+    def get(context: Ctx): Option[TraceContext]
+  }
+
+  object TraceContextLookup {
+    def noop: TraceContextLookup = Noop
+
+    private object Noop extends TraceContextLookup {
+      def get(context: Context): Option[TraceContext] = None
+    }
+  }*/
+
   /** Creates a [[TraceContext]] with the given `traceId` and `spanId`.
     */
   def apply(

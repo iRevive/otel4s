@@ -25,7 +25,7 @@ import org.typelevel.otel4s.logs.LoggerProvider
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.autoconfigure.AutoConfigure
 import org.typelevel.otel4s.sdk.autoconfigure.Config
-import org.typelevel.otel4s.sdk.context.AskContext
+import org.typelevel.otel4s.sdk.context.{AskContext, Context}
 import org.typelevel.otel4s.sdk.logs.SdkLoggerProvider
 import org.typelevel.otel4s.sdk.logs.autoconfigure.LoggerProviderAutoConfigure.Customizer
 import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
@@ -47,12 +47,12 @@ private final class LoggerProviderAutoConfigure[F[_]: Temporal: Parallel: Consol
     resource: TelemetryResource,
     customizer: Customizer[SdkLoggerProvider.Builder[F]], // todo: trace context lookup
     exporterConfigurers: Set[AutoConfigure.Named[F, LogRecordExporter[F]]]
-) extends AutoConfigure.WithHint[F, LoggerProvider[F]](
+) extends AutoConfigure.WithHint[F, LoggerProvider[F, Context]](
       "LoggerProvider",
       Set.empty
     ) {
 
-  protected def fromConfig(config: Config): Resource[F, LoggerProvider[F]] =
+  protected def fromConfig(config: Config): Resource[F, LoggerProvider[F, Context]] =
     for {
       exporters <- LogRecordExportersAutoConfigure[F](exporterConfigurers).configure(config)
       processors <- configureProcessors(config, exporters)
@@ -114,7 +114,7 @@ private[sdk] object LoggerProviderAutoConfigure {
       resource: TelemetryResource,
       loggerProviderBuilderCustomizer: Customizer[SdkLoggerProvider.Builder[F]],
       exporterConfigurers: Set[AutoConfigure.Named[F, LogRecordExporter[F]]]
-  ): AutoConfigure[F, LoggerProvider[F]] =
+  ): AutoConfigure[F, LoggerProvider[F, Context]] =
     new LoggerProviderAutoConfigure[F](
       resource,
       loggerProviderBuilderCustomizer,

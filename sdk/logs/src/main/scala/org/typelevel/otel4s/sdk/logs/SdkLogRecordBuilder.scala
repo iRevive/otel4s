@@ -41,39 +41,39 @@ private final case class SdkLogRecordBuilder[F[_]: Monad: Clock: AskContext](
     instrumentationScope: InstrumentationScope,
     resource: TelemetryResource,
     state: SdkLogRecordBuilder.State
-) extends LogRecordBuilder[F] {
+) extends LogRecordBuilder[F, Context] {
 
-  def withTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F] =
+  def withTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F, Context] =
     copy(state = state.copy(timestamp = Some(timestamp)))
 
-  def withTimestamp(timestamp: Instant): LogRecordBuilder[F] =
+  def withTimestamp(timestamp: Instant): LogRecordBuilder[F, Context] =
     copy(state = state.copy(timestamp = Some(timestamp.toEpochMilli.millis)))
 
-  def withObservedTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F] =
+  def withObservedTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F, Context] =
     copy(state = state.copy(observedTimestamp = Some(timestamp)))
 
-  def withObservedTimestamp(timestamp: Instant): LogRecordBuilder[F] =
+  def withObservedTimestamp(timestamp: Instant): LogRecordBuilder[F, Context] =
     copy(state = state.copy(observedTimestamp = Some(timestamp.toEpochMilli.millis)))
 
-  /*def withTraceContext(context: TraceContext): LogRecordBuilder[F] =
-    copy(state = state.copy(timestamp = Some(timestamp)))*/
+  def withContext(context: Context): LogRecordBuilder[F, Context] =
+    copy(state = state.copy(context = Some(context)))
 
-  def withSeverity(severity: Severity): LogRecordBuilder[F] =
+  def withSeverity(severity: Severity): LogRecordBuilder[F, Context] =
     copy(state = state.copy(severity = Some(severity)))
 
-  def withSeverityText(severityText: String): LogRecordBuilder[F] =
+  def withSeverityText(severityText: String): LogRecordBuilder[F, Context] =
     copy(state = state.copy(severityText = Some(severityText)))
 
-  def withBody(body: Value): LogRecordBuilder[F] =
+  def withBody(body: Value): LogRecordBuilder[F, Context] =
     copy(state = state.copy(body = Some(body)))
 
-  def addAttribute[A](attribute: Attribute[A]): LogRecordBuilder[F] =
+  def addAttribute[A](attribute: Attribute[A]): LogRecordBuilder[F, Context] =
     copy(state = state.copy(attributes = state.attributes + attribute))
 
-  def addAttributes(attributes: Attribute[_]*): LogRecordBuilder[F] =
+  def addAttributes(attributes: Attribute[_]*): LogRecordBuilder[F, Context] =
     copy(state = state.copy(attributes = state.attributes ++ attributes))
 
-  def addAttributes(attributes: immutable.Iterable[Attribute[_]]): LogRecordBuilder[F] =
+  def addAttributes(attributes: immutable.Iterable[Attribute[_]]): LogRecordBuilder[F, Context] =
     copy(state = state.copy(attributes = state.attributes ++ attributes))
 
   def emit: F[Unit] =

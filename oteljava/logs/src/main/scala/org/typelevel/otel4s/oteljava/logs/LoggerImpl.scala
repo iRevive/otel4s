@@ -22,9 +22,9 @@ import cats.effect.Sync
 import io.opentelemetry.api.logs.{Logger => JLogger}
 import org.typelevel.otel4s.logs.LogRecordBuilder
 import org.typelevel.otel4s.logs.Logger
-import org.typelevel.otel4s.oteljava.context.AskContext
+import org.typelevel.otel4s.oteljava.context.{AskContext, Context}
 
-private[oteljava] final class LoggerImpl[F[_]: Sync: AskContext](jLogger: JLogger) extends Logger[F] {
-  def logRecordBuilder: LogRecordBuilder[F] =
+private[oteljava] final class LoggerImpl[F[_]: Sync: AskContext](jLogger: JLogger) extends Logger[F, Context] {
+  def logRecordBuilder: LogRecordBuilder[F, Context] =
     new LogRecordBuilderImpl[F](jLogger.logRecordBuilder())
 }

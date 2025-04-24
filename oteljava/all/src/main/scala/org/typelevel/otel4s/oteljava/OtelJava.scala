@@ -47,7 +47,7 @@ final class OtelJava[F[_]] private (
     val propagators: ContextPropagators[Context],
     val meterProvider: MeterProvider[F],
     val tracerProvider: TracerProvider[F],
-    val loggerProvider: LoggerProvider[F],
+    val loggerProvider: LoggerProvider[F, Context],
 )(implicit val localContext: LocalContext[F])
     extends Otel4s[F] {
   type Ctx = Context

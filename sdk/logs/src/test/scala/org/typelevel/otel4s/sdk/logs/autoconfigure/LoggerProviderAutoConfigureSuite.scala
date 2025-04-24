@@ -130,7 +130,7 @@ class LoggerProviderAutoConfigureSuite extends CatsEffectSuite {
       resource: TelemetryResource = TelemetryResource.empty,
       customizer: Customizer[SdkLoggerProvider.Builder[IO]] = (a, _) => a,
       exporterConfigurers: Set[AutoConfigure.Named[IO, LogRecordExporter[IO]]] = Set.empty
-  )(f: LoggerProvider[IO] => IO[A]): IO[A] = {
+  )(f: LoggerProvider[IO, Context] => IO[A]): IO[A] = {
     implicit val askContext: AskContext[IO] = Ask.const(Context.root)
 
     val autoConfigure = LoggerProviderAutoConfigure[IO](

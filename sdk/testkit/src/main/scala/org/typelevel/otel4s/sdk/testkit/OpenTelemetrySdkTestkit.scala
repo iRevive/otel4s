@@ -157,7 +157,7 @@ object OpenTelemetrySdkTestkit {
   ) extends OpenTelemetrySdkTestkit[F] {
     def meterProvider: MeterProvider[F] = metrics.meterProvider
     def tracerProvider: TracerProvider[F] = traces.tracerProvider
-    def loggerProvider: LoggerProvider[F] = logs.loggerProvider
+    def loggerProvider: LoggerProvider[F, Context] = logs.loggerProvider
     def finishedSpans: F[List[SpanData]] = traces.finishedSpans
     def collectMetrics: F[List[MetricData]] = metrics.collectMetrics
     def collectLogs: F[List[LogRecordData]] = logs.collectLogs

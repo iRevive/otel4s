@@ -39,7 +39,7 @@ sealed trait Logs[F[_]] {
     *   the logs bridge API exists to enable bridging logs from other log frameworks (e.g. SLF4J, Log4j, JUL, Logback,
     *   etc) into OpenTelemetry and is '''NOT''' a replacement log API.
     */
-  def loggerProvider: LoggerProvider[F]
+  def loggerProvider: LoggerProvider[F, Context]
 }
 
 object Logs {
@@ -69,7 +69,7 @@ object Logs {
   private[oteljava] def create[F[_]: Sync: AskContext](jOtel: JOpenTelemetry): Logs[F] =
     new Impl(new LoggerProviderImpl[F](jOtel.getLogsBridge))
 
-  private final class Impl[F[_]](val loggerProvider: LoggerProvider[F]) extends Logs[F] {
+  private final class Impl[F[_]](val loggerProvider: LoggerProvider[F, Context]) extends Logs[F] {
     override def toString: String = s"Logs{loggerProvider=$loggerProvider}"
   }
 }

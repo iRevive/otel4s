@@ -22,22 +22,22 @@ import cats.effect.Sync
 import io.opentelemetry.api.logs.{LoggerProvider => JLoggerProvider}
 import org.typelevel.otel4s.logs.Logger
 import org.typelevel.otel4s.logs.LoggerBuilder
-import org.typelevel.otel4s.oteljava.context.AskContext
+import org.typelevel.otel4s.oteljava.context.{AskContext, Context}
 
 private[oteljava] final case class LoggerBuilderImpl[F[_]: Sync: AskContext](
     jLoggerProvider: JLoggerProvider,
     name: String,
     version: Option[String] = None,
     schemaUrl: Option[String] = None
-) extends LoggerBuilder[F] {
+) extends LoggerBuilder[F, Context] {
 
-  def withVersion(version: String): LoggerBuilder[F] =
+  def withVersion(version: String): LoggerBuilder[F, Context] =
     copy(version = Option(version))
 
-  def withSchemaUrl(schemaUrl: String): LoggerBuilder[F] =
+  def withSchemaUrl(schemaUrl: String): LoggerBuilder[F, Context] =
     copy(schemaUrl = Option(schemaUrl))
 
-  def get: F[Logger[F]] = Sync[F].delay {
+  def get: F[Logger[F, Context]] = Sync[F].delay {
     val b = jLoggerProvider.loggerBuilder(name)
     version.foreach(b.setInstrumentationVersion)
     schemaUrl.foreach(b.setSchemaUrl)

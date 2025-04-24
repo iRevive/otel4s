@@ -39,39 +39,39 @@ import scala.jdk.CollectionConverters._
 
 private[oteljava] final case class LogRecordBuilderImpl[F[_]: Sync: AskContext](
     jBuilder: JLogRecordBuilder
-) extends LogRecordBuilder[F] {
+) extends LogRecordBuilder[F, Context] {
 
-  def withTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F] =
+  def withTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F, Context] =
     copy(jBuilder = jBuilder.setTimestamp(timestamp.toNanos, TimeUnit.NANOSECONDS))
 
-  def withTimestamp(timestamp: Instant): LogRecordBuilder[F] =
+  def withTimestamp(timestamp: Instant): LogRecordBuilder[F, Context] =
     copy(jBuilder = jBuilder.setTimestamp(timestamp))
 
-  def withObservedTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F] =
+  def withObservedTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F, Context] =
     copy(jBuilder = jBuilder.setObservedTimestamp(timestamp.toNanos, TimeUnit.NANOSECONDS))
 
-  def withObservedTimestamp(timestamp: Instant): LogRecordBuilder[F] =
+  def withObservedTimestamp(timestamp: Instant): LogRecordBuilder[F, Context] =
     copy(jBuilder = jBuilder.setObservedTimestamp(timestamp))
 
-  /*def withTraceContext(context: TraceContext): LogRecordBuilder[F] =
-    copy(jBuilder = jBuilder.setContext(timestamp))*/
+  def withContext(context: Context): LogRecordBuilder[F, Context] =
+    copy(jBuilder = jBuilder.setContext(context.underlying))
 
-  def withSeverity(severity: Severity): LogRecordBuilder[F] =
+  def withSeverity(severity: Severity): LogRecordBuilder[F, Context] =
     copy(jBuilder = jBuilder.setSeverity(toJSeverity(severity)))
 
-  def withSeverityText(severityText: String): LogRecordBuilder[F] =
+  def withSeverityText(severityText: String): LogRecordBuilder[F, Context] =
     copy(jBuilder = jBuilder.setSeverityText(severityText))
 
-  def withBody(value: Value): LogRecordBuilder[F] =
+  def withBody(value: Value): LogRecordBuilder[F, Context] =
     copy(jBuilder = jBuilder.setBody(toJValue(value)))
 
-  def addAttribute[A](attribute: Attribute[A]): LogRecordBuilder[F] =
+  def addAttribute[A](attribute: Attribute[A]): LogRecordBuilder[F, Context] =
     copy(jBuilder = jBuilder.setAttribute(attribute.key.toJava.asInstanceOf[JAttributeKey[Any]], attribute.value))
 
-  def addAttributes(attributes: Attribute[_]*): LogRecordBuilder[F] =
+  def addAttributes(attributes: Attribute[_]*): LogRecordBuilder[F, Context] =
     copy(jBuilder = jBuilder.setAllAttributes(attributes.toJavaAttributes))
 
-  def addAttributes(attributes: immutable.Iterable[Attribute[_]]): LogRecordBuilder[F] =
+  def addAttributes(attributes: immutable.Iterable[Attribute[_]]): LogRecordBuilder[F, Context] =
     copy(jBuilder = jBuilder.setAllAttributes(attributes.toJavaAttributes))
 
   def emit: F[Unit] =
