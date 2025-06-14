@@ -21,7 +21,7 @@ package logs
 
 import com.google.protobuf.ByteString
 import io.circe.Json
-import org.typelevel.otel4s.sdk.exporter.proto.common.AnyValue
+import org.typelevel.otel4s.sdk.exporter.proto.common.{AnyValue => AnyValueProto}
 import org.typelevel.otel4s.sdk.exporter.proto.common.ArrayValue
 import org.typelevel.otel4s.sdk.exporter.proto.common.KeyValue
 import org.typelevel.otel4s.sdk.exporter.proto.common.KeyValueList
@@ -77,17 +77,29 @@ private object LogsProtoEncoder {
         .map(v => ByteString.copyFrom(v.spanId.toArray))
         .getOrElse(ByteString.EMPTY)
 
-    def toB(value: Value): AnyValue =
+    def toAnyValueProto(value: AnyValue): AnyValueProto =
       value match {
-        case Value.StringValue(value)    => AnyValue(AnyValue.Value.StringValue(value))
-        case Value.BooleanValue(value)   => AnyValue(AnyValue.Value.BoolValue(value))
-        case Value.LongValue(value)      => AnyValue(AnyValue.Value.IntValue(value))
-        case Value.DoubleValue(value)    => AnyValue(AnyValue.Value.DoubleValue(value))
-        case Value.ByteArrayValue(value) => AnyValue(AnyValue.Value.BytesValue(ByteString.copyFrom(value)))
-        case Value.ArrayValue(values)    => AnyValue(AnyValue.Value.ArrayValue(ArrayValue(values.map(toB).toSeq)))
-        case Value.MapValue(values) =>
-          AnyValue(AnyValue.Value.KvlistValue(KeyValueList(values.map { case (k, v) =>
-            KeyValue(k, Some(toB(v)))
+        case AnyValue.StringValue(value) =>
+          AnyValueProto(AnyValueProto.Value.StringValue(value))
+
+        case AnyValue.BooleanValue(value) =>
+          AnyValueProto(AnyValueProto.Value.BoolValue(value))
+
+        case AnyValue.LongValue(value) =>
+          AnyValueProto(AnyValueProto.Value.IntValue(value))
+
+        case AnyValue.DoubleValue(value) =>
+          AnyValueProto(AnyValueProto.Value.DoubleValue(value))
+
+        case AnyValue.ByteArrayValue(value) =>
+          AnyValueProto(AnyValueProto.Value.BytesValue(ByteString.copyFrom(value)))
+
+        case AnyValue.ArrayValue(values) =>
+          AnyValueProto(AnyValueProto.Value.ArrayValue(ArrayValue(values.map(toAnyValueProto).toSeq)))
+
+        case AnyValue.MapValue(values) =>
+          AnyValueProto(AnyValueProto.Value.KvlistValue(KeyValueList(values.map { case (k, v) =>
+            KeyValue(k, Some(toAnyValueProto(v)))
           }.toSeq)))
       }
 
@@ -96,7 +108,7 @@ private object LogsProtoEncoder {
       observedTimeUnixNano = log.observedTimestamp.toNanos,
       severityNumber = SeverityNumber.fromValue(log.severity.map(_.severity).getOrElse(0)),
       severityText = log.severityText.getOrElse(""),
-      body = log.body.map(toB),
+      body = log.body.map(toAnyValueProto),
       attributes = ProtoEncoder.encode(log.attributes.elements),
       droppedAttributesCount = log.attributes.dropped,
       flags = 0,

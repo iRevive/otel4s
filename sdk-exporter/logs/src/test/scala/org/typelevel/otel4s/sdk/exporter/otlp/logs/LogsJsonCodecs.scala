@@ -19,7 +19,7 @@ package org.typelevel.otel4s.sdk.exporter.otlp.logs
 import io.circe.Encoder
 import io.circe.Json
 import io.circe.syntax._
-import org.typelevel.otel4s.Value
+import org.typelevel.otel4s.AnyValue
 import org.typelevel.otel4s.sdk.exporter.otlp.JsonCodecs
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 import scodec.bits.ByteVector
@@ -74,15 +74,15 @@ private object LogsJsonCodecs extends JsonCodecs {
       Json.obj("resourceLogs" := resourceLogs).dropEmptyValues
     }
 
-  private def encodeValue(value: Value): Json = {
+  private def encodeValue(value: AnyValue): Json = {
     value match {
-      case Value.StringValue(v)     => Json.obj("stringValue" := v)
-      case Value.BooleanValue(v)    => Json.obj("boolValue" := v)
-      case Value.LongValue(v)       => Json.obj("intValue" := v.toString)
-      case Value.DoubleValue(v)     => Json.obj("doubleValue" := v)
-      case Value.ByteArrayValue(v)  => Json.obj("bytesValue" := ByteVector(v).toBase64)
-      case Value.ArrayValue(values) => Json.obj("arrayValue" := Json.obj("values" := values.map(encodeValue)))
-      case Value.MapValue(values) =>
+      case AnyValue.StringValue(v)     => Json.obj("stringValue" := v)
+      case AnyValue.BooleanValue(v)    => Json.obj("boolValue" := v)
+      case AnyValue.LongValue(v)       => Json.obj("intValue" := v.toString)
+      case AnyValue.DoubleValue(v)     => Json.obj("doubleValue" := v)
+      case AnyValue.ByteArrayValue(v)  => Json.obj("bytesValue" := ByteVector(v).toBase64)
+      case AnyValue.ArrayValue(values) => Json.obj("arrayValue" := Json.obj("values" := values.map(encodeValue)))
+      case AnyValue.MapValue(values) =>
         Json.obj("kvlistValue" := Json.obj("values" := values.map { case (k, v) =>
           Json.obj("key" := k, "value" := encodeValue(v))
         }))

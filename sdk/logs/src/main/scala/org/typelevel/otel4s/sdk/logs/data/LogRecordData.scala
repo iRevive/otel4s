@@ -18,9 +18,9 @@ package org.typelevel.otel4s.sdk.logs.data
 
 import cats.Hash
 import cats.Show
+import org.typelevel.otel4s.AnyValue
 import org.typelevel.otel4s.Attribute
 import org.typelevel.otel4s.Attributes
-import org.typelevel.otel4s.Value
 import org.typelevel.otel4s.logs.Severity
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
@@ -69,7 +69,7 @@ sealed trait LogRecordData {
     * multi-line) describing the event in a free form, or it can be a structured data composed of arrays and maps of
     * other values.
     */
-  def body: Option[Value]
+  def body: Option[AnyValue]
 
   /** Additional information about the specific event occurrence.
     */
@@ -134,7 +134,7 @@ object LogRecordData {
       traceContext: Option[TraceContext],
       severity: Option[Severity],
       severityText: Option[String],
-      body: Option[Value],
+      body: Option[AnyValue],
       attributes: LimitedData[Attribute[_], Attributes],
       instrumentationScope: InstrumentationScope,
       resource: TelemetryResource
@@ -186,7 +186,7 @@ object LogRecordData {
       traceContext: Option[TraceContext],
       severity: Option[Severity],
       severityText: Option[String],
-      body: Option[Value],
+      body: Option[AnyValue],
       attributes: LimitedData[Attribute[_], Attributes],
       instrumentationScope: InstrumentationScope,
       resource: TelemetryResource

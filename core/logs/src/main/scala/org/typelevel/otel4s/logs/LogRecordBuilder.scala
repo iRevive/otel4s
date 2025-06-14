@@ -17,9 +17,9 @@
 package org.typelevel.otel4s.logs
 
 import cats.Applicative
+import org.typelevel.otel4s.AnyValue
 import org.typelevel.otel4s.Attribute
 import org.typelevel.otel4s.KindTransformer
-import org.typelevel.otel4s.Value
 
 import java.time.Instant
 import scala.collection.immutable
@@ -44,7 +44,7 @@ trait LogRecordBuilder[F[_], Ctx] {
 
   def withSeverityText(severityText: String): LogRecordBuilder[F, Ctx]
 
-  def withBody(body: Value): LogRecordBuilder[F, Ctx]
+  def withBody(body: AnyValue): LogRecordBuilder[F, Ctx]
 
   def addAttribute[A](attribute: Attribute[A]): LogRecordBuilder[F, Ctx]
 
@@ -69,7 +69,7 @@ object LogRecordBuilder {
       def withContext(context: Ctx): LogRecordBuilder[F, Ctx] = this
       def withSeverity(severity: Severity): LogRecordBuilder[F, Ctx] = this
       def withSeverityText(severityText: String): LogRecordBuilder[F, Ctx] = this
-      def withBody(body: Value): LogRecordBuilder[F, Ctx] = this
+      def withBody(body: AnyValue): LogRecordBuilder[F, Ctx] = this
       def addAttribute[A](attribute: Attribute[A]): LogRecordBuilder[F, Ctx] = this
       def addAttributes(attributes: Attribute[_]*): LogRecordBuilder[F, Ctx] = this
       def addAttributes(attributes: immutable.Iterable[Attribute[_]]): LogRecordBuilder[F, Ctx] = this
@@ -102,7 +102,7 @@ object LogRecordBuilder {
     def withSeverityText(severityText: String): LogRecordBuilder[G, Ctx] =
       builder.withSeverityText(severityText).mapK
 
-    def withBody(body: Value): LogRecordBuilder[G, Ctx] =
+    def withBody(body: AnyValue): LogRecordBuilder[G, Ctx] =
       builder.withBody(body).mapK
 
     def addAttribute[A](attribute: Attribute[A]): LogRecordBuilder[G, Ctx] =

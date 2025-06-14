@@ -62,7 +62,7 @@ private[oteljava] final case class LogRecordBuilderImpl[F[_]: Sync: AskContext](
   def withSeverityText(severityText: String): LogRecordBuilder[F, Context] =
     copy(jBuilder = jBuilder.setSeverityText(severityText))
 
-  def withBody(value: Value): LogRecordBuilder[F, Context] =
+  def withBody(value: AnyValue): LogRecordBuilder[F, Context] =
     copy(jBuilder = jBuilder.setBody(toJValue(value)))
 
   def addAttribute[A](attribute: Attribute[A]): LogRecordBuilder[F, Context] =
@@ -120,14 +120,14 @@ private[oteljava] final case class LogRecordBuilderImpl[F[_]: Sync: AskContext](
       case Severity.Fatal.Fatal4 => JSeverity.FATAL4
     }
 
-  private def toJValue(value: Value): JValue[_] =
+  private def toJValue(value: AnyValue): JValue[_] =
     value match {
-      case Value.StringValue(value)    => JValue.of(value)
-      case Value.BooleanValue(value)   => JValue.of(value)
-      case Value.LongValue(value)      => JValue.of(value)
-      case Value.DoubleValue(value)    => JValue.of(value)
-      case Value.ByteArrayValue(value) => JValue.of(value)
-      case Value.ArrayValue(values)    => JValue.of(values.map(toJValue).toList.asJava)
-      case Value.MapValue(values)      => JValue.of(values.view.mapValues(toJValue).toMap.asJava)
+      case AnyValue.StringValue(value)    => JValue.of(value)
+      case AnyValue.BooleanValue(value)   => JValue.of(value)
+      case AnyValue.LongValue(value)      => JValue.of(value)
+      case AnyValue.DoubleValue(value)    => JValue.of(value)
+      case AnyValue.ByteArrayValue(value) => JValue.of(value)
+      case AnyValue.ArrayValue(values)    => JValue.of(values.map(toJValue).toList.asJava)
+      case AnyValue.MapValue(values)      => JValue.of(values.view.mapValues(toJValue).toMap.asJava)
     }
 }

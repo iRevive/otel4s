@@ -86,24 +86,24 @@ trait Gens {
       attributes <- Gen.listOfN(n, attribute)
     } yield attributes.to(Attributes)
 
-  val value: Gen[Value] = {
-    val string = Gen.alphaNumStr.map(Value.string)
-    val boolean = Gen.oneOf(true, false).map(Value.boolean)
-    val long = Gen.long.map(Value.long)
-    val double = Gen.double.map(Value.double)
-    val byteArray = Gen.listOf(Gen.choose(Byte.MinValue, Byte.MaxValue)).map(_.toArray).map(Value.bytes)
+  val anyValue: Gen[AnyValue] = {
+    val string = Gen.alphaNumStr.map(AnyValue.string)
+    val boolean = Gen.oneOf(true, false).map(AnyValue.boolean)
+    val long = Gen.long.map(AnyValue.long)
+    val double = Gen.double.map(AnyValue.double)
+    val byteArray = Gen.listOf(Gen.choose(Byte.MinValue, Byte.MaxValue)).map(_.toArray).map(AnyValue.bytes)
 
     val primitives = Gen.oneOf(string, boolean, long, double, byteArray)
 
-    def array: Gen[Value] =
+    def array: Gen[AnyValue] =
       for {
         values <- Gen.listOf(primitives)
-      } yield Value.array(values)
+      } yield AnyValue.array(values)
 
-    def map: Gen[Value] =
+    def map: Gen[AnyValue] =
       for {
         values <- Gen.listOf(Gen.zip(Gen.alphaNumStr, primitives))
-      } yield Value.map(values.toMap)
+      } yield AnyValue.map(values.toMap)
 
     Gen.oneOf(primitives, array, map)
   }

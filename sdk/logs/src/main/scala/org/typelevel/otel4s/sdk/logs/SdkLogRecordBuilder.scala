@@ -20,9 +20,9 @@ import cats.Monad
 import cats.effect.Clock
 import cats.mtl.Ask
 import cats.syntax.all._
+import org.typelevel.otel4s.AnyValue
 import org.typelevel.otel4s.Attribute
 import org.typelevel.otel4s.Attributes
-import org.typelevel.otel4s.Value
 import org.typelevel.otel4s.logs.LogRecordBuilder
 import org.typelevel.otel4s.logs.Severity
 import org.typelevel.otel4s.sdk.TelemetryResource
@@ -67,7 +67,7 @@ private final case class SdkLogRecordBuilder[F[_]: Monad: Clock: AskContext](
   def withSeverityText(severityText: String): LogRecordBuilder[F, Context] =
     copy(state = state.copy(severityText = Some(severityText)))
 
-  def withBody(body: Value): LogRecordBuilder[F, Context] =
+  def withBody(body: AnyValue): LogRecordBuilder[F, Context] =
     copy(state = state.copy(body = Some(body)))
 
   def addAttribute[A](attribute: Attribute[A]): LogRecordBuilder[F, Context] =
@@ -138,7 +138,7 @@ private object SdkLogRecordBuilder {
       context: Option[Context],
       severity: Option[Severity],
       severityText: Option[String],
-      body: Option[Value],
+      body: Option[AnyValue],
       attributes: LimitedData[Attribute[_], Attributes]
   )
 

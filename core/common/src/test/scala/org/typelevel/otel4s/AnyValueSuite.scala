@@ -23,30 +23,28 @@ import org.scalacheck.Prop
 import org.typelevel.otel4s.scalacheck.Arbitraries
 import org.typelevel.otel4s.scalacheck.Cogens
 
-class ValueSuite extends DisciplineSuite {
-  import Arbitraries.valueArbitrary
-  import Cogens.valueCogen
+class AnyValueSuite extends DisciplineSuite {
+  import Arbitraries.anyValueArbitrary
+  import Cogens.anyValueCogen
 
-  // Test Hash laws
-  checkAll("Value.HashLaws", HashTests[Value].hash)
+  checkAll("AnyValue.HashLaws", HashTests[AnyValue].hash)
 
-  // Test Show instance
-  test("Show[Value]") {
-    Prop.forAll(valueArbitrary.arbitrary) { value =>
-      def render(v: Value): String = v match {
-        case Value.StringValue(value)    => s"StringValue($value)"
-        case Value.BooleanValue(value)   => s"BooleanValue($value)"
-        case Value.LongValue(value)      => s"LongValue($value)"
-        case Value.DoubleValue(value)    => s"DoubleValue($value)"
-        case Value.ByteArrayValue(value) => s"ByteArrayValue(${java.util.Arrays.toString(value)})"
-        case Value.ArrayValue(values)    => s"ArrayValue(${values.map(render).mkString("[", ", ", "]")})"
-        case Value.MapValue(values) =>
+  test("Show[AnyValue]") {
+    Prop.forAll(anyValueArbitrary.arbitrary) { value =>
+      def render(v: AnyValue): String = v match {
+        case AnyValue.StringValue(value)    => s"StringValue($value)"
+        case AnyValue.BooleanValue(value)   => s"BooleanValue($value)"
+        case AnyValue.LongValue(value)      => s"LongValue($value)"
+        case AnyValue.DoubleValue(value)    => s"DoubleValue($value)"
+        case AnyValue.ByteArrayValue(value) => s"ByteArrayValue(${java.util.Arrays.toString(value)})"
+        case AnyValue.ArrayValue(values)    => s"ArrayValue(${values.map(render).mkString("[", ", ", "]")})"
+        case AnyValue.MapValue(values) =>
           s"MapValue(${values.map { case (k, v) => s"$k -> ${render(v)}" }.mkString("{", ", ", "}")})"
       }
 
       val expected = render(value)
 
-      assertEquals(Show[Value].show(value), expected)
+      assertEquals(Show[AnyValue].show(value), expected)
       assertEquals(value.toString, expected)
     }
   }
