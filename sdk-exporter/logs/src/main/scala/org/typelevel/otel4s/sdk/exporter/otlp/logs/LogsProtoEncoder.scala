@@ -97,8 +97,8 @@ private object LogsProtoEncoder {
       severityNumber = SeverityNumber.fromValue(log.severity.map(_.severity).getOrElse(0)),
       severityText = log.severityText.getOrElse(""),
       body = log.body.map(toB),
-      attributes = ProtoEncoder.encode(log.attributes),
-      droppedAttributesCount = 0, // todo
+      attributes = ProtoEncoder.encode(log.attributes.elements),
+      droppedAttributesCount = log.attributes.dropped,
       flags = 0,
       traceId = traceId,
       spanId = spanId,

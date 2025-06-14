@@ -30,6 +30,7 @@ import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.context.TraceContext
+import org.typelevel.otel4s.sdk.data.LimitedData
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 import org.typelevel.otel4s.sdk.logs.processor.LogRecordProcessor
 
@@ -70,13 +71,13 @@ private final case class SdkLogRecordBuilder[F[_]: Monad: Clock: AskContext](
     copy(state = state.copy(body = Some(body)))
 
   def addAttribute[A](attribute: Attribute[A]): LogRecordBuilder[F, Context] =
-    copy(state = state.copy(attributes = state.attributes + attribute))
+    copy(state = state.copy(attributes = state.attributes.append(attribute)))
 
   def addAttributes(attributes: Attribute[_]*): LogRecordBuilder[F, Context] =
-    copy(state = state.copy(attributes = state.attributes ++ attributes))
+    copy(state = state.copy(attributes = state.attributes.appendAll(attributes.to(Attributes))))
 
   def addAttributes(attributes: immutable.Iterable[Attribute[_]]): LogRecordBuilder[F, Context] =
-    copy(state = state.copy(attributes = state.attributes ++ attributes))
+    copy(state = state.copy(attributes = state.attributes.appendAll(attributes.to(Attributes))))
 
   def emit: F[Unit] =
     for {
@@ -101,23 +102,35 @@ private final case class SdkLogRecordBuilder[F[_]: Monad: Clock: AskContext](
 
 private object SdkLogRecordBuilder {
 
-  private val EmptyState = State(
+  private val DefaultEmptyState = emptyState(LogRecordLimits.default)
+
+  def empty[F[_]: Monad: Clock: AskContext](
+      processor: LogRecordProcessor[F],
+      instrumentationScope: InstrumentationScope,
+      resource: TelemetryResource,
+      traceContextLookup: TraceContext.Lookup,
+      limits: LogRecordLimits
+  ): SdkLogRecordBuilder[F] =
+    SdkLogRecordBuilder(
+      processor = processor,
+      instrumentationScope = instrumentationScope,
+      resource = resource,
+      traceContextLookup = traceContextLookup,
+      state = if (limits == LogRecordLimits.default) DefaultEmptyState else emptyState(limits)
+    )
+
+  private def emptyState(limits: LogRecordLimits): State = State(
     timestamp = None,
     observedTimestamp = None,
     context = None,
     severity = None,
     severityText = None,
     body = None,
-    attributes = Attributes.empty
+    attributes = LimitedData.attributes(
+      limits.maxNumberOfAttributes,
+      limits.maxAttributeValueLength
+    )
   )
-
-  def empty[F[_]: Monad: Clock: AskContext](
-      processor: LogRecordProcessor[F],
-      instrumentationScope: InstrumentationScope,
-      resource: TelemetryResource,
-      traceContextLookup: TraceContext.Lookup
-  ): SdkLogRecordBuilder[F] =
-    SdkLogRecordBuilder(processor, instrumentationScope, resource, traceContextLookup, EmptyState)
 
   private[SdkLogRecordBuilder] final case class State(
       timestamp: Option[FiniteDuration],
@@ -126,7 +139,7 @@ private object SdkLogRecordBuilder {
       severity: Option[Severity],
       severityText: Option[String],
       body: Option[Value],
-      attributes: Attributes
+      attributes: LimitedData[Attribute[_], Attributes]
   )
 
 }

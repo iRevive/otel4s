@@ -22,6 +22,7 @@ import org.typelevel.otel4s.Value
 import org.typelevel.otel4s.logs.Severity
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
+import org.typelevel.otel4s.sdk.context.TraceContext
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 
 import scala.concurrent.duration.FiniteDuration
@@ -33,7 +34,7 @@ trait Cogens extends org.typelevel.otel4s.sdk.scalacheck.Cogens with org.typelev
       (
           Option[FiniteDuration],
           FiniteDuration,
-          // Option[TraceContext],
+          Option[TraceContext],
           Option[Severity],
           Option[String],
           Option[Value],
@@ -45,11 +46,11 @@ trait Cogens extends org.typelevel.otel4s.sdk.scalacheck.Cogens with org.typelev
       (
         logRecordData.timestamp,
         logRecordData.observedTimestamp,
-        // logRecordData.traceContext,
+        logRecordData.traceContext,
         logRecordData.severity,
         logRecordData.severityText,
         logRecordData.body,
-        logRecordData.attributes,
+        logRecordData.attributes.elements,
         logRecordData.instrumentationScope,
         logRecordData.resource
       )

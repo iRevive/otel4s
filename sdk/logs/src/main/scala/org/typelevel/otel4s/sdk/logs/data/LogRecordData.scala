@@ -18,12 +18,14 @@ package org.typelevel.otel4s.sdk.logs.data
 
 import cats.Hash
 import cats.Show
+import org.typelevel.otel4s.Attribute
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.Value
 import org.typelevel.otel4s.logs.Severity
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.TraceContext
+import org.typelevel.otel4s.sdk.data.LimitedData
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -69,10 +71,9 @@ sealed trait LogRecordData {
     */
   def body: Option[Value]
 
-  // todo: limited attrbiutes
   /** Additional information about the specific event occurrence.
     */
-  def attributes: Attributes
+  def attributes: LimitedData[Attribute[_], Attributes]
 
   /** The instrumentation scope associated with the log.
     */
@@ -134,7 +135,7 @@ object LogRecordData {
       severity: Option[Severity],
       severityText: Option[String],
       body: Option[Value],
-      attributes: Attributes,
+      attributes: LimitedData[Attribute[_], Attributes],
       instrumentationScope: InstrumentationScope,
       resource: TelemetryResource
   ): LogRecordData =
@@ -174,7 +175,7 @@ object LogRecordData {
         s"severity=${data.severity}, " +
         s"severityText=${data.severityText}, " +
         s"body=${data.body}, " +
-        s"attributes=${data.attributes}, " +
+        s"attributes=${data.attributes.elements}, " +
         s"instrumentationScope=${data.instrumentationScope}, " +
         s"resource=${data.resource}}"
     }
@@ -186,7 +187,7 @@ object LogRecordData {
       severity: Option[Severity],
       severityText: Option[String],
       body: Option[Value],
-      attributes: Attributes,
+      attributes: LimitedData[Attribute[_], Attributes],
       instrumentationScope: InstrumentationScope,
       resource: TelemetryResource
   ) extends LogRecordData

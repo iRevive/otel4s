@@ -166,6 +166,7 @@ object SdkLoggerProvider {
             instrumentationScope = scope,
             resource = resource,
             traceContextLookup = traceContextLookup,
+            logRecordLimits = logRecordLimits,
             processor = processor
           )
         )

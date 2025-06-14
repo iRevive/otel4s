@@ -36,8 +36,8 @@ private object LogsJsonCodecs extends JsonCodecs {
           "severityNumber" := log.severity.map(_.severity),
           "severityText" := log.severityText,
           "body" := log.body.map(encodeValue),
-          "attributes" := log.attributes,
-          // "droppedAttributesCount" := 0,
+          "attributes" := log.attributes.elements,
+          "droppedAttributesCount" := log.attributes.dropped,
           "traceId" := log.traceContext.map(_.traceId.toHex),
           "spanId" := log.traceContext.map(_.spanId.toHex)
         )

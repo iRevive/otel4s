@@ -41,10 +41,10 @@ class LogsProtoEncoderSuite extends ScalaCheckSuite {
           "severityNumber" := logRecord.severity.map(_.severity).getOrElse(0),
           "severityText" := logRecord.severityText.getOrElse(""),
           "body" := logRecord.body.map(v => encodeValue(v)),
-          "attributes" := logRecord.attributes,
-          // "droppedAttributesCount" := 0,
-          // "traceId" := traceContext.map(_.traceId.toHex),
-          // "spanId" := traceContext.map(_.spanId.toHex)
+          "attributes" := logRecord.attributes.elements,
+          "droppedAttributesCount" := logRecord.attributes.dropped,
+          "traceId" := logRecord.traceContext.map(_.traceId.toHex),
+          "spanId" := logRecord.traceContext.map(_.spanId.toHex)
         )
         .dropNullValues
         .dropEmptyValues
@@ -91,16 +91,24 @@ class LogsProtoEncoderSuite extends ScalaCheckSuite {
 
   private def encodeValue(value: Value): Json = {
     value match {
-      case Value.StringValue(v)     => Json.obj("stringValue" := v)
-      case Value.BooleanValue(v)    => Json.obj("boolValue" := v)
-      case Value.LongValue(v)       => Json.obj("intValue" := v.toString)
-      case Value.DoubleValue(v)     => Json.obj("doubleValue" := v)
-      case Value.ByteArrayValue(v)  => Json.obj("bytesValue" := ByteVector(v).toBase64)
-      case Value.ArrayValue(values) => Json.obj("arrayValue" := Json.obj("values" := values.map(encodeValue)))
+      case Value.StringValue(v)    => Json.obj("stringValue" := v)
+      case Value.BooleanValue(v)   => Json.obj("boolValue" := v)
+      case Value.LongValue(v)      => Json.obj("intValue" := v.toString)
+      case Value.DoubleValue(v)    => Json.obj("doubleValue" := v)
+      case Value.ByteArrayValue(v) => Json.obj("bytesValue" := ByteVector(v).toBase64)
+      case Value.ArrayValue(values) =>
+        val v =
+          if (values.isEmpty) Json.obj()
+          else Json.obj("values" := values.map(encodeValue))
+
+        Json.obj("arrayValue" := v)
+
       case Value.MapValue(values) =>
-        Json.obj("kvlistValue" := Json.obj("values" := values.map { case (k, v) =>
-          Json.obj("key" := k, "value" := encodeValue(v))
-        }))
+        val v =
+          if (values.isEmpty) Json.obj()
+          else Json.obj("values" := values.map { case (k, v) => Json.obj("key" := k, "value" := encodeValue(v)) })
+
+        Json.obj("kvlistValue" := v)
     }
   }
 

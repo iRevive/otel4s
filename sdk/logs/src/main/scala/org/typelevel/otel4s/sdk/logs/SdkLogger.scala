@@ -36,10 +36,11 @@ private final class SdkLogger[F[_]: Monad: Clock: AskContext](
     instrumentationScope: InstrumentationScope,
     resource: TelemetryResource,
     traceContextLookup: TraceContext.Lookup,
+    logRecordLimits: LogRecordLimits,
     processor: LogRecordProcessor[F]
 ) extends Logger[F, Context] {
 
   def logRecordBuilder: LogRecordBuilder[F, Context] =
-    SdkLogRecordBuilder.empty(processor, instrumentationScope, resource, traceContextLookup)
+    SdkLogRecordBuilder.empty(processor, instrumentationScope, resource, traceContextLookup, logRecordLimits)
 
 }
