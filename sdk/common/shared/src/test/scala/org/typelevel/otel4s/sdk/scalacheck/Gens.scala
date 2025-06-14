@@ -67,6 +67,15 @@ trait Gens extends org.typelevel.otel4s.scalacheck.Gens {
       sampled
     )
 
+  val limitedAttributes: Gen[LimitedData[Attribute[_], Attributes]] =
+    for {
+      attributes <- Gens.nonEmptyVector(Gens.attribute)
+      extraAttributes <- Gens.nonEmptyVector(Gens.attribute)
+      valueLengthLimit <- Gen.posNum[Int]
+    } yield LimitedData
+      .attributes(attributes.length, valueLengthLimit)
+      .appendAll((attributes ++: extraAttributes).toVector.to(Attributes))
+
 }
 
 object Gens extends Gens
