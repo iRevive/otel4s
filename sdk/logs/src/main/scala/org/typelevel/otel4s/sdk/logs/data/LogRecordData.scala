@@ -20,10 +20,10 @@ import cats.Hash
 import cats.Show
 import org.typelevel.otel4s.Attributes
 import org.typelevel.otel4s.Value
-import org.typelevel.otel4s.context.TraceContext
 import org.typelevel.otel4s.logs.Severity
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
+import org.typelevel.otel4s.sdk.context.TraceContext
 
 import scala.concurrent.duration.FiniteDuration
 

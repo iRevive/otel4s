@@ -17,7 +17,6 @@
 package org.typelevel.otel4s.sdk.metrics.aggregation
 
 import org.typelevel.otel4s.Attributes
-import org.typelevel.otel4s.context.TraceContext
 import org.typelevel.otel4s.metrics.MeasurementValue
 import org.typelevel.otel4s.sdk.context.TraceContext
 import org.typelevel.otel4s.sdk.metrics.data.ExemplarData

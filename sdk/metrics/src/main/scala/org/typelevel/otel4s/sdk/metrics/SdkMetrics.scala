@@ -27,7 +27,6 @@ import cats.mtl.Ask
 import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import org.typelevel.otel4s.context.TraceContext
 import org.typelevel.otel4s.metrics.MeterProvider
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.autoconfigure.AutoConfigure

@@ -140,7 +140,11 @@ object OpenTelemetrySdkTestkit {
           Console[F],
           LocalProvider.fromLocal(local)
         )
-        logs <- LogsTestkit.inMemory[F](customizeLoggerProviderBuilder) // todo: withTraceContextLookup
+        logs <- LogsTestkit.inMemory[F](
+          customizeLoggerProviderBuilder.compose[SdkLoggerProvider.Builder[F]](
+            _.withTraceContextLookup(traceContextLookup)
+          )
+        )
       } yield new Impl[F](
         metrics,
         traces,

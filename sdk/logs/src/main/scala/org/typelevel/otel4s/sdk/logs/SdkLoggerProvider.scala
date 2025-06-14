@@ -28,6 +28,7 @@ import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.context.Context
+import org.typelevel.otel4s.sdk.context.TraceContext
 import org.typelevel.otel4s.sdk.internal.ComponentRegistry
 import org.typelevel.otel4s.sdk.logs.processor.LogRecordProcessor
 
@@ -94,6 +95,13 @@ object SdkLoggerProvider {
       */
     def withLogRecordLimits(limits: LogRecordLimits): Builder[F]
 
+    /** Sets a [[org.typelevel.otel4s.sdk.context.TraceContext.Lookup TraceContext.Lookup]] to be used by exemplars.
+      *
+      * @param lookup
+      *   the [[org.typelevel.otel4s.sdk.context.TraceContext.Lookup TraceContext.Lookup]] to use
+      */
+    private[sdk] def withTraceContextLookup(lookup: TraceContext.Lookup): Builder[F]
+
     /** Adds a [[org.typelevel.otel4s.sdk.logs.processor.LogRecordProcessor LogRecordProcessor]] to the log record
       * processing pipeline that will be built.
       *
@@ -118,12 +126,14 @@ object SdkLoggerProvider {
   def builder[F[_]: Temporal: Parallel: AskContext: Console]: Builder[F] =
     BuilderImpl(
       resource = TelemetryResource.default,
+      traceContextLookup = TraceContext.Lookup.noop,
       logRecordLimits = LogRecordLimits.default,
       logRecordProcessors = Nil
     )
 
   private final case class BuilderImpl[F[_]: Temporal: Parallel: AskContext: Console](
       resource: TelemetryResource,
+      traceContextLookup: TraceContext.Lookup,
       logRecordLimits: LogRecordLimits,
       logRecordProcessors: List[LogRecordProcessor[F]]
   ) extends Builder[F] {
@@ -140,6 +150,9 @@ object SdkLoggerProvider {
     def addLogRecordProcessor(processor: LogRecordProcessor[F]): Builder[F] =
       copy(logRecordProcessors = logRecordProcessors :+ processor)
 
+    private[sdk] def withTraceContextLookup(traceContextLookup: TraceContext.Lookup): Builder[F] =
+      copy(traceContextLookup = traceContextLookup)
+
     def build: F[LoggerProvider[F, Context]] =
       if (logRecordProcessors.isEmpty) Temporal[F].pure(LoggerProvider.noop)
       else create
@@ -152,6 +165,7 @@ object SdkLoggerProvider {
           new SdkLogger[F](
             instrumentationScope = scope,
             resource = resource,
+            traceContextLookup = traceContextLookup,
             processor = processor
           )
         )

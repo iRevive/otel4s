@@ -22,7 +22,6 @@ import cats.effect.Resource
 import cats.effect.std.Random
 import cats.mtl.Ask
 import munit.CatsEffectSuite
-import org.typelevel.otel4s.context.TraceContext
 import org.typelevel.otel4s.metrics.MeterProvider
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.autoconfigure.AutoConfigure

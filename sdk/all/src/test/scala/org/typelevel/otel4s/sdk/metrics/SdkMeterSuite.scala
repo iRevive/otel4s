@@ -23,7 +23,6 @@ import cats.effect.std.Console
 import cats.effect.testkit.TestControl
 import cats.mtl.Local
 import org.typelevel.otel4s.context.LocalProvider
-import org.typelevel.otel4s.context.TraceContext
 import org.typelevel.otel4s.metrics.BaseMeterSuite
 import org.typelevel.otel4s.metrics.MeterProvider
 import org.typelevel.otel4s.sdk.context.Context

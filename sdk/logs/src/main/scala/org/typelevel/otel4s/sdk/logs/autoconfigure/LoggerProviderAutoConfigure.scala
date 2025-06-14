@@ -27,6 +27,7 @@ import org.typelevel.otel4s.sdk.autoconfigure.AutoConfigure
 import org.typelevel.otel4s.sdk.autoconfigure.Config
 import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.context.Context
+import org.typelevel.otel4s.sdk.context.TraceContext
 import org.typelevel.otel4s.sdk.logs.SdkLoggerProvider
 import org.typelevel.otel4s.sdk.logs.autoconfigure.LoggerProviderAutoConfigure.Customizer
 import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
@@ -38,6 +39,9 @@ import org.typelevel.otel4s.sdk.logs.processor.SimpleLogRecordProcessor
   * @param resource
   *   the resource to use
   *
+  * @param traceContextLookup
+  *   used by the log builder to extract tracing information from the context
+  *
   * @param customizer
   *   the function to customize the builder
   *
@@ -46,7 +50,8 @@ import org.typelevel.otel4s.sdk.logs.processor.SimpleLogRecordProcessor
   */
 private final class LoggerProviderAutoConfigure[F[_]: Temporal: Parallel: Console: AskContext](
     resource: TelemetryResource,
-    customizer: Customizer[SdkLoggerProvider.Builder[F]], // todo: trace context lookup
+    traceContextLookup: TraceContext.Lookup,
+    customizer: Customizer[SdkLoggerProvider.Builder[F]],
     exporterConfigurers: Set[AutoConfigure.Named[F, LogRecordExporter[F]]]
 ) extends AutoConfigure.WithHint[F, LoggerProvider[F, Context]](
       "LoggerProvider",
@@ -63,6 +68,7 @@ private final class LoggerProviderAutoConfigure[F[_]: Temporal: Parallel: Consol
           .builder[F]
           .withResource(resource)
           .withLogRecordLimits(logLimits)
+          .withTraceContextLookup(traceContextLookup)
 
         processors.foldLeft(builder)(_.addLogRecordProcessor(_))
       }
@@ -105,6 +111,9 @@ private[sdk] object LoggerProviderAutoConfigure {
     * @param resource
     *   the resource to use
     *
+    * @param traceContextLookup
+    *   used by the log builder to extract tracing information from the context
+    *
     * @param loggerProviderBuilderCustomizer
     *   the function to customize the builder
     *
@@ -113,11 +122,13 @@ private[sdk] object LoggerProviderAutoConfigure {
     */
   def apply[F[_]: Temporal: Parallel: Console: AskContext](
       resource: TelemetryResource,
+      traceContextLookup: TraceContext.Lookup,
       loggerProviderBuilderCustomizer: Customizer[SdkLoggerProvider.Builder[F]],
       exporterConfigurers: Set[AutoConfigure.Named[F, LogRecordExporter[F]]]
   ): AutoConfigure[F, LoggerProvider[F, Context]] =
     new LoggerProviderAutoConfigure[F](
       resource,
+      traceContextLookup,
       loggerProviderBuilderCustomizer,
       exporterConfigurers
     )

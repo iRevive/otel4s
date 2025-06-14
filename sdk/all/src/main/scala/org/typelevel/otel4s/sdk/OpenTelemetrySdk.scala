@@ -450,6 +450,7 @@ object OpenTelemetrySdk {
               propagatorsConfigure.configure(config).flatMap { propagators =>
                 val loggerProviderConfigure = LoggerProviderAutoConfigure[F](
                   resource,
+                  traceContextLookup,
                   loggerProviderCustomizer,
                   logRecordExporterConfigurers
                 )

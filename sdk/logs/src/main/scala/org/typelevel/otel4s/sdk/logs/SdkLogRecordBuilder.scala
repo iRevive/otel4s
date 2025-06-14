@@ -29,6 +29,7 @@ import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
 import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.context.Context
+import org.typelevel.otel4s.sdk.context.TraceContext
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 import org.typelevel.otel4s.sdk.logs.processor.LogRecordProcessor
 
@@ -40,6 +41,7 @@ private final case class SdkLogRecordBuilder[F[_]: Monad: Clock: AskContext](
     processor: LogRecordProcessor[F],
     instrumentationScope: InstrumentationScope,
     resource: TelemetryResource,
+    traceContextLookup: TraceContext.Lookup,
     state: SdkLogRecordBuilder.State
 ) extends LogRecordBuilder[F, Context] {
 
@@ -87,7 +89,7 @@ private final case class SdkLogRecordBuilder[F[_]: Monad: Clock: AskContext](
     LogRecordData(
       timestamp = state.timestamp,
       observedTimestamp = observedTimestamp,
-      traceContext = None, // todo
+      traceContext = state.context.flatMap(ctx => traceContextLookup.get(ctx)),
       severity = state.severity,
       severityText = state.severityText,
       body = state.body,
@@ -113,8 +115,9 @@ private object SdkLogRecordBuilder {
       processor: LogRecordProcessor[F],
       instrumentationScope: InstrumentationScope,
       resource: TelemetryResource,
+      traceContextLookup: TraceContext.Lookup
   ): SdkLogRecordBuilder[F] =
-    SdkLogRecordBuilder(processor, instrumentationScope, resource, EmptyState)
+    SdkLogRecordBuilder(processor, instrumentationScope, resource, traceContextLookup, EmptyState)
 
   private[SdkLogRecordBuilder] final case class State(
       timestamp: Option[FiniteDuration],

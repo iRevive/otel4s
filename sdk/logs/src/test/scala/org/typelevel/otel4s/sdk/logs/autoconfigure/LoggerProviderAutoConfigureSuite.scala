@@ -26,6 +26,7 @@ import org.typelevel.otel4s.sdk.autoconfigure.AutoConfigure
 import org.typelevel.otel4s.sdk.autoconfigure.Config
 import org.typelevel.otel4s.sdk.context.AskContext
 import org.typelevel.otel4s.sdk.context.Context
+import org.typelevel.otel4s.sdk.context.TraceContext
 import org.typelevel.otel4s.sdk.logs.LogRecordLimits
 import org.typelevel.otel4s.sdk.logs.SdkLoggerProvider
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
@@ -135,6 +136,7 @@ class LoggerProviderAutoConfigureSuite extends CatsEffectSuite {
 
     val autoConfigure = LoggerProviderAutoConfigure[IO](
       resource,
+      TraceContext.Lookup.noop,
       customizer,
       exporterConfigurers
     )
