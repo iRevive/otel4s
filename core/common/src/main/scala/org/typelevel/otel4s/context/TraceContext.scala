@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s
+package org.typelevel.otel4s.context
 
 import cats.Hash
 import cats.Show
@@ -45,17 +45,17 @@ sealed trait TraceContext {
 
 object TraceContext {
 
-  /*trait Lookup[Ctx] {
+  trait Lookup[Ctx] {
     def get(context: Ctx): Option[TraceContext]
   }
 
-  object TraceContextLookup {
-    def noop: TraceContextLookup = Noop
+  object Lookup {
+    def noop[Ctx]: Lookup[Ctx] = new Noop
 
-    private object Noop extends TraceContextLookup {
-      def get(context: Context): Option[TraceContext] = None
+    private[otel4s] final class Noop[Ctx] extends Lookup[Ctx] {
+      def get(context: Ctx): Option[TraceContext] = None
     }
-  }*/
+  }
 
   /** Creates a [[TraceContext]] with the given `traceId` and `spanId`.
     */

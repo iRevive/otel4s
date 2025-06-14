@@ -26,7 +26,8 @@ import org.typelevel.otel4s.logs.LoggerBuilder
 import org.typelevel.otel4s.logs.LoggerProvider
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
-import org.typelevel.otel4s.sdk.context.{AskContext, Context}
+import org.typelevel.otel4s.sdk.context.AskContext
+import org.typelevel.otel4s.sdk.context.Context
 import org.typelevel.otel4s.sdk.internal.ComponentRegistry
 import org.typelevel.otel4s.sdk.logs.processor.LogRecordProcessor
 

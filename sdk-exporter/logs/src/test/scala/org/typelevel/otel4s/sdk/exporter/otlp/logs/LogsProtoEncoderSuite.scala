@@ -22,7 +22,9 @@ package logs
 import io.circe.Json
 import io.circe.syntax._
 import munit._
-import org.scalacheck.{Gen, Prop, Test}
+import org.scalacheck.Gen
+import org.scalacheck.Prop
+import org.scalacheck.Test
 import org.typelevel.otel4s.sdk.logs.scalacheck.Gens
 import scodec.bits.ByteVector
 

@@ -19,8 +19,8 @@ package org.typelevel.otel4s.sdk.logs.data
 import cats.Hash
 import cats.Show
 import org.typelevel.otel4s.Attributes
-import org.typelevel.otel4s.TraceContext
 import org.typelevel.otel4s.Value
+import org.typelevel.otel4s.context.TraceContext
 import org.typelevel.otel4s.logs.Severity
 import org.typelevel.otel4s.sdk.TelemetryResource
 import org.typelevel.otel4s.sdk.common.InstrumentationScope
@@ -69,6 +69,7 @@ sealed trait LogRecordData {
     */
   def body: Option[Value]
 
+  // todo: limited attrbiutes
   /** Additional information about the specific event occurrence.
     */
   def attributes: Attributes

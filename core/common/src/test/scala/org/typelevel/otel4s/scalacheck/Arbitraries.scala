@@ -19,8 +19,8 @@ package org.typelevel.otel4s.scalacheck
 import org.scalacheck.Arbitrary
 import org.typelevel.otel4s.Attribute
 import org.typelevel.otel4s.Attributes
-import org.typelevel.otel4s.TraceContext
 import org.typelevel.otel4s.Value
+import org.typelevel.otel4s.context.TraceContext
 
 trait Arbitraries {
 

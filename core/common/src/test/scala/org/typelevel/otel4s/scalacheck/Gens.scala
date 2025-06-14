@@ -20,6 +20,7 @@ package scalacheck
 import cats.data.NonEmptyVector
 import org.scalacheck.Arbitrary
 import org.scalacheck.Gen
+import org.typelevel.otel4s.context.TraceContext
 import scodec.bits.ByteVector
 
 trait Gens {
