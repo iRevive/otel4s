@@ -19,6 +19,7 @@ package logs
 
 import cats.Applicative
 import cats.Functor
+import cats.Monad
 import cats.syntax.functor._
 
 trait LoggerBuilder[F[_], Ctx] {
@@ -43,7 +44,7 @@ trait LoggerBuilder[F[_], Ctx] {
 
   /** Modify the context `F` using an implicit [[KindTransformer]] from `F` to `G`.
     */
-  def mapK[G[_]](implicit F: Functor[F], kt: KindTransformer[F, G]): LoggerBuilder[G, Ctx] =
+  def mapK[G[_]](implicit F: Functor[F], G: Monad[G], kt: KindTransformer[F, G]): LoggerBuilder[G, Ctx] =
     new LoggerBuilder.MappedK(this)
 }
 
@@ -63,7 +64,7 @@ object LoggerBuilder {
       def get: F[Logger[F, Ctx]] = F.pure(Logger.noop)
     }
 
-  private class MappedK[F[_]: Functor, G[_], Ctx](
+  private class MappedK[F[_]: Functor, G[_]: Monad, Ctx](
       builder: LoggerBuilder[F, Ctx]
   )(implicit kt: KindTransformer[F, G])
       extends LoggerBuilder[G, Ctx] {

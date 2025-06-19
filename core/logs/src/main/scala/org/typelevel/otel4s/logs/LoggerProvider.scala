@@ -19,6 +19,7 @@ package logs
 
 import cats.Applicative
 import cats.Functor
+import cats.Monad
 import cats.syntax.functor._
 
 /** The entry point of the logging API. Provides access to [[Logger]].
@@ -60,7 +61,7 @@ trait LoggerProvider[F[_], Ctx] {
 
   /** Modify the context `F` using an implicit [[KindTransformer]] from `F` to `G`.
     */
-  def mapK[G[_]](implicit F: Functor[F], kt: KindTransformer[F, G]): LoggerProvider[G, Ctx] =
+  def mapK[G[_]](implicit F: Functor[F], G: Monad[G], kt: KindTransformer[F, G]): LoggerProvider[G, Ctx] =
     new LoggerProvider.MappedK(this)
 }
 
@@ -83,7 +84,7 @@ object LoggerProvider {
         "LoggerProvider.Noop"
     }
 
-  private class MappedK[F[_]: Functor, G[_], Ctx](
+  private class MappedK[F[_]: Functor, G[_]: Monad, Ctx](
       provider: LoggerProvider[F, Ctx]
   )(implicit kt: KindTransformer[F, G])
       extends LoggerProvider[G, Ctx] {

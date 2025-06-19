@@ -22,10 +22,12 @@ import cats.effect.Sync
 import io.opentelemetry.api.logs.{Logger => JLogger}
 import org.typelevel.otel4s.logs.LogRecordBuilder
 import org.typelevel.otel4s.logs.Logger
+import org.typelevel.otel4s.meta.InstrumentMeta
 import org.typelevel.otel4s.oteljava.context.AskContext
 import org.typelevel.otel4s.oteljava.context.Context
 
 private[oteljava] final class LoggerImpl[F[_]: Sync: AskContext](jLogger: JLogger) extends Logger[F, Context] {
+  val meta: InstrumentMeta.Dynamic[F] = InstrumentMeta.Dynamic.enabled[F]
   def logRecordBuilder: LogRecordBuilder[F, Context] =
-    new LogRecordBuilderImpl[F](jLogger.logRecordBuilder())
+    new LogRecordBuilderImpl[F](meta, jLogger.logRecordBuilder())
 }

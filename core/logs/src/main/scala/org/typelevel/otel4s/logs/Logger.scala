@@ -18,6 +18,8 @@ package org.typelevel.otel4s
 package logs
 
 import cats.Applicative
+import cats.Monad
+import org.typelevel.otel4s.meta.InstrumentMeta
 
 /** The entry point into a log pipeline.
   *
@@ -27,11 +29,15 @@ import cats.Applicative
   */
 trait Logger[F[_], Ctx] {
 
+  /** The instrument's metadata. Indicates whether instrumentation is enabled.
+    */
+  def meta: InstrumentMeta.Dynamic[F]
+
   def logRecordBuilder: LogRecordBuilder[F, Ctx]
 
   /** Modify the context `F` using an implicit [[KindTransformer]] from `F` to `G`.
     */
-  def mapK[G[_]](implicit kt: KindTransformer[F, G]): Logger[G, Ctx] =
+  def mapK[G[_]: Monad](implicit kt: KindTransformer[F, G]): Logger[G, Ctx] =
     new Logger.MappedK(this)
 }
 
@@ -47,14 +53,16 @@ object Logger {
     */
   def noop[F[_]: Applicative, Ctx]: Logger[F, Ctx] =
     new Logger[F, Ctx] {
+      val meta: InstrumentMeta.Dynamic[F] = InstrumentMeta.Dynamic.disabled
       val logRecordBuilder: LogRecordBuilder[F, Ctx] = LogRecordBuilder.noop[F, Ctx]
     }
 
   /** Implementation for [[Logger.mapK]]. */
-  private class MappedK[F[_], G[_], Ctx](
+  private class MappedK[F[_], G[_]: Monad, Ctx](
       logger: Logger[F, Ctx]
   )(implicit kt: KindTransformer[F, G])
       extends Logger[G, Ctx] {
+    val meta: InstrumentMeta.Dynamic[G] = logger.meta.mapK[G]
     def logRecordBuilder: LogRecordBuilder[G, Ctx] = logger.logRecordBuilder.mapK
   }
 

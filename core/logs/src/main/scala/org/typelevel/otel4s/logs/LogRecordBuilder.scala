@@ -17,9 +17,11 @@
 package org.typelevel.otel4s.logs
 
 import cats.Applicative
+import cats.Monad
 import org.typelevel.otel4s.AnyValue
 import org.typelevel.otel4s.Attribute
 import org.typelevel.otel4s.KindTransformer
+import org.typelevel.otel4s.meta.InstrumentMeta
 
 import java.time.Instant
 import scala.collection.immutable
@@ -29,6 +31,10 @@ import scala.concurrent.duration.FiniteDuration
   *   [[https://opentelemetry.io/docs/specs/otel/logs/api/#emit-a-logrecord]]
   */
 trait LogRecordBuilder[F[_], Ctx] {
+
+  /** The instrument's metadata. Indicates whether instrumentation is enabled.
+    */
+  def meta: InstrumentMeta.Dynamic[F]
 
   def withTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F, Ctx]
 
@@ -54,7 +60,7 @@ trait LogRecordBuilder[F[_], Ctx] {
 
   def emit: F[Unit]
 
-  def mapK[G[_]](implicit kt: KindTransformer[F, G]): LogRecordBuilder[G, Ctx] =
+  def mapK[G[_]: Monad](implicit kt: KindTransformer[F, G]): LogRecordBuilder[G, Ctx] =
     new LogRecordBuilder.MappedK(this)
 }
 
@@ -62,6 +68,7 @@ object LogRecordBuilder {
 
   def noop[F[_]: Applicative, Ctx]: LogRecordBuilder[F, Ctx] =
     new LogRecordBuilder[F, Ctx] {
+      val meta: InstrumentMeta.Dynamic[F] = InstrumentMeta.Dynamic.disabled
       def withTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F, Ctx] = this
       def withTimestamp(timestamp: Instant): LogRecordBuilder[F, Ctx] = this
       def withObservedTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F, Ctx] = this
@@ -76,10 +83,12 @@ object LogRecordBuilder {
       def emit: F[Unit] = Applicative[F].unit
     }
 
-  private final class MappedK[F[_], G[_], Ctx](
+  private final class MappedK[F[_], G[_]: Monad, Ctx](
       builder: LogRecordBuilder[F, Ctx]
   )(implicit kt: KindTransformer[F, G])
       extends LogRecordBuilder[G, Ctx] {
+
+    val meta: InstrumentMeta.Dynamic[G] = builder.meta.mapK[G]
 
     def withTimestamp(timestamp: FiniteDuration): LogRecordBuilder[G, Ctx] =
       builder.withTimestamp(timestamp).mapK
