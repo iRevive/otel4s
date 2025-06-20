@@ -18,6 +18,7 @@ package org.typelevel.otel4s.scalacheck
 
 import org.scalacheck.Cogen
 import org.scalacheck.rng.Seed
+import org.typelevel.otel4s.AnyValue
 import org.typelevel.otel4s.Attribute
 import org.typelevel.otel4s.AttributeKey
 import org.typelevel.otel4s.AttributeType
@@ -60,6 +61,20 @@ trait Cogens {
 
   implicit val attributesCogen: Cogen[Attributes] =
     Cogen[List[Attribute[_]]].contramap(_.toList)
+
+  implicit val anyValueCogen: Cogen[AnyValue] =
+    Cogen { (seed, value) =>
+      value match {
+        case AnyValue.StringValue(value)    => Cogen[String].perturb(seed, value)
+        case AnyValue.BooleanValue(value)   => Cogen[Boolean].perturb(seed, value)
+        case AnyValue.LongValue(value)      => Cogen[Long].perturb(seed, value)
+        case AnyValue.DoubleValue(value)    => Cogen[Double].perturb(seed, value)
+        case AnyValue.ByteArrayValue(value) => Cogen[Array[Byte]].perturb(seed, value)
+        case AnyValue.ArrayValue(values)    => values.foldLeft(seed)((s, v) => anyValueCogen.perturb(s, v))
+        case AnyValue.MapValue(values) =>
+          values.foldLeft(seed) { case (s, (k, v)) => anyValueCogen.perturb(Cogen[String].perturb(s, k), v) }
+      }
+    }
 
 }
 
