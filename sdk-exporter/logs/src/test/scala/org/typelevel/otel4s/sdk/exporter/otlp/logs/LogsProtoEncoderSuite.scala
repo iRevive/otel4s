@@ -91,24 +91,27 @@ class LogsProtoEncoderSuite extends ScalaCheckSuite {
 
   private def encodeValue(value: AnyValue): Json = {
     value match {
-      case AnyValue.StringValue(v)    => Json.obj("stringValue" := v)
-      case AnyValue.BooleanValue(v)   => Json.obj("boolValue" := v)
-      case AnyValue.LongValue(v)      => Json.obj("intValue" := v.toString)
-      case AnyValue.DoubleValue(v)    => Json.obj("doubleValue" := v)
-      case AnyValue.ByteArrayValue(v) => Json.obj("bytesValue" := ByteVector(v).toBase64)
-      case AnyValue.ArrayValue(values) =>
+      case AnyValue.StringValueImpl(v)    => Json.obj("stringValue" := v)
+      case AnyValue.BooleanValueImpl(v)   => Json.obj("boolValue" := v)
+      case AnyValue.LongValueImpl(v)      => Json.obj("intValue" := v.toString)
+      case AnyValue.DoubleValueImpl(v)    => Json.obj("doubleValue" := v)
+      case AnyValue.ByteArrayValueImpl(v) => Json.obj("bytesValue" := ByteVector(v).toBase64)
+      case AnyValue.ListValueImpl(values) =>
         val v =
           if (values.isEmpty) Json.obj()
           else Json.obj("values" := values.map(encodeValue))
 
         Json.obj("arrayValue" := v)
 
-      case AnyValue.MapValue(values) =>
+      case AnyValue.MapValueImpl(values) =>
         val v =
           if (values.isEmpty) Json.obj()
           else Json.obj("values" := values.map { case (k, v) => Json.obj("key" := k, "value" := encodeValue(v)) })
 
         Json.obj("kvlistValue" := v)
+
+      case AnyValue.EmptyValueImpl =>
+        Json.Null
     }
   }
 

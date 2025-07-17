@@ -15,15 +15,20 @@
  */
 
 import cats.Monad
-import cats.effect.{IO, IOApp}
+import cats.effect.IO
+import cats.effect.IOApp
 import cats.mtl.Local
 import cats.syntax.all._
-import org.typelevel.otel4s.logs.{LoggerProvider, Severity}
+import org.typelevel.otel4s.AnyValue
+import org.typelevel.otel4s.Attribute
+import org.typelevel.otel4s.Attributes
+import org.typelevel.otel4s.logs.LoggerProvider
+import org.typelevel.otel4s.logs.Severity
 import org.typelevel.otel4s.sdk.OpenTelemetrySdk
-import org.typelevel.otel4s.sdk.context.{Context, LocalContext}
+import org.typelevel.otel4s.sdk.context.Context
+import org.typelevel.otel4s.sdk.context.LocalContext
 import org.typelevel.otel4s.sdk.exporter.otlp.autoconfigure.OtlpExportersAutoConfigure
 import org.typelevel.otel4s.semconv.attributes.CodeAttributes
-import org.typelevel.otel4s.{AnyValue, Attribute, Attributes}
 
 import scala.concurrent.duration._
 import scala.util.chaining._

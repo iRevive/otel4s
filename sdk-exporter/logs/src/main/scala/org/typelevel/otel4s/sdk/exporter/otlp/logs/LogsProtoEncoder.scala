@@ -79,28 +79,31 @@ private object LogsProtoEncoder {
 
     def toAnyValueProto(value: AnyValue): AnyValueProto =
       value match {
-        case AnyValue.StringValue(value) =>
+        case AnyValue.StringValueImpl(value) =>
           AnyValueProto(AnyValueProto.Value.StringValue(value))
 
-        case AnyValue.BooleanValue(value) =>
+        case AnyValue.BooleanValueImpl(value) =>
           AnyValueProto(AnyValueProto.Value.BoolValue(value))
 
-        case AnyValue.LongValue(value) =>
+        case AnyValue.LongValueImpl(value) =>
           AnyValueProto(AnyValueProto.Value.IntValue(value))
 
-        case AnyValue.DoubleValue(value) =>
+        case AnyValue.DoubleValueImpl(value) =>
           AnyValueProto(AnyValueProto.Value.DoubleValue(value))
 
-        case AnyValue.ByteArrayValue(value) =>
+        case AnyValue.ByteArrayValueImpl(value) =>
           AnyValueProto(AnyValueProto.Value.BytesValue(ByteString.copyFrom(value)))
 
-        case AnyValue.ArrayValue(values) =>
+        case AnyValue.ListValueImpl(values) =>
           AnyValueProto(AnyValueProto.Value.ArrayValue(ArrayValue(values.map(toAnyValueProto).toSeq)))
 
-        case AnyValue.MapValue(values) =>
+        case AnyValue.MapValueImpl(values) =>
           AnyValueProto(AnyValueProto.Value.KvlistValue(KeyValueList(values.map { case (k, v) =>
             KeyValue(k, Some(toAnyValueProto(v)))
           }.toSeq)))
+
+        case AnyValue.EmptyValueImpl =>
+          AnyValueProto(AnyValueProto.Value.Empty)
       }
 
     LogProto(

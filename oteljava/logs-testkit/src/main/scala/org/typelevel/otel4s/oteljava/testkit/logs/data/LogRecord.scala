@@ -151,7 +151,7 @@ object LogRecord {
         AnyValue.bytes(value.getValue.asInstanceOf[ByteBuffer].array())
 
       case ValueType.ARRAY =>
-        AnyValue.array(
+        AnyValue.list(
           value.getValue.asInstanceOf[java.util.List[Value[_]]].asScala.toSeq.map(toAnyValue)
         )
 

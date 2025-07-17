@@ -124,12 +124,13 @@ private[oteljava] final case class LogRecordBuilderImpl[F[_]: Sync: AskContext](
 
   private def toJValue(value: AnyValue): JValue[_] =
     value match {
-      case AnyValue.StringValue(value)    => JValue.of(value)
-      case AnyValue.BooleanValue(value)   => JValue.of(value)
-      case AnyValue.LongValue(value)      => JValue.of(value)
-      case AnyValue.DoubleValue(value)    => JValue.of(value)
-      case AnyValue.ByteArrayValue(value) => JValue.of(value)
-      case AnyValue.ArrayValue(values)    => JValue.of(values.map(toJValue).toList.asJava)
-      case AnyValue.MapValue(values)      => JValue.of(values.view.mapValues(toJValue).toMap.asJava)
+      case AnyValue.StringValueImpl(value)    => JValue.of(value)
+      case AnyValue.BooleanValueImpl(value)   => JValue.of(value)
+      case AnyValue.LongValueImpl(value)      => JValue.of(value)
+      case AnyValue.DoubleValueImpl(value)    => JValue.of(value)
+      case AnyValue.ByteArrayValueImpl(value) => JValue.of(value)
+      case AnyValue.ListValueImpl(values)     => JValue.of(values.map(toJValue).toList.asJava)
+      case AnyValue.MapValueImpl(values)      => JValue.of(values.view.mapValues(toJValue).toMap.asJava)
+      case AnyValue.EmptyValueImpl => null // bold of me to assume it won't strike us in a very unexpected way
     }
 }
