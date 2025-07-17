@@ -18,11 +18,15 @@ package org.typelevel.otel4s
 
 import cats.Hash
 import cats.Show
-import cats.syntax.show._
+import org.typelevel.scalaccompat.annotation.threadUnsafe3
 
-import scala.collection.immutable
+import java.nio.ByteBuffer
+import java.util.Base64
 
 /** Represents `any` type.
+  *
+  * It can be a primitive value such as a string or integer, or it may contain an arbitrary nested object containing
+  * arrays, key-value lists, and primitives.
   *
   * @see
   *   [[https://opentelemetry.io/docs/specs/otel/logs/data-model/#type-any]]
@@ -32,7 +36,8 @@ import scala.collection.immutable
   */
 sealed trait AnyValue {
 
-  override final def hashCode(): Int =
+  @threadUnsafe3
+  override final lazy val hashCode: Int =
     Hash[AnyValue].hash(this)
 
   override final def equals(obj: Any): Boolean =
@@ -48,57 +53,135 @@ sealed trait AnyValue {
 
 object AnyValue {
 
-  def string(value: String): AnyValue = StringValue(value)
-  def boolean(value: Boolean): AnyValue = BooleanValue(value)
-  def long(value: Long): AnyValue = LongValue(value)
-  def double(value: Double): AnyValue = DoubleValue(value)
-  def bytes(value: Array[Byte]): AnyValue = ByteArrayValue(Array.copyOf(value, value.length))
-  def array(values: immutable.Iterable[AnyValue]): AnyValue = ArrayValue(values)
-  def map(values: Map[String, AnyValue]): AnyValue = MapValue(values)
+  sealed trait StringValue extends AnyValue {
+    def value: String
+  }
 
-  implicit val valueHash: Hash[AnyValue] = new Hash[AnyValue] {
+  sealed trait BooleanValue extends AnyValue {
+    def value: Boolean
+  }
+
+  sealed trait LongValue extends AnyValue {
+    def value: Long
+  }
+
+  sealed trait DoubleValue extends AnyValue {
+    def value: Double
+  }
+
+  sealed trait ByteArrayValue extends AnyValue {
+
+    /** Returns read-only ByteBuffer.
+      */
+    def value: ByteBuffer
+  }
+
+  sealed trait ListValue extends AnyValue {
+    def value: Seq[AnyValue]
+  }
+
+  sealed trait MapValue extends AnyValue {
+    def value: Map[String, AnyValue]
+  }
+
+  sealed trait EmptyValue extends AnyValue
+
+  /** Creates an [[AnyValue]] from the given `String`.
+    */
+  def string(value: String): StringValue =
+    StringValueImpl(value)
+
+  /** Creates an [[AnyValue]] from the given `Boolean`.
+    */
+  def boolean(value: Boolean): BooleanValue =
+    BooleanValueImpl(value)
+
+  /** Creates an [[AnyValue]] from the given `Long`.
+    */
+  def long(value: Long): LongValue =
+    LongValueImpl(value)
+
+  /** Creates an [[AnyValue]] from the given `Double`.
+    */
+  def double(value: Double): DoubleValue =
+    DoubleValueImpl(value)
+
+  /** Creates an [[AnyValue]] from the given byte array.
+    */
+  def bytes(value: Array[Byte]): ByteArrayValue =
+    ByteArrayValueImpl(Array.copyOf(value, value.length))
+
+  /** Creates an [[AnyValue]] from the given list of values.
+    */
+  def list(values: Seq[AnyValue]): ListValue =
+    ListValueImpl(values)
+
+  /** Creates a key-value list (map) of [[AnyValue]] from the given map.
+    */
+  def map(values: Map[String, AnyValue]): MapValue =
+    MapValueImpl(values)
+
+  /** Creates an empty [[AnyValue]]. That is an equivalent of `null`.
+    */
+  def empty: EmptyValue =
+    EmptyValueImpl
+
+  implicit val anyValueHash: Hash[AnyValue] = new Hash[AnyValue] {
     def hash(x: AnyValue): Int = x match {
-      case StringValue(value)    => Hash[String].hash(value)
-      case BooleanValue(value)   => Hash[Boolean].hash(value)
-      case LongValue(value)      => Hash[Long].hash(value)
-      case DoubleValue(value)    => Hash[Double].hash(value)
-      case ByteArrayValue(value) => java.util.Arrays.hashCode(value)
-      case ArrayValue(values)    => values.map(hash).hashCode()
-      case MapValue(values)      => values.map { case (k, v) => (k, hash(v)) }.hashCode()
+      case StringValueImpl(value)    => Hash[String].hash(value)
+      case BooleanValueImpl(value)   => Hash[Boolean].hash(value)
+      case LongValueImpl(value)      => Hash[Long].hash(value)
+      case DoubleValueImpl(value)    => Hash[Double].hash(value)
+      case ByteArrayValueImpl(value) => java.util.Arrays.hashCode(value)
+      case ListValueImpl(values)     => values.map(hash).hashCode()
+      case MapValueImpl(values)      => values.map { case (k, v) => (k, hash(v)) }.hashCode()
+      case _: EmptyValue             => System.identityHashCode(EmptyValueImpl)
     }
 
     def eqv(x: AnyValue, y: AnyValue): Boolean = (x, y) match {
-      case (StringValue(a), StringValue(b))   => a == b
-      case (BooleanValue(a), BooleanValue(b)) => a == b
-      case (LongValue(a), LongValue(b))       => a == b
-      case (DoubleValue(a), DoubleValue(b))   => a == b
-      case (ByteArrayValue(a), ByteArrayValue(b)) =>
+      case (StringValueImpl(a), StringValueImpl(b))   => a == b
+      case (BooleanValueImpl(a), BooleanValueImpl(b)) => a == b
+      case (LongValueImpl(a), LongValueImpl(b))       => a == b
+      case (DoubleValueImpl(a), DoubleValueImpl(b))   => a == b
+
+      case (ByteArrayValueImpl(a), ByteArrayValueImpl(b)) =>
         java.util.Arrays.equals(a, b)
-      case (ArrayValue(a), ArrayValue(b)) =>
+
+      case (ListValueImpl(a), ListValueImpl(b)) =>
         a.size == b.size && a.lazyZip(b).forall { case (x, y) => eqv(x, y) }
-      case (MapValue(a), MapValue(b)) =>
+
+      case (MapValueImpl(a), MapValueImpl(b)) =>
         a.size == b.size && a.keys.forall(k => b.contains(k) && eqv(a(k), b(k)))
-      case _ => false
+
+      case (_: EmptyValue, _: EmptyValue) =>
+        true
+
+      case _ =>
+        false
     }
   }
 
-  implicit val valueShow: Show[AnyValue] = Show.show {
-    case StringValue(value)    => show"StringValue($value)"
-    case BooleanValue(value)   => show"BooleanValue($value)"
-    case LongValue(value)      => show"LongValue($value)"
-    case DoubleValue(value)    => show"DoubleValue($value)"
-    case ByteArrayValue(value) => show"ByteArrayValue(${java.util.Arrays.toString(value)})"
-    case ArrayValue(values)    => show"ArrayValue(${values.map(valueShow.show).mkString("[", ", ", "]")})"
-    case MapValue(values) =>
-      show"MapValue(${values.map { case (k, v) => s"$k -> ${valueShow.show(v)}" }.mkString("{", ", ", "}")})"
+  implicit val anyValueShow: Show[AnyValue] = Show.show {
+    case _: EmptyValue             => "EmptyValue"
+    case StringValueImpl(value)    => s"StringValue($value)"
+    case BooleanValueImpl(value)   => s"BooleanValue($value)"
+    case LongValueImpl(value)      => s"LongValue($value)"
+    case DoubleValueImpl(value)    => s"DoubleValue($value)"
+    case ByteArrayValueImpl(value) => s"ByteArrayValue(${Base64.getEncoder.encodeToString(value)})"
+    case ListValueImpl(values)     => s"ListValue(${values.map(anyValueShow.show).mkString("[", ", ", "]")})"
+    case MapValueImpl(values) =>
+      s"MapValue(${values.map { case (k, v) => s"$k -> ${anyValueShow.show(v)}" }.mkString("{", ", ", "}")})"
   }
 
-  private[otel4s] final case class StringValue(value: String) extends AnyValue
-  private[otel4s] final case class BooleanValue(value: Boolean) extends AnyValue
-  private[otel4s] final case class LongValue(value: Long) extends AnyValue
-  private[otel4s] final case class DoubleValue(value: Double) extends AnyValue
-  private[otel4s] final case class ByteArrayValue(value: Array[Byte]) extends AnyValue
-  private[otel4s] final case class ArrayValue(values: immutable.Iterable[AnyValue]) extends AnyValue
-  private[otel4s] final case class MapValue(values: Map[String, AnyValue]) extends AnyValue
+  private[otel4s] final case class StringValueImpl(value: String) extends StringValue
+  private[otel4s] final case class BooleanValueImpl(value: Boolean) extends BooleanValue
+  private[otel4s] final case class LongValueImpl(value: Long) extends LongValue
+  private[otel4s] final case class DoubleValueImpl(value: Double) extends DoubleValue
+  private[otel4s] final case class ByteArrayValueImpl(bytes: Array[Byte]) extends ByteArrayValue {
+    def value: ByteBuffer = ByteBuffer.wrap(bytes).asReadOnlyBuffer()
+  }
+  private[otel4s] final case class ListValueImpl(value: Seq[AnyValue]) extends ListValue
+  private[otel4s] final case class MapValueImpl(value: Map[String, AnyValue]) extends MapValue
+  private[otel4s] case object EmptyValueImpl extends EmptyValue
 
 }

@@ -84,7 +84,7 @@ ThisBuild / mergifyPrRules ++= Seq(
 )
 
 val CatsVersion = "2.11.0"
-val CatsEffectVersion = "3.6.1"
+val CatsEffectVersion = "3.6.2"
 val CatsMtlVersion = "1.4.0"
 val FS2Version = "3.12.0"
 val MUnitVersion = "1.0.0"
@@ -92,14 +92,14 @@ val MUnitScalaCheckVersion = "1.0.0-M11"
 val MUnitCatsEffectVersion = "2.1.0"
 val MUnitDisciplineVersion = "2.0.0-M3"
 val MUnitScalaCheckEffectVersion = "2.0.0-M2"
-val OpenTelemetryVersion = "1.51.0"
+val OpenTelemetryVersion = "1.52.0"
 val OpenTelemetryAlphaVersion = s"$OpenTelemetryVersion-alpha"
-val OpenTelemetryInstrumentationVersion = "2.16.0"
+val OpenTelemetryInstrumentationVersion = "2.17.1"
 val OpenTelemetryInstrumentationAlphaVersion = "2.10.0-alpha"
 val OpenTelemetrySemConvVersion = "1.34.0"
 val OpenTelemetrySemConvAlphaVersion = s"$OpenTelemetrySemConvVersion-alpha"
 val OpenTelemetryProtoVersion = "1.7.0-alpha"
-val PekkoStreamVersion = "1.1.4"
+val PekkoStreamVersion = "1.1.5"
 val PekkoHttpVersion = "1.2.0"
 val PlatformVersion = "1.0.2"
 val ScodecVersion = "1.1.38"
@@ -215,11 +215,10 @@ lazy val `core-logs` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .settings(
     name := "otel4s-core-logs",
     libraryDependencies ++= Seq(
-      "org.typelevel" %%% "cats-effect-kernel" % CatsEffectVersion,
-      "org.typelevel" %%% "cats-effect-testkit" % CatsEffectVersion % Test,
       "org.typelevel" %%% "cats-laws" % CatsVersion % Test,
       "org.typelevel" %%% "discipline-munit" % MUnitDisciplineVersion % Test
-    )
+    ),
+    mimaPreviousArtifacts := Set.empty
   )
 
 lazy val `core-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)

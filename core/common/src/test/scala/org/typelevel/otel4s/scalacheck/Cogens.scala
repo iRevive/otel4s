@@ -65,13 +65,14 @@ trait Cogens {
   implicit val anyValueCogen: Cogen[AnyValue] =
     Cogen { (seed, value) =>
       value match {
-        case AnyValue.StringValue(value)    => Cogen[String].perturb(seed, value)
-        case AnyValue.BooleanValue(value)   => Cogen[Boolean].perturb(seed, value)
-        case AnyValue.LongValue(value)      => Cogen[Long].perturb(seed, value)
-        case AnyValue.DoubleValue(value)    => Cogen[Double].perturb(seed, value)
-        case AnyValue.ByteArrayValue(value) => Cogen[Array[Byte]].perturb(seed, value)
-        case AnyValue.ArrayValue(values)    => values.foldLeft(seed)((s, v) => anyValueCogen.perturb(s, v))
-        case AnyValue.MapValue(values) =>
+        case AnyValue.EmptyValueImpl            => seed
+        case AnyValue.StringValueImpl(value)    => Cogen[String].perturb(seed, value)
+        case AnyValue.BooleanValueImpl(value)   => Cogen[Boolean].perturb(seed, value)
+        case AnyValue.LongValueImpl(value)      => Cogen[Long].perturb(seed, value)
+        case AnyValue.DoubleValueImpl(value)    => Cogen[Double].perturb(seed, value)
+        case AnyValue.ByteArrayValueImpl(value) => Cogen[Array[Byte]].perturb(seed, value)
+        case AnyValue.ListValueImpl(values)     => values.foldLeft(seed)((s, v) => anyValueCogen.perturb(s, v))
+        case AnyValue.MapValueImpl(values) =>
           values.foldLeft(seed) { case (s, (k, v)) => anyValueCogen.perturb(Cogen[String].perturb(s, k), v) }
       }
     }

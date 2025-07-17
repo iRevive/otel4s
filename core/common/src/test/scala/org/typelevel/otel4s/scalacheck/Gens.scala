@@ -88,17 +88,18 @@ trait Gens {
 
   val anyValue: Gen[AnyValue] = {
     val string = Gen.alphaNumStr.map(AnyValue.string)
-    val boolean = Gen.oneOf(true, false).map(AnyValue.boolean)
+    val boolean = Arbitrary.arbitrary[Boolean].map(AnyValue.boolean)
     val long = Gen.long.map(AnyValue.long)
     val double = Gen.double.map(AnyValue.double)
     val byteArray = Gen.listOf(Gen.choose(Byte.MinValue, Byte.MaxValue)).map(_.toArray).map(AnyValue.bytes)
+    val emptyValue = Gen.const(AnyValue.empty)
 
-    val primitives = Gen.oneOf(string, boolean, long, double, byteArray)
+    val primitives = Gen.oneOf(string, boolean, long, double, byteArray, emptyValue)
 
     def array: Gen[AnyValue] =
       for {
         values <- Gen.listOf(primitives)
-      } yield AnyValue.array(values)
+      } yield AnyValue.list(values)
 
     def map: Gen[AnyValue] =
       for {

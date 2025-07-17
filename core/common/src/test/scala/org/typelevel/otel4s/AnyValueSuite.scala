@@ -23,6 +23,8 @@ import org.scalacheck.Prop
 import org.typelevel.otel4s.scalacheck.Arbitraries
 import org.typelevel.otel4s.scalacheck.Cogens
 
+import java.util.Base64
+
 class AnyValueSuite extends DisciplineSuite {
   import Arbitraries.anyValueArbitrary
   import Cogens.anyValueCogen
@@ -32,13 +34,14 @@ class AnyValueSuite extends DisciplineSuite {
   test("Show[AnyValue]") {
     Prop.forAll(anyValueArbitrary.arbitrary) { value =>
       def render(v: AnyValue): String = v match {
-        case AnyValue.StringValue(value)    => s"StringValue($value)"
-        case AnyValue.BooleanValue(value)   => s"BooleanValue($value)"
-        case AnyValue.LongValue(value)      => s"LongValue($value)"
-        case AnyValue.DoubleValue(value)    => s"DoubleValue($value)"
-        case AnyValue.ByteArrayValue(value) => s"ByteArrayValue(${java.util.Arrays.toString(value)})"
-        case AnyValue.ArrayValue(values)    => s"ArrayValue(${values.map(render).mkString("[", ", ", "]")})"
-        case AnyValue.MapValue(values) =>
+        case _: AnyValue.EmptyValue             => "EmptyValue"
+        case AnyValue.StringValueImpl(value)    => s"StringValue($value)"
+        case AnyValue.BooleanValueImpl(value)   => s"BooleanValue($value)"
+        case AnyValue.LongValueImpl(value)      => s"LongValue($value)"
+        case AnyValue.DoubleValueImpl(value)    => s"DoubleValue($value)"
+        case AnyValue.ByteArrayValueImpl(bytes) => s"ByteArrayValue(${Base64.getEncoder.encodeToString(bytes)})"
+        case AnyValue.ListValueImpl(values)     => s"ListValue(${values.map(render).mkString("[", ", ", "]")})"
+        case AnyValue.MapValueImpl(values) =>
           s"MapValue(${values.map { case (k, v) => s"$k -> ${render(v)}" }.mkString("{", ", ", "}")})"
       }
 
