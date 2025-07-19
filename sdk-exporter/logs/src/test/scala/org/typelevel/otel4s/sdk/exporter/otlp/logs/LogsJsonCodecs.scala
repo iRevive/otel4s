@@ -33,7 +33,7 @@ private object LogsJsonCodecs extends JsonCodecs {
         .obj(
           "timeUnixNano" := log.timestamp.map(_.toNanos.toString),
           "observedTimeUnixNano" := log.observedTimestamp.toNanos.toString,
-          "severityNumber" := log.severity.map(_.severity),
+          "severityNumber" := log.severity.map(_.value),
           "severityText" := log.severityText,
           "body" := log.body.map(encodeValue),
           "attributes" := log.attributes.elements,

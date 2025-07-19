@@ -109,7 +109,7 @@ private object LogsProtoEncoder {
     LogProto(
       timeUnixNano = log.timestamp.map(_.toNanos).getOrElse(0L),
       observedTimeUnixNano = log.observedTimestamp.toNanos,
-      severityNumber = SeverityNumber.fromValue(log.severity.map(_.severity).getOrElse(0)),
+      severityNumber = SeverityNumber.fromValue(log.severity.map(_.value).getOrElse(0)),
       severityText = log.severityText.getOrElse(""),
       body = log.body.map(toAnyValueProto),
       attributes = ProtoEncoder.encode(log.attributes.elements),

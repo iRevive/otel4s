@@ -110,12 +110,12 @@ object SdkLogsExample extends IOApp.Simple {
 
     private def toSeverity(level: Level): Option[Severity] =
       level match {
-        case Level("TRACE", _) => Some(Severity.Trace.trace1)
-        case Level("DEBUG", _) => Some(Severity.Debug.debug1)
-        case Level("INFO", _)  => Some(Severity.Info.info1)
-        case Level("WARN", _)  => Some(Severity.Warn.warn1)
-        case Level("ERROR", _) => Some(Severity.Error.error1)
-        case Level("FATAL", _) => Some(Severity.Fatal.fatal1)
+        case Level("TRACE", _) => Some(Severity.trace)
+        case Level("DEBUG", _) => Some(Severity.debug)
+        case Level("INFO", _)  => Some(Severity.info)
+        case Level("WARN", _)  => Some(Severity.warn)
+        case Level("ERROR", _) => Some(Severity.error)
+        case Level("FATAL", _) => Some(Severity.fatal)
         case _                 => None
       }
   }

@@ -38,7 +38,7 @@ class LogsProtoEncoderSuite extends ScalaCheckSuite {
         .obj(
           "timeUnixNano" := logRecord.timestamp.map(_.toNanos).getOrElse(0L).toString,
           "observedTimeUnixNano" := logRecord.observedTimestamp.toNanos.toString,
-          "severityNumber" := logRecord.severity.map(_.severity).getOrElse(0),
+          "severityNumber" := logRecord.severity.map(_.value).getOrElse(0),
           "severityText" := logRecord.severityText.getOrElse(""),
           "body" := logRecord.body.map(v => encodeValue(v)),
           "attributes" := logRecord.attributes.elements,

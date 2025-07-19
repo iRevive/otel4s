@@ -736,6 +736,7 @@ lazy val `oteljava-logs` = project
   .settings(munitDependencies)
   .settings(
     name := "otel4s-oteljava-logs",
+    startYear := Some(2025),
     libraryDependencies ++= Seq(
       "io.opentelemetry" % "opentelemetry-sdk-testing" % OpenTelemetryVersion % Test
     )
