@@ -21,6 +21,7 @@ import cats.Monoid
 import cats.Show
 import cats.syntax.show._
 import org.typelevel.otel4s.AttributeKey.KeySelect
+import org.typelevel.scalaccompat.annotation.threadUnsafe3
 
 import scala.collection.IterableOps
 import scala.collection.SpecificIterableFactory
@@ -105,7 +106,8 @@ sealed trait Attributes
     attributesFactory.newBuilder
   override protected[this] def className: String = "Attributes"
 
-  override def hashCode(): Int =
+  @threadUnsafe3
+  override lazy val hashCode: Int =
     Hash[Attributes].hash(this)
 
   override def equals(obj: Any): Boolean =
@@ -120,6 +122,25 @@ sealed trait Attributes
 
 object Attributes extends SpecificIterableFactory[Attribute[_], Attributes] {
   private val Empty = new MapAttributes(Map.empty)
+
+  /** Allows creating [[Attributes]] from an arbitrary type `A`.
+    *
+    * @example
+    *   {{{
+    * case class User(id: Long, group: String)
+    *
+    * implicit val userAttributesMake: Attributes.Make[User] =
+    *   user => Attributes(Attribute("user.id", user.id), Attribute("user.group", user.group))
+    *
+    * val attributes: Attributes = Attributes.from(User(1L, "admin"))
+    *   }}}
+    *
+    * @tparam A
+    *   the type of the value
+    */
+  trait Make[A] {
+    def make(a: A): Attributes
+  }
 
   /** Creates [[Attributes]] with the given `attributes`.
     *
@@ -153,6 +174,21 @@ object Attributes extends SpecificIterableFactory[Attribute[_], Attributes] {
       case a: Attributes => a
       case other         => (newBuilder ++= other).result()
     }
+
+  /** Creates [[Attributes]] from the given value using an implicit [[Make]] instance.
+    *
+    * @example
+    *   {{{
+    * case class User(id: Long, group: String)
+    *
+    * implicit val userAttributesMake: Attributes.Make[User] =
+    *   user => Attributes(Attribute("user.id", user.id), Attribute("user.group", user.group))
+    *
+    * val attributes: Attributes = Attributes.from(User(1L, "admin"))
+    *   }}}
+    */
+  def from[A](value: A)(implicit make: Make[A]): Attributes =
+    make.make(value)
 
   implicit val showAttributes: Show[Attributes] = Show.show { attributes =>
     attributes.view
