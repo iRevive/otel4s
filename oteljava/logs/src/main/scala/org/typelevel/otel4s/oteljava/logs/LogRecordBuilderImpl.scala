@@ -67,6 +67,9 @@ private[oteljava] final case class LogRecordBuilderImpl[F[_]: Sync: AskContext](
   def withBody(value: AnyValue): LogRecordBuilder[F, Context] =
     copy(jBuilder = jBuilder.setBody(toJValue(value)))
 
+  def withEventName(eventName: String): LogRecordBuilder[F, Context] =
+    copy(jBuilder = jBuilder.setEventName(eventName))
+
   def addAttribute[A](attribute: Attribute[A]): LogRecordBuilder[F, Context] =
     copy(jBuilder = jBuilder.setAttribute(attribute.key.toJava.asInstanceOf[JAttributeKey[Any]], attribute.value))
 

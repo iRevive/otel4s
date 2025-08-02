@@ -72,6 +72,9 @@ private final case class SdkLogRecordBuilder[F[_]: Monad: Clock: AskContext](
   def withBody(body: AnyValue): LogRecordBuilder[F, Context] =
     copy(state = state.copy(body = Some(body)))
 
+  def withEventName(eventName: String): LogRecordBuilder[F, Context] =
+    copy(state = state.copy(eventName = Some(eventName)))
+
   def addAttribute[A](attribute: Attribute[A]): LogRecordBuilder[F, Context] =
     copy(state = state.copy(attributes = state.attributes.append(attribute)))
 
@@ -130,6 +133,7 @@ private object SdkLogRecordBuilder {
     severity = None,
     severityText = None,
     body = None,
+    eventName = None,
     attributes = LimitedData.attributes(
       limits.maxNumberOfAttributes,
       limits.maxAttributeValueLength
@@ -143,6 +147,7 @@ private object SdkLogRecordBuilder {
       severity: Option[Severity],
       severityText: Option[String],
       body: Option[AnyValue],
+      eventName: Option[String],
       attributes: LimitedData[Attribute[_], Attributes]
   )
 
