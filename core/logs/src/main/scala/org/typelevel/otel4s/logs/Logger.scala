@@ -33,6 +33,15 @@ trait Logger[F[_], Ctx] {
     */
   def meta: InstrumentMeta.Dynamic[F]
 
+  /** Returns a [[LogRecordBuilder]] to emit a log record.
+    *
+    * Construct the log record using [[LogRecordBuilder]], then emit the record via [[LogRecordBuilder.emit]].
+    *
+    * @note
+    *   this method is intended for use in appenders that bridge logs from existing logging frameworks, it is '''NOT a
+    *   replacement''' for a full-featured application logging framework and should not be used directly by application
+    *   developers
+    */
   def logRecordBuilder: LogRecordBuilder[F, Ctx]
 
   /** Modify the context `F` using an implicit [[KindTransformer]] from `F` to `G`.

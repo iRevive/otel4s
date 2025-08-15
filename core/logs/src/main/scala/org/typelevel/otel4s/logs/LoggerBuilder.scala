@@ -22,6 +22,11 @@ import cats.Functor
 import cats.Monad
 import cats.syntax.functor._
 
+/** A builder of the [[Logger]].
+  *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/logs/api/#get-a-logger]]
+  */
 trait LoggerBuilder[F[_], Ctx] {
 
   /** Assigns a version to the resulting Logger.

@@ -23,6 +23,9 @@ import cats.Monad
 import cats.syntax.functor._
 
 /** The entry point of the logging API. Provides access to [[Logger]].
+  *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/logs/api/#loggerprovider]]
   */
 trait LoggerProvider[F[_], Ctx] {
 
