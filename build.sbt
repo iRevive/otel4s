@@ -314,28 +314,6 @@ lazy val `sdk-common` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
 lazy val `sdk-logs` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
   .in(file("sdk/logs"))
-  .enablePlugins(NoPublishPlugin)
-  .dependsOn(
-    `sdk-common` % "compile->compile;test->test",
-    `core-logs` % "compile->compile;test->test",
-  )
-  .settings(
-    name := "otel4s-sdk-logs",
-    startYear := Some(2025),
-    libraryDependencies ++= Seq(
-      "org.typelevel" %%% "cats-effect" % CatsEffectVersion,
-      "org.typelevel" %%% "cats-laws" % CatsVersion % Test,
-      "org.typelevel" %%% "cats-effect-testkit" % CatsEffectVersion % Test,
-      "org.typelevel" %%% "discipline-munit" % MUnitDisciplineVersion % Test,
-      "org.typelevel" %%% "scalacheck-effect-munit" % MUnitScalaCheckEffectVersion % Test
-    ),
-  )
-  .settings(munitDependencies)
-  .jsSettings(scalaJSLinkerSettings)
-
-lazy val `sdk-logs` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
-  .crossType(CrossType.Pure)
-  .in(file("sdk/logs"))
   .dependsOn(
     `sdk-common` % "compile->compile;test->test",
     `core-logs` % "compile->compile;test->test",
