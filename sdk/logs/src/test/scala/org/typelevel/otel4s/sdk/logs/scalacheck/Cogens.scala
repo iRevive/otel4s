@@ -38,6 +38,7 @@ trait Cogens extends org.typelevel.otel4s.sdk.scalacheck.Cogens with org.typelev
           Option[Severity],
           Option[String],
           Option[AnyValue],
+          Option[String],
           Attributes,
           InstrumentationScope,
           TelemetryResource
@@ -50,6 +51,7 @@ trait Cogens extends org.typelevel.otel4s.sdk.scalacheck.Cogens with org.typelev
         logRecordData.severity,
         logRecordData.severityText,
         logRecordData.body,
+        logRecordData.eventName,
         logRecordData.attributes.elements,
         logRecordData.instrumentationScope,
         logRecordData.resource

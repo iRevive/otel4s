@@ -94,12 +94,13 @@ val MUnitDisciplineVersion = "2.0.0-M3"
 val MUnitScalaCheckEffectVersion = "2.0.0-M2"
 val OpenTelemetryVersion = "1.53.0"
 val OpenTelemetryAlphaVersion = s"$OpenTelemetryVersion-alpha"
-val OpenTelemetryInstrumentationVersion = "2.18.1"
-val OpenTelemetryInstrumentationAlphaVersion = "2.10.0-alpha"
+val OpenTelemetryInstrumentationVersion = "2.19.0"
+val OpenTelemetryInstrumentationAlphaVersion = s"$OpenTelemetryInstrumentationVersion-alpha"
 val OpenTelemetrySemConvVersion = "1.34.0"
 val OpenTelemetrySemConvAlphaVersion = s"$OpenTelemetrySemConvVersion-alpha"
-val OpenTelemetryProtoVersion = "1.7.0-alpha"
-val PekkoStreamVersion = "1.1.5"
+val OpenTelemetryProtoVersion = "1.8.0-alpha"
+val Otel4sAgentVersion = "0.0.3"
+val PekkoStreamVersion = "1.2.0"
 val PekkoHttpVersion = "1.2.0"
 val PlatformVersion = "1.0.2"
 val ScodecVersion = "1.1.38"
@@ -251,8 +252,17 @@ lazy val `core-trace` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "org.scodec" %%% "scodec-bits" % ScodecVersion,
       "org.typelevel" %%% "cats-laws" % CatsVersion % Test,
       "org.typelevel" %%% "discipline-munit" % MUnitDisciplineVersion % Test,
-      "org.typelevel" %%% "scalacheck-effect-munit" % MUnitScalaCheckEffectVersion % Test
-    )
+      "org.typelevel" %%% "scalacheck-effect-munit" % MUnitScalaCheckEffectVersion % Test,
+    ),
+    mimaBinaryIssueFilters ++= Seq(
+      // # 1002
+      // all of these classes are private (and not serializable), so this is safe
+      ProblemFilters.exclude[MissingClassProblem]("org.typelevel.otel4s.trace.SpanBuilder$MappedK"),
+      ProblemFilters.exclude[MissingClassProblem]("org.typelevel.otel4s.trace.SpanOps$MappedK"),
+      ProblemFilters.exclude[MissingClassProblem]("org.typelevel.otel4s.trace.Tracer$MappedK"),
+      ProblemFilters.exclude[MissingClassProblem]("org.typelevel.otel4s.trace.TracerBuilder$MappedK"),
+      ProblemFilters.exclude[MissingClassProblem]("org.typelevel.otel4s.trace.TracerProvider$MappedK"),
+    ),
   )
 
 lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
@@ -1001,7 +1011,8 @@ lazy val docs = project
     ),
     mdocVariables ++= Map(
       "OPEN_TELEMETRY_VERSION" -> OpenTelemetryVersion,
-      "OPEN_TELEMETRY_INSTRUMENTATION_ALPHA_VERSION" -> OpenTelemetryInstrumentationAlphaVersion
+      "OPEN_TELEMETRY_INSTRUMENTATION_ALPHA_VERSION" -> OpenTelemetryInstrumentationAlphaVersion,
+      "OTEL4S_AGENT_VERSION" -> Otel4sAgentVersion,
     ),
     run / fork := true,
     javaOptions += "-Dcats.effect.trackFiberContext=true",

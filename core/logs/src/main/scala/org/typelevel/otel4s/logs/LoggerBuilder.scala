@@ -27,7 +27,7 @@ import cats.syntax.functor._
   * @see
   *   [[https://opentelemetry.io/docs/specs/otel/logs/api/#get-a-logger]]
   */
-trait LoggerBuilder[F[_], Ctx] {
+sealed trait LoggerBuilder[F[_], Ctx] {
 
   /** Assigns a version to the resulting Logger.
     *
@@ -49,11 +49,12 @@ trait LoggerBuilder[F[_], Ctx] {
 
   /** Modify the context `F` using an implicit [[KindTransformer]] from `F` to `G`.
     */
-  def mapK[G[_]](implicit F: Functor[F], G: Monad[G], kt: KindTransformer[F, G]): LoggerBuilder[G, Ctx] =
+  def liftTo[G[_]](implicit F: Functor[F], G: Monad[G], kt: KindTransformer[F, G]): LoggerBuilder[G, Ctx] =
     new LoggerBuilder.MappedK(this)
 }
 
 object LoggerBuilder {
+  private[otel4s] trait Unsealed[F[_], Ctx] extends LoggerBuilder[F, Ctx]
 
   /** Creates a no-op implementation of the [[LoggerBuilder]].
     *
@@ -78,6 +79,6 @@ object LoggerBuilder {
     def withSchemaUrl(schemaUrl: String): LoggerBuilder[G, Ctx] =
       new MappedK(builder.withSchemaUrl(schemaUrl))
     def get: G[Logger[G, Ctx]] =
-      kt.liftK(builder.get.map(_.mapK[G]))
+      kt.liftK(builder.get.map(_.liftTo[G]))
   }
 }

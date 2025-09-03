@@ -49,7 +49,7 @@ final class OtelJava[F[_]] private (
     val tracerProvider: TracerProvider[F],
     val loggerProvider: LoggerProvider[F, Context],
 )(implicit val localContext: LocalContext[F])
-    extends Otel4s[F] {
+    extends Otel4s.Unsealed[F] {
   type Ctx = Context
 
   val baggageManager: BaggageManager[F] = BaggageManagerImpl.fromLocal

@@ -63,7 +63,7 @@ import scala.concurrent.duration.FiniteDuration
   *   }
   * }}}
   */
-trait Span[F[_]] extends SpanMacro[F] {
+sealed trait Span[F[_]] extends SpanMacro[F] {
   def backend: Span.Backend[F]
 
   /** Returns the [[SpanContext]] associated with this span.
@@ -111,13 +111,16 @@ trait Span[F[_]] extends SpanMacro[F] {
 
   /** Modify the context `F` using an implicit [[KindTransformer]] from `F` to `G`.
     */
-  final def mapK[G[_]](implicit kt: KindTransformer[F, G]): Span[G] =
+  final def liftTo[G[_]](implicit kt: KindTransformer[F, G]): Span[G] =
     mapK(kt.liftK)
+
+  @deprecated("use `liftTo` instead", since = "otel4s 0.14.0")
+  final def mapK[G[_]](implicit kt: KindTransformer[F, G]): Span[G] = liftTo[G]
 }
 
 object Span {
 
-  trait Backend[F[_]] {
+  sealed trait Backend[F[_]] {
     def meta: InstrumentMeta.Static[F]
     def context: SpanContext
 
@@ -156,11 +159,15 @@ object Span {
 
     /** Modify the context `F` using an implicit [[KindTransformer]] from `F` to `G`.
       */
-    final def mapK[G[_]](implicit kt: KindTransformer[F, G]): Backend[G] =
+    final def liftTo[G[_]](implicit kt: KindTransformer[F, G]): Backend[G] =
       mapK(kt.liftK)
+
+    @deprecated("use `liftTo` instead", since = "otel4s 0.14.0")
+    final def mapK[G[_]](implicit kt: KindTransformer[F, G]): Backend[G] = liftTo[G]
   }
 
   object Backend {
+    private[otel4s] trait Unsealed[F[_]] extends Backend[F]
 
     /** Returns a non-recording backend that holds the provided [[SpanContext]] but all operations have no effect. The
       * span will not be exported and all tracing operations are no-op, but it can be used to propagate a valid
@@ -204,7 +211,7 @@ object Span {
         def end(timestamp: FiniteDuration): F[Unit] = unit
       }
 
-    /** Implementation for [[Backend.mapK]]. */
+    /** Implementation for [[Backend.liftTo]]. */
     private class MappedK[F[_], G[_]](backend: Backend[F])(f: F ~> G) extends Backend[G] {
       val meta: InstrumentMeta.Static[G] =
         backend.meta.mapK(f)

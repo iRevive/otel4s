@@ -43,6 +43,7 @@ class LogRecordDataSuite extends DisciplineSuite {
           s"severity=${data.severity}, " +
           s"severityText=${data.severityText}, " +
           s"body=${data.body}, " +
+          s"eventName=${data.eventName}, " +
           s"attributes=${data.attributes.elements}, " +
           s"instrumentationScope=${data.instrumentationScope}, " +
           s"resource=${data.resource}}"
@@ -62,6 +63,7 @@ class LogRecordDataSuite extends DisciplineSuite {
         severityText = data.severityText,
         body = data.body,
         attributes = data.attributes,
+        eventName = data.eventName,
         instrumentationScope = data.instrumentationScope,
         resource = data.resource
       )

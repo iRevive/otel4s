@@ -27,7 +27,7 @@ import org.typelevel.otel4s.trace.SpanFinalizer.Strategy
 import scala.collection.immutable
 import scala.concurrent.duration.FiniteDuration
 
-trait SpanBuilder[F[_]] extends SpanBuilderMacro[F] {
+sealed trait SpanBuilder[F[_]] extends SpanBuilderMacro[F] {
   import SpanBuilder.State
 
   /** The instrument's metadata. Indicates whether instrumentation is enabled.
@@ -52,14 +52,21 @@ trait SpanBuilder[F[_]] extends SpanBuilderMacro[F] {
 
   /** Modify the context `F` using an implicit [[KindTransformer]] from `F` to `G`.
     */
-  def mapK[G[_]: MonadCancelThrow](implicit
+  def liftTo[G[_]: MonadCancelThrow](implicit
       F: MonadCancelThrow[F],
       kt: KindTransformer[F, G]
   ): SpanBuilder[G] =
-    new SpanBuilder.MappedK(this)
+    new SpanBuilder.Lifted(this)
+
+  @deprecated("use `liftTo` instead", since = "otel4s 0.14.0")
+  def mapK[G[_]: MonadCancelThrow](implicit
+      F: MonadCancelThrow[F],
+      kt: KindTransformer[F, G]
+  ): SpanBuilder[G] = liftTo[G]
 }
 
 object SpanBuilder {
+  private[otel4s] trait Unsealed[F[_]] extends SpanBuilder[F]
 
   /** The parent selection strategy.
     */
@@ -235,7 +242,7 @@ object SpanBuilder {
       val meta: InstrumentMeta.Dynamic[F] = InstrumentMeta.Dynamic.disabled
       def modifyState(f: State => State): SpanBuilder[F] = this
 
-      def build: SpanOps[F] = new SpanOps[F] {
+      def build: SpanOps[F] = new SpanOps.Unsealed[F] {
         def startUnmanaged: F[Span[F]] =
           Applicative[F].pure(span)
 
@@ -248,18 +255,16 @@ object SpanBuilder {
       }
     }
 
-  /** Implementation for [[SpanBuilder.mapK]]. */
-  private class MappedK[F[_]: MonadCancelThrow, G[_]: MonadCancelThrow](
+  /** Implementation for [[SpanBuilder.liftTo]]. */
+  private class Lifted[F[_]: MonadCancelThrow, G[_]: MonadCancelThrow](
       builder: SpanBuilder[F]
   )(implicit kt: KindTransformer[F, G])
       extends SpanBuilder[G] {
     val meta: InstrumentMeta.Dynamic[G] =
-      builder.meta.mapK[G]
-
+      builder.meta.liftTo[G]
     def modifyState(f: State => State): SpanBuilder[G] =
-      builder.modifyState(f).mapK[G]
-
+      builder.modifyState(f).liftTo[G]
     def build: SpanOps[G] =
-      builder.build.mapK[G]
+      builder.build.liftTo[G]
   }
 }

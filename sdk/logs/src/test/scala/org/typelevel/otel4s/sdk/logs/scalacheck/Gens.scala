@@ -29,6 +29,7 @@ trait Gens extends org.typelevel.otel4s.sdk.scalacheck.Gens with org.typelevel.o
       severity <- Gen.option(Gens.severity)
       severityText <- Gen.option(Gens.nonEmptyString)
       body <- Gen.option(Gens.anyValue)
+      eventName <- Gen.option(Gens.nonEmptyString)
       attributes <- Gens.limitedAttributes
       instrumentationScope <- Gens.instrumentationScope
       resource <- Gens.telemetryResource
@@ -39,6 +40,7 @@ trait Gens extends org.typelevel.otel4s.sdk.scalacheck.Gens with org.typelevel.o
       severity = severity,
       severityText = severityText,
       body = body,
+      eventName = eventName,
       attributes = attributes,
       instrumentationScope = instrumentationScope,
       resource = resource

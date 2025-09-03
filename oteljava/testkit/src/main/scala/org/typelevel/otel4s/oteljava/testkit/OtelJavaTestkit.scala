@@ -42,10 +42,10 @@ import org.typelevel.otel4s.trace.TracerProvider
 
 sealed abstract class OtelJavaTestkit[F[_]] private (implicit
     val localContext: LocalContext[F]
-) extends Otel4s[F]
+) extends Otel4s.Unsealed[F]
     with LogsTestkit[F]
-    with MetricsTestkit[F]
-    with TracesTestkit[F] {
+    with MetricsTestkit.Unsealed[F]
+    with TracesTestkit.Unsealed[F] {
 
   type Ctx = Context
 

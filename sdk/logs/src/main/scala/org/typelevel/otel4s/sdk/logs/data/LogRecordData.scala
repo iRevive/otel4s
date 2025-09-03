@@ -56,7 +56,7 @@ sealed trait LogRecordData {
     */
   def traceContext: Option[TraceContext]
 
-  /** The severity level.
+  /** The severity level (also known as log level).
     */
   def severity: Option[Severity]
 
@@ -70,6 +70,11 @@ sealed trait LogRecordData {
     * other values.
     */
   def body: Option[AnyValue]
+
+  /** The event name which identifies the class or type of the event. This name should uniquely identify the event
+    * structure (both attributes and body).
+    */
+  def eventName: Option[String]
 
   /** Additional information about the specific event occurrence.
     */
@@ -111,13 +116,16 @@ object LogRecordData {
     *   trace context associated with the log record
     *
     * @param severity
-    *   severity level of the log record
+    *   severity level of the log record (also known as log level)
     *
     * @param severityText
     *   textual representation of the severity level
     *
     * @param body
     *   a value containing the body of the log record
+    *
+    * @param eventName
+    *   the event name, which identifies the class or type of the event
     *
     * @param attributes
     *   set of attributes associated with the log record
@@ -135,6 +143,7 @@ object LogRecordData {
       severity: Option[Severity],
       severityText: Option[String],
       body: Option[AnyValue],
+      eventName: Option[String],
       attributes: LimitedData[Attribute[_], Attributes],
       instrumentationScope: InstrumentationScope,
       resource: TelemetryResource
@@ -146,6 +155,7 @@ object LogRecordData {
       severity = severity,
       severityText = severityText,
       body = body,
+      eventName = eventName,
       attributes = attributes,
       instrumentationScope = instrumentationScope,
       resource = resource
@@ -160,6 +170,7 @@ object LogRecordData {
         data.severity,
         data.severityText,
         data.body,
+        data.eventName,
         data.attributes,
         data.instrumentationScope,
         data.resource
@@ -175,6 +186,7 @@ object LogRecordData {
         s"severity=${data.severity}, " +
         s"severityText=${data.severityText}, " +
         s"body=${data.body}, " +
+        s"eventName=${data.eventName}, " +
         s"attributes=${data.attributes.elements}, " +
         s"instrumentationScope=${data.instrumentationScope}, " +
         s"resource=${data.resource}}"
@@ -187,6 +199,7 @@ object LogRecordData {
       severity: Option[Severity],
       severityText: Option[String],
       body: Option[AnyValue],
+      eventName: Option[String],
       attributes: LimitedData[Attribute[_], Attributes],
       instrumentationScope: InstrumentationScope,
       resource: TelemetryResource

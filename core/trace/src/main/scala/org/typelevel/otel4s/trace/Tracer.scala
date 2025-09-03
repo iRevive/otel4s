@@ -40,7 +40,7 @@ tracerProvider
   .get("com.service.runtime")
   .flatMap { implicit tracer: Tracer[IO] => ??? }
 """)
-trait Tracer[F[_]] extends TracerMacro[F] {
+sealed trait Tracer[F[_]] extends TracerMacro[F] {
 
   /** The instrument's metadata. Indicates whether instrumentation is enabled or not.
     */
@@ -199,14 +199,22 @@ trait Tracer[F[_]] extends TracerMacro[F] {
 
   /** Modify the context `F` using an implicit [[KindTransformer]] from `F` to `G`.
     */
-  def mapK[G[_]: MonadCancelThrow](implicit
+  def liftTo[G[_]: MonadCancelThrow](implicit
       F: MonadCancelThrow[F],
       kt: KindTransformer[F, G]
   ): Tracer[G] =
-    new Tracer.MappedK(this)
+    new Tracer.Lifted(this)
+
+  @deprecated("use `liftTo` instead", since = "otel4s 0.14.0")
+  def mapK[G[_]: MonadCancelThrow](implicit
+      F: MonadCancelThrow[F],
+      kt: KindTransformer[F, G]
+  ): Tracer[G] = liftTo[G]
 }
 
 object Tracer {
+  private[otel4s] trait Unsealed[F[_]] extends Tracer[F]
+
   private[otel4s] def raiseNoCurrentSpan[F[_]](implicit
       F: ApplicativeThrow[F]
   ): F[Span[F]] =
@@ -239,20 +247,20 @@ object Tracer {
         Applicative[F].pure(carrier)
     }
 
-  /** Implementation for [[Tracer.mapK]]. */
-  private class MappedK[F[_]: MonadCancelThrow, G[_]: MonadCancelThrow](
+  /** Implementation for [[Tracer.liftTo]]. */
+  private class Lifted[F[_]: MonadCancelThrow, G[_]: MonadCancelThrow](
       tracer: Tracer[F]
   )(implicit kt: KindTransformer[F, G])
       extends Tracer[G] {
-    val meta: InstrumentMeta.Dynamic[G] = tracer.meta.mapK[G]
+    val meta: InstrumentMeta.Dynamic[G] = tracer.meta.liftTo[G]
     def currentSpanContext: G[Option[SpanContext]] =
       kt.liftK(tracer.currentSpanContext)
     def currentSpanOrNoop: G[Span[G]] =
-      kt.liftK(tracer.currentSpanOrNoop.map(_.mapK[G]))
+      kt.liftK(tracer.currentSpanOrNoop.map(_.liftTo[G]))
     def currentSpanOrThrow: G[Span[G]] =
-      kt.liftK(tracer.currentSpanOrThrow.map(_.mapK[G]))
+      kt.liftK(tracer.currentSpanOrThrow.map(_.liftTo[G]))
     def spanBuilder(name: String): SpanBuilder[G] =
-      tracer.spanBuilder(name).mapK[G]
+      tracer.spanBuilder(name).liftTo[G]
     def childScope[A](parent: SpanContext)(ga: G[A]): G[A] =
       kt.limitedMapK(ga)(new (F ~> F) {
         def apply[B](fb: F[B]): F[B] = tracer.childScope(parent)(fb)

@@ -23,7 +23,7 @@ import org.typelevel.otel4s.logs.LoggerProvider
 import org.typelevel.otel4s.metrics.MeterProvider
 import org.typelevel.otel4s.trace.TracerProvider
 
-trait Otel4s[F[_]] {
+sealed trait Otel4s[F[_]] {
 
   /** The type of context used by telemetry components. */
   type Ctx
@@ -50,4 +50,8 @@ trait Otel4s[F[_]] {
     *   etc) into OpenTelemetry and is '''NOT''' a replacement log API.
     */
   def loggerProvider: LoggerProvider[F, Ctx]
+}
+
+object Otel4s {
+  private[otel4s] trait Unsealed[F[_]] extends Otel4s[F]
 }
