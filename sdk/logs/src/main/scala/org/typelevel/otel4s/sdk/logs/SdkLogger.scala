@@ -40,7 +40,7 @@ private final class SdkLogger[F[_]: Monad: Clock: AskContext](
     traceContextLookup: TraceContext.Lookup,
     logRecordLimits: LogRecordLimits,
     processor: LogRecordProcessor[F]
-) extends Logger[F, Context] {
+) extends Logger.Unsealed[F, Context] {
 
   def logRecordBuilder: LogRecordBuilder[F, Context] =
     SdkLogRecordBuilder.empty(meta, processor, instrumentationScope, resource, traceContextLookup, logRecordLimits)

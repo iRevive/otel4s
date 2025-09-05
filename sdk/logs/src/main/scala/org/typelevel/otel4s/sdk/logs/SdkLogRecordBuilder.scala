@@ -46,7 +46,7 @@ private final case class SdkLogRecordBuilder[F[_]: Monad: Clock: AskContext](
     resource: TelemetryResource,
     traceContextLookup: TraceContext.Lookup,
     state: SdkLogRecordBuilder.State
-) extends LogRecordBuilder[F, Context] {
+) extends LogRecordBuilder.Unsealed[F, Context] {
 
   def withTimestamp(timestamp: FiniteDuration): LogRecordBuilder[F, Context] =
     copy(state = state.copy(timestamp = Some(timestamp)))
@@ -99,6 +99,7 @@ private final case class SdkLogRecordBuilder[F[_]: Monad: Clock: AskContext](
       severity = state.severity,
       severityText = state.severityText,
       body = state.body,
+      eventName = state.eventName,
       attributes = state.attributes,
       instrumentationScope = instrumentationScope,
       resource = resource

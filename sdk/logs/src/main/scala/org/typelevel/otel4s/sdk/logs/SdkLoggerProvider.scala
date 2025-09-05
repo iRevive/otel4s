@@ -43,7 +43,7 @@ private final class SdkLoggerProvider[F[_]: Applicative](
     resource: TelemetryResource,
     limits: LogRecordLimits,
     processor: LogRecordProcessor[F]
-) extends LoggerProvider[F, Context] {
+) extends LoggerProvider.Unsealed[F, Context] {
   import SdkLoggerProvider.DefaultLoggerName
 
   def logger(name: String): LoggerBuilder[F, Context] = {

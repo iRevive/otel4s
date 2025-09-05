@@ -46,7 +46,7 @@ private final class OtlpLogRecordExporterAutoConfigure[
       "OtlpLogRecordExporter",
       Set.empty
     )
-    with AutoConfigure.Named[F, LogRecordExporter[F]] {
+    with AutoConfigure.Named.Unsealed[F, LogRecordExporter[F]] {
 
   def name: String = "otlp"
 
