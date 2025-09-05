@@ -42,6 +42,7 @@ private object LogsJsonCodecs extends JsonCodecs {
           "spanId" := log.traceContext.map(_.spanId.toHex)
         )
         .dropNullValues
+        .dropEmptyValues
     }
 
   implicit val logRecordDataListJsonEncoder: Encoder[List[LogRecordData]] =
