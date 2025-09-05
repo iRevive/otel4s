@@ -33,7 +33,7 @@ import org.typelevel.otel4s.sdk.logs.data.LogRecordData
   * @tparam F
   *   the higher-kinded type of polymorphic effect
   */
-trait LogRecordExporter[F[_]] {
+sealed trait LogRecordExporter[F[_]] {
 
   /** The name of the exporter.
     *
@@ -73,6 +73,7 @@ trait LogRecordExporter[F[_]] {
 }
 
 object LogRecordExporter {
+  private[sdk] trait Unsealed[F[_]] extends LogRecordExporter[F]
 
   /** Creates a [[LogRecordExporter]] which delegates all exports to the exporters.
     */

@@ -157,7 +157,7 @@ class LogRecordExporterSuite extends CatsEffectSuite {
       exporterName: String,
       onExport: Throwable,
       onFlush: Throwable
-  ) extends LogRecordExporter[IO] {
+  ) extends LogRecordExporter.Unsealed[IO] {
     def name: String = exporterName
 
     def exportLogRecords[G[_]: Foldable](logs: G[LogRecordData]): IO[Unit] =
