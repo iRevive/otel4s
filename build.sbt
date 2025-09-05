@@ -541,28 +541,6 @@ lazy val `sdk-exporter-logs` =
   crossProject(JVMPlatform, JSPlatform, NativePlatform)
     .crossType(CrossType.Pure)
     .in(file("sdk-exporter/logs"))
-    .enablePlugins(NoPublishPlugin)
-    .dependsOn(
-      `sdk-exporter-common` % "compile->compile;test->test",
-      `sdk-logs` % "compile->compile;test->test"
-    )
-    .settings(
-      name := "otel4s-sdk-exporter-logs",
-      startYear := Some(2025),
-      Test / scalacOptions ++= {
-        // see https://github.com/circe/circe/issues/2162
-        if (tlIsScala3.value) Seq("-Xmax-inlines", "64") else Nil
-      }
-    )
-    .jsSettings(scalaJSLinkerSettings)
-    .nativeEnablePlugins(ScalaNativeBrewedConfigPlugin)
-    .nativeSettings(scalaNativeSettings)
-    .settings(munitDependencies)
-
-lazy val `sdk-exporter-logs` =
-  crossProject(JVMPlatform, JSPlatform, NativePlatform)
-    .crossType(CrossType.Pure)
-    .in(file("sdk-exporter/logs"))
     .enablePlugins(DockerComposeEnvPlugin)
     .dependsOn(
       `sdk-exporter-common` % "compile->compile;test->test",
