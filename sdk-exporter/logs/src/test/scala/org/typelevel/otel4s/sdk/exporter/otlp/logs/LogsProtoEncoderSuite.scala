@@ -36,10 +36,10 @@ class LogsProtoEncoderSuite extends ScalaCheckSuite {
     Prop.forAll(Gens.logRecordData) { logRecord =>
       val expected = Json
         .obj(
-          "timeUnixNano" := logRecord.timestamp.map(_.toNanos).getOrElse(0L).toString,
+          "timeUnixNano" := logRecord.timestamp.map(_.toNanos).filter(_ > 0).map(_.toString),
           "observedTimeUnixNano" := logRecord.observedTimestamp.toNanos.toString,
-          "severityNumber" := logRecord.severity.map(_.value).getOrElse(0),
-          "severityText" := logRecord.severityText.getOrElse(""),
+          "severityNumber" := logRecord.severity.map(_.value).filter(_ > 0),
+          "severityText" := logRecord.severityText.filter(_.nonEmpty),
           "body" := logRecord.body.map(v => encodeValue(v)),
           "attributes" := logRecord.attributes.elements,
           "droppedAttributesCount" := logRecord.attributes.dropped,
@@ -47,7 +47,6 @@ class LogsProtoEncoderSuite extends ScalaCheckSuite {
           "spanId" := logRecord.traceContext.map(_.spanId.toHex)
         )
         .dropNullValues
-        .dropEmptyValues
 
       assertEquals(ProtoEncoder.toJson(logRecord), expected)
     }
@@ -111,7 +110,7 @@ class LogsProtoEncoderSuite extends ScalaCheckSuite {
         Json.obj("kvlistValue" := v)
 
       case AnyValue.EmptyValueImpl =>
-        Json.Null
+        Json.obj()
     }
   }
 
@@ -119,4 +118,5 @@ class LogsProtoEncoderSuite extends ScalaCheckSuite {
     super.scalaCheckTestParameters
       .withMinSuccessfulTests(5)
       .withMaxSize(5)
+
 }

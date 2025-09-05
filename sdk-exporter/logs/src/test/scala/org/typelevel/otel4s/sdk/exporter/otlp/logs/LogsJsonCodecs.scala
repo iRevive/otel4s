@@ -31,10 +31,10 @@ private object LogsJsonCodecs extends JsonCodecs {
     Encoder.instance { log =>
       Json
         .obj(
-          "timeUnixNano" := log.timestamp.map(_.toNanos.toString),
+          "timeUnixNano" := log.timestamp.map(_.toNanos).filter(_ > 0).map(_.toString),
           "observedTimeUnixNano" := log.observedTimestamp.toNanos.toString,
-          "severityNumber" := log.severity.map(_.value),
-          "severityText" := log.severityText,
+          "severityNumber" := log.severity.map(_.value).filter(_ > 0),
+          "severityText" := log.severityText.filter(_.nonEmpty),
           "body" := log.body.map(encodeValue),
           "attributes" := log.attributes.elements,
           "droppedAttributesCount" := log.attributes.dropped,
@@ -76,17 +76,23 @@ private object LogsJsonCodecs extends JsonCodecs {
 
   private def encodeValue(value: AnyValue): Json = {
     value match {
-      case AnyValue.EmptyValueImpl        => Json.Null
-      case AnyValue.StringValueImpl(v)    => Json.obj("stringValue" := v)
-      case AnyValue.BooleanValueImpl(v)   => Json.obj("boolValue" := v)
-      case AnyValue.LongValueImpl(v)      => Json.obj("intValue" := v.toString)
-      case AnyValue.DoubleValueImpl(v)    => Json.obj("doubleValue" := v)
-      case AnyValue.ByteArrayValueImpl(v) => Json.obj("bytesValue" := ByteVector(v).toBase64)
-      case AnyValue.ListValueImpl(values) => Json.obj("arrayValue" := Json.obj("values" := values.map(encodeValue)))
-      case AnyValue.MapValueImpl(values) =>
-        Json.obj("kvlistValue" := Json.obj("values" := values.map { case (k, v) =>
-          Json.obj("key" := k, "value" := encodeValue(v))
-        }))
+      case _: AnyValue.EmptyValue             => Json.obj()
+      case string: AnyValue.StringValue       => Json.obj("stringValue" := string.value)
+      case boolean: AnyValue.BooleanValue     => Json.obj("boolValue" := boolean.value)
+      case long: AnyValue.LongValue           => Json.obj("intValue" := long.value.toString)
+      case double: AnyValue.DoubleValue       => Json.obj("doubleValue" := double.value)
+      case byteArray: AnyValue.ByteArrayValue => Json.obj("bytesValue" := ByteVector(byteArray.value).toBase64)
+      case list: AnyValue.ListValue =>
+        Json.obj("arrayValue" := Json.obj("values" := list.value.map(encodeValue)).dropEmptyValues)
+
+      case map: AnyValue.MapValue =>
+        Json.obj(
+          "kvlistValue" := Json
+            .obj("values" := map.value.map { case (k, v) =>
+              Json.obj("key" := k, "value" := encodeValue(v))
+            })
+            .dropEmptyValues
+        )
     }
   }
 }

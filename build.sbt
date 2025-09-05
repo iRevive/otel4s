@@ -86,7 +86,7 @@ ThisBuild / mergifyPrRules ++= Seq(
 val CatsVersion = "2.11.0"
 val CatsEffectVersion = "3.6.3"
 val CatsMtlVersion = "1.4.0"
-val FS2Version = "3.12.0"
+val FS2Version = "3.12.2"
 val MUnitVersion = "1.0.0"
 val MUnitScalaCheckVersion = "1.0.0-M11"
 val MUnitCatsEffectVersion = "2.1.0"
@@ -531,6 +531,28 @@ lazy val `sdk-exporter-common` =
         "org.typelevel" %%% "discipline-munit" % MUnitDisciplineVersion % Test,
         "io.circe" %%% "circe-generic" % CirceVersion % Test
       )
+    )
+    .jsSettings(scalaJSLinkerSettings)
+    .nativeEnablePlugins(ScalaNativeBrewedConfigPlugin)
+    .nativeSettings(scalaNativeSettings)
+    .settings(munitDependencies)
+
+lazy val `sdk-exporter-logs` =
+  crossProject(JVMPlatform, JSPlatform, NativePlatform)
+    .crossType(CrossType.Pure)
+    .in(file("sdk-exporter/logs"))
+    .enablePlugins(NoPublishPlugin)
+    .dependsOn(
+      `sdk-exporter-common` % "compile->compile;test->test",
+      `sdk-logs` % "compile->compile;test->test"
+    )
+    .settings(
+      name := "otel4s-sdk-exporter-logs",
+      startYear := Some(2025),
+      Test / scalacOptions ++= {
+        // see https://github.com/circe/circe/issues/2162
+        if (tlIsScala3.value) Seq("-Xmax-inlines", "64") else Nil
+      }
     )
     .jsSettings(scalaJSLinkerSettings)
     .nativeEnablePlugins(ScalaNativeBrewedConfigPlugin)
