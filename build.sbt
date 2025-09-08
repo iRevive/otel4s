@@ -767,16 +767,6 @@ lazy val `oteljava-logs-testkit` = project
     startYear := Some(2025)
   )
 
-lazy val `oteljava-logs-testkit` = project
-  .in(file("oteljava/logs-testkit"))
-  .enablePlugins(NoPublishPlugin)
-  .dependsOn(`oteljava-logs`, `oteljava-common-testkit`)
-  .settings(munitDependencies)
-  .settings(
-    name := "otel4s-oteljava-logs-testkit",
-    startYear := Some(2025)
-  )
-
 lazy val `oteljava-metrics` = project
   .in(file("oteljava/metrics"))
   .dependsOn(
