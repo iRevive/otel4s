@@ -546,7 +546,6 @@ lazy val `sdk-exporter-logs` =
     .crossType(CrossType.Pure)
     .in(file("sdk-exporter/logs"))
     .enablePlugins(DockerComposeEnvPlugin)
-    .enablePlugins(DockerComposeEnvPlugin)
     .dependsOn(
       `sdk-exporter-common` % "compile->compile;test->test",
       `sdk-logs` % "compile->compile;test->test"
@@ -751,11 +750,11 @@ lazy val `oteljava-logs` = project
   .settings(munitDependencies)
   .settings(
     name := "otel4s-oteljava-logs",
-    startYear := Some(2025),
     libraryDependencies ++= Seq(
       "io.opentelemetry" % "opentelemetry-sdk-testing" % OpenTelemetryVersion % Test,
       "org.typelevel" %%% "scalacheck-effect-munit" % MUnitScalaCheckEffectVersion % Test,
-    )
+    ),
+    startYear := Some(2025),
   )
 
 lazy val `oteljava-logs-testkit` = project
