@@ -22,7 +22,6 @@ import cats.effect.std.Console
 import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
 import org.typelevel.otel4s.sdk.context.Context
-import org.typelevel.otel4s.sdk.logs.LogRecordRef
 import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
 
 /** An implementation of the [[LogRecordProcessor]] that passes [[data.LogRecordData LogRecordData]] directly to the
@@ -62,7 +61,7 @@ object SimpleLogRecordProcessor {
   /** Creates a [[SimpleLogRecordProcessor]] that passes log records to the given `exporter`.
     *
     * @param exporter
-    *   the [[LogRecordExporter]] to use
+    *   the [[exporter.LogRecordExporter LogRecordExporter]] to use
     */
   def apply[F[_]: MonadThrow: Console](exporter: LogRecordExporter[F]): LogRecordProcessor[F] =
     new SimpleLogRecordProcessor[F](exporter)
