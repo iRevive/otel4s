@@ -92,7 +92,7 @@ val MUnitScalaCheckVersion = "1.0.0-M11"
 val MUnitCatsEffectVersion = "2.1.0"
 val MUnitDisciplineVersion = "2.0.0-M3"
 val MUnitScalaCheckEffectVersion = "2.0.0-M2"
-val OpenTelemetryVersion = "1.53.0"
+val OpenTelemetryVersion = "1.54.0"
 val OpenTelemetryAlphaVersion = s"$OpenTelemetryVersion-alpha"
 val OpenTelemetryInstrumentationVersion = "2.19.0"
 val OpenTelemetryInstrumentationAlphaVersion = s"$OpenTelemetryInstrumentationVersion-alpha"
@@ -109,6 +109,7 @@ val Http4sVersion = "0.23.30"
 val CirceVersion = "0.14.8"
 val ScalaPBCirceVersion = "0.15.1"
 val CaseInsensitiveVersion = "1.4.2"
+val ScalaJavaTimeVersion = "2.6.0"
 
 lazy val scalaReflectDependency = Def.settings(
   libraryDependencies ++= {
@@ -341,6 +342,9 @@ lazy val `sdk-logs` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   )
   .settings(munitDependencies)
   .jsSettings(scalaJSLinkerSettings)
+  .jsSettings(
+    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % ScalaJavaTimeVersion,
+  )
 
 lazy val `sdk-logs-testkit` =
   crossProject(JVMPlatform, JSPlatform, NativePlatform)
@@ -541,6 +545,7 @@ lazy val `sdk-exporter-logs` =
   crossProject(JVMPlatform, JSPlatform, NativePlatform)
     .crossType(CrossType.Pure)
     .in(file("sdk-exporter/logs"))
+    .enablePlugins(DockerComposeEnvPlugin)
     .enablePlugins(DockerComposeEnvPlugin)
     .dependsOn(
       `sdk-exporter-common` % "compile->compile;test->test",
@@ -755,6 +760,16 @@ lazy val `oteljava-logs` = project
 
 lazy val `oteljava-logs-testkit` = project
   .in(file("oteljava/logs-testkit"))
+  .dependsOn(`oteljava-logs`, `oteljava-common-testkit`)
+  .settings(munitDependencies)
+  .settings(
+    name := "otel4s-oteljava-logs-testkit",
+    startYear := Some(2025)
+  )
+
+lazy val `oteljava-logs-testkit` = project
+  .in(file("oteljava/logs-testkit"))
+  .enablePlugins(NoPublishPlugin)
   .dependsOn(`oteljava-logs`, `oteljava-common-testkit`)
   .settings(munitDependencies)
   .settings(

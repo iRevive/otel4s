@@ -31,10 +31,13 @@ import java.time.format.DateTimeFormatter
   * @note
   *   use this exporter for debugging purposes because it may affect the performance
   *
+  * @see
+  *   [[https://opentelemetry.io/docs/specs/otel/logs/sdk_exporters/stdout/]]
+  *
   * @tparam F
   *   the higher-kinded type of a polymorphic effect
   */
-private final class ConsoleLogRecordExporter[F[_]: Monad: Console] extends LogRecordExporter[F] {
+private final class ConsoleLogRecordExporter[F[_]: Monad: Console] extends LogRecordExporter.Unsealed[F] {
 
   val name: String = "ConsoleLogRecordExporter"
 

@@ -32,9 +32,6 @@ import org.http4s.Uri
 import org.http4s.client.Client
 import org.http4s.syntax.literals._
 import org.typelevel.otel4s.sdk.exporter.RetryPolicy
-import org.typelevel.otel4s.sdk.exporter.otlp.OtlpClient
-import org.typelevel.otel4s.sdk.exporter.otlp.OtlpProtocol
-import org.typelevel.otel4s.sdk.exporter.otlp.PayloadCompression
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
 
@@ -58,7 +55,7 @@ import scala.concurrent.duration._
   */
 private final class OtlpLogRecordExporter[F[_]: Applicative] private[otlp] (
     client: OtlpClient[F, LogRecordData]
-) extends LogRecordExporter[F] {
+) extends LogRecordExporter.Unsealed[F] {
 
   val name: String = s"OtlpLogRecordExporter{client=$client}"
 

@@ -23,8 +23,8 @@ import cats.syntax.all._
 import io.opentelemetry.sdk.logs.LogRecordProcessor
 import io.opentelemetry.sdk.logs.SdkLoggerProvider
 import io.opentelemetry.sdk.logs.SdkLoggerProviderBuilder
-import io.opentelemetry.sdk.logs.export.LogRecordExporter
-import io.opentelemetry.sdk.logs.export.SimpleLogRecordProcessor
+import io.opentelemetry.sdk.logs.`export`.LogRecordExporter
+import io.opentelemetry.sdk.logs.`export`.SimpleLogRecordProcessor
 import io.opentelemetry.sdk.testing.exporter.InMemoryLogRecordExporter
 import org.typelevel.otel4s.logs.LoggerProvider
 import org.typelevel.otel4s.oteljava.context.AskContext
@@ -34,7 +34,7 @@ import org.typelevel.otel4s.oteljava.testkit.Conversions
 
 import scala.jdk.CollectionConverters._
 
-trait LogsTestkit[F[_]] {
+sealed trait LogsTestkit[F[_]] {
 
   /** The [[org.typelevel.otel4s.logs.LoggerProvider LoggerProvider]].
     */
@@ -45,19 +45,22 @@ trait LogsTestkit[F[_]] {
     * @example
     *   {{{
     * import io.opentelemetry.sdk.logs.data.LogRecordData
-    * import org.typelevel.otel4s.oteljava.testkit.logs.data.LogRecord
     *
     * LogsTestkit[F].collectLogs[LogRecordData] // OpenTelemetry Java models
-    * LogsTestkit[F].collectLogs[LogRecord] // Otel4s testkit models
     *   }}}
     *
-    * @note
-    *   logs are recollected on each invocation
+    * @see
+    *   [[resetLogs]] to reset the internal buffer
     */
   def collectLogs[A: FromLogRecordData]: F[List[A]]
+
+  /** Resets the internal buffer.
+    */
+  def resetLogs: F[Unit]
 }
 
 object LogsTestkit {
+  private[oteljava] trait Unsealed[F[_]] extends LogsTestkit[F]
 
   /** Creates [[LogsTestkit]] that keeps logs in-memory.
     *
@@ -110,6 +113,9 @@ object LogsTestkit {
         )
         result <- Async[F].delay(exporter.getFinishedLogRecordItems)
       } yield result.asScala.toList.map(FromLogRecordData[A].from)
+
+    def resetLogs: F[Unit] =
+      Async[F].delay(exporter.reset())
 
   }
 }

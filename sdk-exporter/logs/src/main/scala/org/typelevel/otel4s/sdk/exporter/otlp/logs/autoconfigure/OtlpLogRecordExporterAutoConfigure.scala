@@ -39,10 +39,9 @@ import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
   * @see
   *   [[https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/#otel_exporter_otlp_protocol]]
   */
-private final class OtlpLogRecordExporterAutoConfigure[
-    F[_]: Async: Network: Compression: Console
-](customClient: Option[Client[F]])
-    extends AutoConfigure.WithHint[F, LogRecordExporter[F]](
+private final class OtlpLogRecordExporterAutoConfigure[F[_]: Async: Network: Compression: Console](
+    customClient: Option[Client[F]]
+) extends AutoConfigure.WithHint[F, LogRecordExporter[F]](
       "OtlpLogRecordExporter",
       Set.empty
     )
