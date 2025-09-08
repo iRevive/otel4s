@@ -25,6 +25,7 @@ import munit.ScalaCheckEffectSuite
 import org.scalacheck.Test
 import org.scalacheck.effect.PropF
 import org.typelevel.otel4s.sdk.context.Context
+import org.typelevel.otel4s.sdk.logs.LogRecordRef
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 import org.typelevel.otel4s.sdk.logs.exporter.InMemoryLogRecordExporter
 import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
@@ -54,7 +55,7 @@ class BatchLogRecordProcessorSuite extends CatsEffectSuite with ScalaCheckEffect
       for {
         exporter <- InMemoryLogRecordExporter.create[IO](None)
         _ <- BatchLogRecordProcessor.builder(exporter).build.use { p =>
-          logs.traverse_(log => p.onEmit(Context.root, log)) *> p.forceFlush
+          logs.traverse_(log => LogRecordRef.create[IO](log).flatMap(p.onEmit(Context.root, _))) *> p.forceFlush
         }
         exported <- exporter.finishedLogs
         _ = assertEquals(
@@ -72,7 +73,9 @@ class BatchLogRecordProcessorSuite extends CatsEffectSuite with ScalaCheckEffect
 
       for {
         attempts <- BatchLogRecordProcessor.builder(exporter).build.use { p =>
-          logs.traverse(log => p.onEmit(Context.root, log).attempt) *> p.forceFlush.attempt
+          logs.traverse_ { log =>
+            LogRecordRef.create[IO](log).flatMap(p.onEmit(Context.root, _)).attempt
+          } *> p.forceFlush.attempt
         }
         _ = assertEquals(attempts, Right(()))
       } yield ()
@@ -84,7 +87,7 @@ class BatchLogRecordProcessorSuite extends CatsEffectSuite with ScalaCheckEffect
       .withMinSuccessfulTests(10)
       .withMaxSize(10)
 
-  private class FailingExporter(exporterName: String, onExport: Throwable) extends LogRecordExporter[IO] {
+  private class FailingExporter(exporterName: String, onExport: Throwable) extends LogRecordExporter.Unsealed[IO] {
     def name: String = exporterName
 
     def exportLogRecords[G[_]: Foldable](logs: G[LogRecordData]): IO[Unit] =

@@ -16,8 +16,7 @@
 
 package org.typelevel.otel4s.sdk.logs
 
-import cats.Monad
-import cats.effect.Clock
+import cats.effect.Temporal
 import cats.mtl.Ask
 import cats.syntax.all._
 import org.typelevel.otel4s.AnyValue
@@ -39,7 +38,7 @@ import java.time.Instant
 import scala.collection.immutable
 import scala.concurrent.duration._
 
-private final case class SdkLogRecordBuilder[F[_]: Monad: Clock: AskContext](
+private final case class SdkLogRecordBuilder[F[_]: Temporal: AskContext](
     meta: InstrumentMeta.Dynamic[F],
     processor: LogRecordProcessor[F],
     instrumentationScope: InstrumentationScope,
@@ -87,8 +86,9 @@ private final case class SdkLogRecordBuilder[F[_]: Monad: Clock: AskContext](
   def emit: F[Unit] =
     for {
       context <- Ask[F, Context].ask
-      observedTimestamp <- state.observedTimestamp.fold(Clock[F].realTime)(Monad[F].pure(_))
-      _ <- processor.onEmit(context, toLogRecord(observedTimestamp))
+      observedTimestamp <- state.observedTimestamp.fold(Temporal[F].realTime)(Temporal[F].pure(_))
+      record <- LogRecordRef.create(toLogRecord(observedTimestamp))
+      _ <- processor.onEmit(context, record)
     } yield ()
 
   private def toLogRecord(observedTimestamp: FiniteDuration): LogRecordData =
@@ -110,7 +110,7 @@ private object SdkLogRecordBuilder {
 
   private val DefaultEmptyState = emptyState(LogRecordLimits.default)
 
-  def empty[F[_]: Monad: Clock: AskContext](
+  def empty[F[_]: Temporal: AskContext](
       meta: InstrumentMeta.Dynamic[F],
       processor: LogRecordProcessor[F],
       instrumentationScope: InstrumentationScope,

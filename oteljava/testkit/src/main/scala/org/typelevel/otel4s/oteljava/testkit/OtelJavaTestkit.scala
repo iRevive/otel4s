@@ -43,7 +43,7 @@ import org.typelevel.otel4s.trace.TracerProvider
 sealed abstract class OtelJavaTestkit[F[_]] private (implicit
     val localContext: LocalContext[F]
 ) extends Otel4s.Unsealed[F]
-    with LogsTestkit[F]
+    with LogsTestkit.Unsealed[F]
     with MetricsTestkit.Unsealed[F]
     with TracesTestkit.Unsealed[F] {
 
@@ -101,6 +101,7 @@ object OtelJavaTestkit {
     def resetSpans: F[Unit] = traces.resetSpans
     def collectMetrics[A: FromMetricData]: F[List[A]] = metrics.collectMetrics
     def collectLogs[A: FromLogRecordData]: F[List[A]] = logs.collectLogs
+    def resetLogs: F[Unit] = logs.resetLogs
   }
 
 }

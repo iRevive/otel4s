@@ -25,6 +25,7 @@ import cats.effect.std.Queue
 import cats.effect.syntax.all._
 import cats.syntax.all._
 import org.typelevel.otel4s.sdk.context.Context
+import org.typelevel.otel4s.sdk.logs.LogRecordRef
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
 
@@ -51,7 +52,7 @@ private final class BatchLogRecordProcessor[F[_]: Temporal: Console] private (
     state: Ref[F, BatchLogRecordProcessor.State],
     exporter: LogRecordExporter[F],
     config: BatchLogRecordProcessor.Config
-) extends LogRecordProcessor[F] {
+) extends LogRecordProcessor.Unsealed[F] {
 
   import BatchLogRecordProcessor.State
 
@@ -64,7 +65,7 @@ private final class BatchLogRecordProcessor[F[_]: Temporal: Console] private (
     s"maxQueueSize=${config.maxQueueSize}, " +
     s"maxExportBatchSize=${config.maxExportBatchSize}}"
 
-  def onEmit(context: Context, logRecord: LogRecordData): F[Unit] = {
+  def onEmit(context: Context, logRecordRef: LogRecordRef[F]): F[Unit] = {
     def notifyWorker: F[Unit] =
       for {
         queueSize <- queue.size
@@ -73,6 +74,7 @@ private final class BatchLogRecordProcessor[F[_]: Temporal: Console] private (
       } yield ()
 
     for {
+      logRecord <- logRecordRef.toLogRecordData
       offered <- queue.tryOffer(logRecord)
       _ <- if (offered) notifyWorker else unit
     } yield ()

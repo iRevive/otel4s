@@ -25,6 +25,7 @@ import munit.ScalaCheckEffectSuite
 import org.scalacheck.Test
 import org.scalacheck.effect.PropF
 import org.typelevel.otel4s.sdk.context.Context
+import org.typelevel.otel4s.sdk.logs.LogRecordRef
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 import org.typelevel.otel4s.sdk.logs.exporter.InMemoryLogRecordExporter
 import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
@@ -54,7 +55,7 @@ class SimpleLogRecordProcessorSuite extends CatsEffectSuite with ScalaCheckEffec
       for {
         exporter <- InMemoryLogRecordExporter.create[IO](None)
         processor = SimpleLogRecordProcessor(exporter)
-        _ <- logs.traverse_(log => processor.onEmit(Context.root, log))
+        _ <- logs.traverse_(log => LogRecordRef.create[IO](log).flatMap(processor.onEmit(Context.root, _)))
         exported <- exporter.finishedLogs
         _ = assertEquals(
           exported.map(_.observedTimestamp),
@@ -71,7 +72,9 @@ class SimpleLogRecordProcessorSuite extends CatsEffectSuite with ScalaCheckEffec
       val processor = SimpleLogRecordProcessor(exporter)
 
       for {
-        attempts <- logs.traverse(log => processor.onEmit(Context.root, log).attempt)
+        attempts <- logs.traverse { log =>
+          LogRecordRef.create[IO](log).flatMap(processor.onEmit(Context.root, _)).attempt
+        }
         _ = assertEquals(attempts, List.fill(logs.size)(Right(())))
       } yield ()
     }
@@ -82,7 +85,7 @@ class SimpleLogRecordProcessorSuite extends CatsEffectSuite with ScalaCheckEffec
       .withMinSuccessfulTests(10)
       .withMaxSize(10)
 
-  private class FailingExporter(exporterName: String, onExport: Throwable) extends LogRecordExporter[IO] {
+  private class FailingExporter(exporterName: String, onExport: Throwable) extends LogRecordExporter.Unsealed[IO] {
     def name: String = exporterName
 
     def exportLogRecords[G[_]: Foldable](logs: G[LogRecordData]): IO[Unit] =

@@ -14,16 +14,19 @@
  * limitations under the License.
  */
 
-package org.typelevel.otel4s.sdk.logs.processor
+package org.typelevel.otel4s.sdk.logs
+package processor
 
-import cats.ApplicativeThrow
+import cats.MonadThrow
 import cats.effect.std.Console
 import cats.syntax.applicativeError._
+import cats.syntax.flatMap._
 import org.typelevel.otel4s.sdk.context.Context
-import org.typelevel.otel4s.sdk.logs.data.LogRecordData
+import org.typelevel.otel4s.sdk.logs.LogRecordRef
 import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
 
-/** An implementation of the [[LogRecordProcessor]] that passes [[LogRecordData]] directly to the configured exporter.
+/** An implementation of the [[LogRecordProcessor]] that passes [[data.LogRecordData LogRecordData]] directly to the
+  * configured exporter.
   *
   * @note
   *   this processor exports logs individually upon completion, resulting in a single log per export request.
@@ -34,22 +37,24 @@ import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
   * @tparam F
   *   the higher-kinded type of polymorphic effect
   */
-private final class SimpleLogRecordProcessor[F[_]: ApplicativeThrow: Console] private (
+private final class SimpleLogRecordProcessor[F[_]: MonadThrow: Console] private (
     exporter: LogRecordExporter[F]
-) extends LogRecordProcessor[F] {
+) extends LogRecordProcessor.Unsealed[F] {
 
   val name: String =
     s"SimpleLogRecordProcessor{exporter=${exporter.name}}"
 
-  def onEmit(context: Context, logRecord: LogRecordData): F[Unit] =
-    exporter.exportLogRecords(List(logRecord)).handleErrorWith { e =>
-      Console[F].errorln(
-        s"SimpleLogRecordProcessor: the export has failed: ${e.getMessage}\n${e.getStackTrace.mkString("\n")}\n"
-      )
-    }
+  def onEmit(context: Context, logRecordRef: LogRecordRef[F]): F[Unit] =
+    logRecordRef.toLogRecordData
+      .flatMap(logRecord => exporter.exportLogRecords(List(logRecord)))
+      .handleErrorWith { e =>
+        Console[F].errorln(
+          s"SimpleLogRecordProcessor: the export has failed: ${e.getMessage}\n${e.getStackTrace.mkString("\n")}\n"
+        )
+      }
 
   def forceFlush: F[Unit] =
-    ApplicativeThrow[F].unit
+    MonadThrow[F].unit
 }
 
 object SimpleLogRecordProcessor {
@@ -59,7 +64,7 @@ object SimpleLogRecordProcessor {
     * @param exporter
     *   the [[LogRecordExporter]] to use
     */
-  def apply[F[_]: ApplicativeThrow: Console](exporter: LogRecordExporter[F]): LogRecordProcessor[F] =
+  def apply[F[_]: MonadThrow: Console](exporter: LogRecordExporter[F]): LogRecordProcessor[F] =
     new SimpleLogRecordProcessor[F](exporter)
 
 }

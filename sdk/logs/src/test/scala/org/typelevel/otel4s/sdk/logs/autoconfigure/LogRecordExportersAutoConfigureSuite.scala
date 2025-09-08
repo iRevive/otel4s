@@ -124,7 +124,7 @@ class LogRecordExportersAutoConfigureSuite extends CatsEffectSuite {
   }
 
   private def customExporter(exporterName: String): LogRecordExporter[IO] =
-    new LogRecordExporter[IO] {
+    new LogRecordExporter.Unsealed[IO] {
       def name: String = exporterName
       def exportLogRecords[G[_]: Foldable](logs: G[LogRecordData]): IO[Unit] = ???
       def flush: IO[Unit] = IO.unit

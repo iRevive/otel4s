@@ -16,8 +16,7 @@
 
 package org.typelevel.otel4s.sdk.logs
 
-import cats.Monad
-import cats.effect.kernel.Clock
+import cats.effect.Temporal
 import org.typelevel.otel4s.logs.LogRecordBuilder
 import org.typelevel.otel4s.logs.Logger
 import org.typelevel.otel4s.meta.InstrumentMeta
@@ -33,7 +32,7 @@ import org.typelevel.otel4s.sdk.logs.processor.LogRecordProcessor
   * @see
   *   [[https://opentelemetry.io/docs/specs/otel/logs/sdk/#logger]]
   */
-private final class SdkLogger[F[_]: Monad: Clock: AskContext](
+private final class SdkLogger[F[_]: Temporal: AskContext](
     val meta: InstrumentMeta.Dynamic[F],
     instrumentationScope: InstrumentationScope,
     resource: TelemetryResource,

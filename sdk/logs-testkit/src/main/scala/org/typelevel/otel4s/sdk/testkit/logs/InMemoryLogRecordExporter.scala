@@ -27,7 +27,7 @@ import org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter
 
 final class InMemoryLogRecordExporter[F[_]: Monad] private (
     queue: Queue[F, LogRecordData]
-) extends LogRecordExporter[F] {
+) extends LogRecordExporter.Unsealed[F] {
 
   def name: String = "InMemoryLogRecordExporter"
 
