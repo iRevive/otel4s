@@ -23,15 +23,17 @@ import cats.Parallel
 import cats.data.NonEmptyList
 import cats.syntax.all._
 import org.typelevel.otel4s.sdk.context.Context
-import org.typelevel.otel4s.sdk.logs.data.LogRecordData
+import org.typelevel.otel4s.sdk.logs.LogRecordRef
 
-/** @see
+/** The interface that log record builder uses to emit the log record.
+  *
+  * @see
   *   [[https://opentelemetry.io/docs/specs/otel/logs/sdk/#logrecordprocessor]]
   *
   * @tparam F
   *   the higher-kinded type of polymorphic effect
   */
-trait LogRecordProcessor[F[_]] {
+sealed trait LogRecordProcessor[F[_]] {
 
   /** The name of the processor.
     *
@@ -45,9 +47,14 @@ trait LogRecordProcessor[F[_]] {
     */
   def name: String
 
-  def onEmit(context: Context, logRecord: LogRecordData): F[Unit] // todo: must be ReadWriteLogRecord
+  /** Called when a log record is emitted.
+    *
+    * @note
+    *   the handler is called synchronously on the execution thread, should not throw or block the execution thread.
+    */
+  def onEmit(context: Context, logRecord: LogRecordRef[F]): F[Unit]
 
-  /** Processes all pending spans (if any).
+  /** Processes all pending log records (if any).
     */
   def forceFlush: F[Unit]
 
@@ -56,6 +63,7 @@ trait LogRecordProcessor[F[_]] {
 }
 
 object LogRecordProcessor {
+  private[sdk] trait Unsealed[F[_]] extends LogRecordProcessor[F]
 
   /** Creates a [[LogRecordProcessor]] which delegates all processing to the processors in order.
     */
@@ -125,7 +133,7 @@ object LogRecordProcessor {
   private final class Noop[F[_]: Applicative] extends LogRecordProcessor[F] {
     private val unit = Applicative[F].unit
     val name: String = "LogRecordProcessor.Noop"
-    def onEmit(context: Context, logRecord: LogRecordData): F[Unit] = unit
+    def onEmit(context: Context, logRecord: LogRecordRef[F]): F[Unit] = unit
     def forceFlush: F[Unit] = unit
   }
 
@@ -135,7 +143,7 @@ object LogRecordProcessor {
     val name: String =
       s"LogRecordProcessor.Multi(${processors.map(_.name).mkString_(", ")})"
 
-    def onEmit(context: Context, logRecord: LogRecordData): F[Unit] =
+    def onEmit(context: Context, logRecord: LogRecordRef[F]): F[Unit] =
       processors
         .parTraverse(p => p.onEmit(context, logRecord).attempt.tupleLeft(p.name))
         .flatMap(attempts => handleAttempts(attempts))

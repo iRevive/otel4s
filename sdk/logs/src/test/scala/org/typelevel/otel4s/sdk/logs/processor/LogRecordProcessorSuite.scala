@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import cats.effect.IO
 import munit.FunSuite
 import org.typelevel.otel4s.sdk.context.Context
-import org.typelevel.otel4s.sdk.logs.data.LogRecordData
+import org.typelevel.otel4s.sdk.logs.LogRecordRef
 
 class LogRecordProcessorSuite extends FunSuite {
 
@@ -125,9 +125,9 @@ class LogRecordProcessorSuite extends FunSuite {
       emit: IO[Unit] = IO.unit,
       flush: IO[Unit] = IO.unit,
   ): LogRecordProcessor[IO] =
-    new LogRecordProcessor[IO] {
+    new LogRecordProcessor.Unsealed[IO] {
       def name: String = processorName
-      def onEmit(context: Context, logRecord: LogRecordData): IO[Unit] = emit
+      def onEmit(context: Context, logRecord: LogRecordRef[IO]): IO[Unit] = emit
       def forceFlush: IO[Unit] = flush
     }
 
