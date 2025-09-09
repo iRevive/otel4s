@@ -171,7 +171,7 @@ private final class BatchLogRecordProcessor[F[_]: Temporal: Console] private (
 object BatchLogRecordProcessor {
 
   /** Builder for [[BatchLogRecordProcessor]]. */
-  trait Builder[F[_]] {
+  sealed trait Builder[F[_]] {
 
     /** Sets the delay interval between two consecutive exports.
       *
@@ -206,7 +206,7 @@ object BatchLogRecordProcessor {
   /** Create a [[Builder]] for [[BatchLogRecordProcessor]].
     *
     * @param exporter
-    *   the [[LogRecordExporter]] to which the logs are pushed
+    *   the [[org.typelevel.otel4s.sdk.logs.exporter.LogRecordExporter LogRecordExporter]] to which the logs are pushed
     */
   def builder[F[_]: Temporal: Console](exporter: LogRecordExporter[F]): Builder[F] =
     new BuilderImpl[F](

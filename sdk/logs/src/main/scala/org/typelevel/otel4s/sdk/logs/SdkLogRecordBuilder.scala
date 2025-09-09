@@ -87,15 +87,15 @@ private final case class SdkLogRecordBuilder[F[_]: Temporal: AskContext](
     for {
       context <- Ask[F, Context].ask
       observedTimestamp <- state.observedTimestamp.fold(Temporal[F].realTime)(Temporal[F].pure(_))
-      record <- LogRecordRef.create(toLogRecord(observedTimestamp))
+      record <- LogRecordRef.create(toLogRecord(observedTimestamp, context))
       _ <- processor.onEmit(context, record)
     } yield ()
 
-  private def toLogRecord(observedTimestamp: FiniteDuration): LogRecordData =
+  private def toLogRecord(observedTimestamp: FiniteDuration, context: Context): LogRecordData =
     LogRecordData(
       timestamp = state.timestamp,
       observedTimestamp = observedTimestamp,
-      traceContext = state.context.flatMap(ctx => traceContextLookup.get(ctx)),
+      traceContext = traceContextLookup.get(state.context.getOrElse(context)),
       severity = state.severity,
       severityText = state.severityText,
       body = state.body,
