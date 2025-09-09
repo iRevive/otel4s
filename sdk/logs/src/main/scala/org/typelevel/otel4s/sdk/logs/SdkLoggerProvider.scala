@@ -106,7 +106,7 @@ object SdkLoggerProvider {
     /** Adds a [[org.typelevel.otel4s.sdk.logs.processor.LogRecordProcessor LogRecordProcessor]] to the log record
       * processing pipeline that will be built.
       *
-      * The processor will be called each time a [[org.typelevel.otel4s.logs.LogRecord LogRecord]] is emitted.
+      * The processor will be called each time a [[org.typelevel.otel4s.sdk.logs.LogRecordRef LogRecordRef]] is emitted.
       *
       * @note
       *   the span processor must be thread-safe and return immediately (no remote calls, as contention free as
