@@ -116,7 +116,7 @@ private[sdk] object BatchLogRecordProcessorAutoConfigure {
     * }}}
     *
     * @see
-    *   [[https://opentelemetry.io/docs/languages/java/configuration/#batch-span-processor]]
+    *   [[https://opentelemetry.io/docs/languages/java/configuration/#properties-logs]]
     *
     * @param exporter
     *   the exporter to use with the configured batch log record processor
