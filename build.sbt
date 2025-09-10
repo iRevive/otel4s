@@ -346,15 +346,14 @@ lazy val `sdk-logs` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % ScalaJavaTimeVersion,
   )
 
-lazy val `sdk-logs-testkit` =
-  crossProject(JVMPlatform, JSPlatform, NativePlatform)
-    .crossType(CrossType.Pure)
-    .in(file("sdk/logs-testkit"))
-    .dependsOn(`sdk-logs`)
-    .settings(
-      name := "otel4s-sdk-logs-testkit",
-      startYear := Some(2025)
-    )
+lazy val `sdk-logs-testkit` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
+  .crossType(CrossType.Pure)
+  .in(file("sdk/logs-testkit"))
+  .dependsOn(`sdk-logs`)
+  .settings(
+    name := "otel4s-sdk-logs-testkit",
+    startYear := Some(2025)
+  )
 
 lazy val `sdk-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
