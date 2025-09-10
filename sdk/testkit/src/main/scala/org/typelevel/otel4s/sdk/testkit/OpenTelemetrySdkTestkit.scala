@@ -52,7 +52,7 @@ sealed abstract class OpenTelemetrySdkTestkit[F[_]] private (implicit
 ) extends Otel4s.Unsealed[F]
     with MetricsTestkit.Unsealed[F]
     with TracesTestkit.Unsealed[F]
-    with LogsTestkit[F] {
+    with LogsTestkit.Unsealed[F] {
 
   type Ctx = Context
 

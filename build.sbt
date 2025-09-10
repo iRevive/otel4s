@@ -220,8 +220,7 @@ lazy val `core-logs` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     libraryDependencies ++= Seq(
       "org.typelevel" %%% "cats-laws" % CatsVersion % Test,
       "org.typelevel" %%% "discipline-munit" % MUnitDisciplineVersion % Test
-    ),
-    mimaPreviousArtifacts := Set.empty
+    )
   )
 
 lazy val `core-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)

@@ -75,6 +75,13 @@ object SdkLogs {
     *
     * @param customize
     *   a function for customizing the auto-configured SDK builder
+    *
+    * @note
+    *   this implementation uses a constant root `Context` via `Ask.const(Context.root)`. That means the module is
+    *   isolated: it does not inherit or propagate the surrounding span context. This is useful if you only need logging
+    *   (without traces or metrics) and want the module to operate independently. If instead you want interoperability -
+    *   i.e. to capture the current span context so that logs, traces, and metrics can all work together - use
+    *   `OpenTelemetrySdk.autoConfigured`.
     */
   def autoConfigured[F[_]: Async: Parallel: Env: SystemProperties: Console](
       customize: AutoConfigured.Builder[F] => AutoConfigured.Builder[F] = (a: AutoConfigured.Builder[F]) => a
@@ -247,8 +254,8 @@ object SdkLogs {
             )
 
           for {
-            tracerProvider <- loggerProviderConfigure.configure(config)
-          } yield new Impl[F](tracerProvider)
+            loggerProvider <- loggerProviderConfigure.configure(config)
+          } yield new Impl[F](loggerProvider)
         }
 
         for {
