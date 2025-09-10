@@ -28,7 +28,7 @@ import org.typelevel.otel4s.sdk.logs.SdkLoggerProvider
 import org.typelevel.otel4s.sdk.logs.data.LogRecordData
 import org.typelevel.otel4s.sdk.logs.processor.SimpleLogRecordProcessor
 
-trait LogsTestkit[F[_]] {
+sealed trait LogsTestkit[F[_]] {
 
   /** The [[org.typelevel.otel4s.logs.LoggerProvider LoggerProvider]].
     */
@@ -43,11 +43,19 @@ trait LogsTestkit[F[_]] {
 }
 
 object LogsTestkit {
+  private[sdk] trait Unsealed[F[_]] extends LogsTestkit[F]
 
   /** Creates [[LogsTestkit]] that keeps logs in-memory.
     *
     * @param customize
     *   the customization of the builder
+    *
+    * @note
+    *   this implementation uses a constant root `Context` via `Ask.const(Context.root)`. That means the module is
+    *   isolated: it does not inherit or propagate the surrounding span context. This is useful if you only need logging
+    *   (without traces or metrics) and want the module to operate independently. If instead you want interoperability -
+    *   i.e. to capture the current span context so that logs, traces, and metrics can all work together - use
+    *   `OpenTelemetrySdkTestkit.inMemory`.
     */
   def inMemory[F[_]: Temporal: Parallel: Console](
       customize: SdkLoggerProvider.Builder[F] => SdkLoggerProvider.Builder[F] = (b: SdkLoggerProvider.Builder[F]) => b
