@@ -17,6 +17,7 @@
 package org.typelevel.otel4s.oteljava.testkit.logs
 
 import io.opentelemetry.sdk.logs.data.LogRecordData
+import org.typelevel.otel4s.oteljava.testkit.logs.data.LogRecord
 
 /** Transforms OpenTelemetry's LogRecordData into arbitrary type `A`.
   */
@@ -31,6 +32,11 @@ object FromLogRecordData {
   implicit val toOtelJavaLogRecordData: FromLogRecordData[LogRecordData] =
     new FromLogRecordData[LogRecordData] {
       def from(logRecordData: LogRecordData): LogRecordData = logRecordData
+    }
+
+  implicit val toOtel4sLogRecord: FromLogRecordData[LogRecord] =
+    new FromLogRecordData[LogRecord] {
+      def from(logRecordData: LogRecordData): LogRecord = LogRecord(logRecordData)
     }
 
 }

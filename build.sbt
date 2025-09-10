@@ -967,6 +967,7 @@ lazy val examples = project
   .settings(
     name := "otel4s-examples",
     libraryDependencies ++= Seq(
+      "com.outr" %% "scribe" % "3.16.1",
       "org.apache.pekko" %% "pekko-stream" % PekkoStreamVersion,
       "org.apache.pekko" %% "pekko-http" % PekkoHttpVersion,
       "io.opentelemetry" % "opentelemetry-exporter-otlp" % OpenTelemetryVersion,
