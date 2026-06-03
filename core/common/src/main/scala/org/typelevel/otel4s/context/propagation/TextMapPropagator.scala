@@ -29,6 +29,11 @@ import cats.syntax.foldable._
   * library-specific request interceptors. On the client side, values are injected into the carriers, while on the
   * server side, values are extracted from them.
   *
+  * @see
+  *   [[https://typelevel.org/otel4s/how-to-tracing/propagate-trace-context-across-service-boundaries.html How-to guide]]
+  * @see
+  *   [[https://typelevel.org/otel4s/explanations/trace-propagators-and-cross-service-traces.html Explanation]]
+  *
   * @tparam Ctx
   *   the context to use to extract or inject data
   */

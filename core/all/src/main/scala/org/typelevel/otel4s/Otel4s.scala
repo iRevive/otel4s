@@ -31,7 +31,11 @@ sealed trait Otel4s[F[_]] {
   /** The [[cats.mtl.Local `Local`]] context. */
   implicit def localContext: Local[F, Ctx]
 
-  /** The registered propagators. */
+  /** The registered propagators.
+    *
+    * @see
+    *   [[https://typelevel.org/otel4s/explanations/trace-propagators-and-cross-service-traces.html Explanation]]
+    */
   def propagators: ContextPropagators[Ctx]
 
   /** A registry for creating named meters. */

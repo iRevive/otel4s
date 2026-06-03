@@ -34,7 +34,7 @@ import cats.Applicative
   *   }}}
   *
   * @see
-  *   How-to guide [[https://typelevel.org/otel4s/how-to-tracing/work-with-baggage.html]]
+  *   [[https://typelevel.org/otel4s/how-to-tracing/work-with-baggage.html How-to guide]]
   */
 sealed trait BaggageManager[F[_]] {
 

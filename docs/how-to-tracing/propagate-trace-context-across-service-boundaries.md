@@ -125,7 +125,7 @@ def injectIntoHttpHeaders(implicit tracer: Tracer[IO]): IO[Headers] =
   [Keep otel4s context in sync with OpenTelemetry Java](../how-to-jvm-setup/keep-otel4s-context-in-sync-with-opentelemetry-java.md)
 - Add request-scoped metadata with baggage:
   [Work with baggage](work-with-baggage.md)
-- For custom propagators and more background, see the existing
-  [Cross-service trace propagation](../instrumentation/tracing-cross-service-propagation.md) page.
+- For propagator selection, carrier formats, and custom propagators, see
+  [Trace propagators and cross-service traces](../explanations/trace-propagators-and-cross-service-traces.md).
 
 [opentelemetry-java-configuration]: https://opentelemetry.io/docs/languages/java/configuration/

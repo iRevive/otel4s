@@ -116,10 +116,10 @@ sealed trait SpanOps[F[_]] {
     *   [[SpanOps.Res]] for the semantics and usage of the resource's value
     *
     * @see
-    *   How-to guide [[https://typelevel.org/otel4s/how-to-tracing/trace-resource-and-fs2-stream-code.html]]
+    *   [[https://typelevel.org/otel4s/how-to-tracing/trace-resource-and-fs2-stream-code.html How-to guide]]
     *
     * @see
-    *   Explanation [[https://typelevel.org/otel4s/explanations/tracing-resource-and-fs2-stream-scopes.html]]
+    *   [[https://typelevel.org/otel4s/explanations/tracing-resource-and-fs2-stream-scopes.html Explanation]]
     *
     * @example
     *   Resource tracing:
@@ -205,7 +205,7 @@ sealed trait SpanOps[F[_]] {
     *   default finalization strategy [[SpanFinalizer.Strategy.reportAbnormal]]
     *
     * @see
-    *   How-to guide [[https://typelevel.org/otel4s/how-to-tracing/create-spans-around-effectful-code.html]]
+    *   [[https://typelevel.org/otel4s/how-to-tracing/create-spans-around-effectful-code.html How-to guide]]
     *
     * @example
     *   {{{

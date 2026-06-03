@@ -18,6 +18,9 @@ package org.typelevel.otel4s.context.propagation
 
 /** A container of the registered propagators for every supported format.
   *
+  * @see
+  *   [[https://typelevel.org/otel4s/explanations/trace-propagators-and-cross-service-traces.html Explanation]]
+  *
   * @tparam Ctx
   *   the type of the Context
   */

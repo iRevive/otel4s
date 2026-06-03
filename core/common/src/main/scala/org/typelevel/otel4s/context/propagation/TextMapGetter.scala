@@ -32,6 +32,10 @@ import scala.collection.generic.IsSeq
   *
   * @see
   *   See [[TextMapUpdater]] to update values of an immutable carrier
+  * @see
+  *   [[https://typelevel.org/otel4s/how-to-tracing/propagate-trace-context-across-service-boundaries.html How-to guide]]
+  * @see
+  *   [[https://typelevel.org/otel4s/explanations/trace-propagators-and-cross-service-traces.html Explanation]]
   *
   * @tparam A
   *   the type of the key-value carrier

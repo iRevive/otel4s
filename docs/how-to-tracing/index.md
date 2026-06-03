@@ -21,5 +21,7 @@ that depend on OpenTelemetry context.
   [Keep otel4s context in sync with OpenTelemetry Java](../how-to-jvm-setup/keep-otel4s-context-in-sync-with-opentelemetry-java.md).
 - For more background on `Resource` and `fs2.Stream` tracing scopes, see
   [Tracing Resource and fs2.Stream scopes](../explanations/tracing-resource-and-fs2-stream-scopes.md).
+- For propagator selection and custom propagators, see
+  [Trace propagators and cross-service traces](../explanations/trace-propagators-and-cross-service-traces.md).
 - For other lower-level tracing APIs, see the existing
   [Tracing](../instrumentation/tracing.md) page.

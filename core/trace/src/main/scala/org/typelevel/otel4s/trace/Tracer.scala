@@ -151,6 +151,11 @@ sealed trait Tracer[F[_]] extends TracerMacro[F] {
     * @param carrier
     *   the carrier to extract the context from
     *
+    * @see
+    *   [[https://typelevel.org/otel4s/how-to-tracing/propagate-trace-context-across-service-boundaries.html How-to guide]]
+    * @see
+    *   [[https://typelevel.org/otel4s/explanations/trace-propagators-and-cross-service-traces.html Explanation]]
+    *
     * @tparam C
     *   the type of the carrier
     */
@@ -205,6 +210,10 @@ sealed trait Tracer[F[_]] extends TracerMacro[F] {
     *   a copy of the immutable carrier with this tracer's context appended to it
     * @see
     *   [[org.typelevel.otel4s.context.propagation.TextMapPropagator.inject TextMapPropagator#inject]]
+    * @see
+    *   [[https://typelevel.org/otel4s/how-to-tracing/propagate-trace-context-across-service-boundaries.html How-to guide]]
+    * @see
+    *   [[https://typelevel.org/otel4s/explanations/trace-propagators-and-cross-service-traces.html Explanation]]
     */
   def propagate[C: TextMapUpdater](carrier: C): F[C]
 

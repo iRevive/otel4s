@@ -32,6 +32,10 @@ import scala.collection.immutable.SortedMapOps
   *
   * @see
   *   See [[TextMapGetter]] to get a value from the carrier
+  * @see
+  *   [[https://typelevel.org/otel4s/how-to-tracing/propagate-trace-context-across-service-boundaries.html How-to guide]]
+  * @see
+  *   [[https://typelevel.org/otel4s/explanations/trace-propagators-and-cross-service-traces.html Explanation]]
   *
   * @tparam A
   *   the type of the carrier
